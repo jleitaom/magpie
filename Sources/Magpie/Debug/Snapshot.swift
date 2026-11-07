@@ -112,10 +112,10 @@ enum Snapshot {
 
 /// The screens snapshot mode captures. Add a case for every new screen or state worth checking.
 enum SnapshotPage: String, CaseIterable {
-    case all, inbox, collection, details, empty, collections, newBlock
+    case all, inbox, collection, details, empty, collections, newBlock, rename
 
     /// Pages that open a popover. Their snapshot is the popover alone.
-    var hasPopover: Bool { self == .collections || self == .newBlock }
+    var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename }
 
     func show(in model: AppModel) {
         model.selection = nil
@@ -132,13 +132,15 @@ enum SnapshotPage: String, CaseIterable {
             model.selection = newest?.uid
         case .empty:
             model.scope = model.collections.first { ($0.blocks ?? []).isEmpty }.map { .collection($0.uid) } ?? .all
-        case .collections, .newBlock:
+        case .collections, .newBlock, .rename:
             model.scope = .all
+            model.renamingCollection = nil
         }
     }
 
     func openPopover(in model: AppModel) {
-        model.showsCollections = self == .collections
+        if self == .rename { model.renamingCollection = model.collectionTree.first?.collection.uid }
+        model.showsCollections = self == .collections || self == .rename
         model.showsNewMenu = self == .newBlock
     }
 }

@@ -82,40 +82,46 @@ private struct CollectionRow: View {
         let isOpen = model.scope == .collection(target.uid)
         let isRenaming = model.renamingCollection == target.uid
         HStack(spacing: 0) {
-            Button {
-                model.scope = .collection(target.uid)
-                model.selection = nil
-                model.showsCollections = false
-            } label: {
+            if isRenaming {
+                // Outside the row's button: a field inside a disabled button can't take focus.
                 HStack(spacing: Space.sm) {
-                    RoundedRectangle(cornerRadius: Metric.swatchRadius).fill(Ink.swatch(UInt32(target.colorHex)))
-                        .frame(width: Metric.swatch, height: Metric.swatch)
-                    if isRenaming {
-                        TextField("Name", text: $draft)
-                            .textFieldStyle(.plain)
-                            .kitType(.label).foregroundStyle(Ink.text)
-                            .focused($editing)
-                            .onSubmit { model.rename(target, to: draft) }
-                            .onExitCommand { model.renamingCollection = nil }
-                            .onAppear {
-                                draft = target.name
-                                editing = true
-                            }
-                            .onChange(of: editing) { _, focused in
-                                if !focused, model.renamingCollection == target.uid { model.rename(target, to: draft) }
-                            }
-                    } else {
-                        Text(target.name).kitType(.label).foregroundStyle(Ink.text).lineLimit(1)
-                        Text("\(target.blocks?.count ?? 0)").kitType(.meta).foregroundStyle(Ink.secondary)
-                    }
-                    Spacer(minLength: 0)
+                    swatch
+                    TextField("Name", text: $draft)
+                        .textFieldStyle(.plain)
+                        .kitType(.label).foregroundStyle(Ink.text)
+                        .focused($editing)
+                        .onSubmit { model.rename(target, to: draft) }
+                        .onExitCommand { model.renamingCollection = nil }
+                        .onChange(of: editing) { _, focused in
+                            if !focused, model.renamingCollection == target.uid { model.rename(target, to: draft) }
+                        }
                 }
                 .padding(.leading, Metric.rowInset + CGFloat(depth) * Metric.treeIndent)
                 .frame(height: Metric.menuRowHeight)
-                .contentShape(.rect)
+                .task {
+                    draft = target.name
+                    // Wait for the panel to give its first field focus, then take it.
+                    try? await Task.sleep(for: .milliseconds(150))
+                    editing = true
+                }
+            } else {
+                Button {
+                    model.scope = .collection(target.uid)
+                    model.selection = nil
+                    model.showsCollections = false
+                } label: {
+                    HStack(spacing: Space.sm) {
+                        swatch
+                        Text(target.name).kitType(.label).foregroundStyle(Ink.text).lineLimit(1)
+                        Text("\(target.blocks?.count ?? 0)").kitType(.meta).foregroundStyle(Ink.secondary)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.leading, Metric.rowInset + CGFloat(depth) * Metric.treeIndent)
+                    .frame(height: Metric.menuRowHeight)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
-            .disabled(isRenaming)
             Button { model.togglePin(target) } label: {
                 KitIconView(icon: .pin, size: 12, filled: target.isPinned)
                     .foregroundStyle(target.isPinned ? Ink.accentText : Ink.tertiary)
@@ -141,6 +147,13 @@ private struct CollectionRow: View {
         .contextMenu { CollectionMenu(target: target) }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(target.name), \(target.blocks?.count ?? 0) blocks\(depth > 0 ? ", nested" : "")")
+    }
+}
+
+extension CollectionRow {
+    fileprivate var swatch: some View {
+        RoundedRectangle(cornerRadius: Metric.swatchRadius).fill(Ink.swatch(UInt32(target.colorHex)))
+            .frame(width: Metric.swatch, height: Metric.swatch)
     }
 }
 
