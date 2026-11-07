@@ -10,9 +10,17 @@ public struct PageFacts: Equatable, Sendable {
     public var price: Double?
     public var currency: String?
     public var wordCount: Int?
+    /// The real title and author from oEmbed (YouTube's preview gives the channel name as the title).
+    public var title: String?
+    public var author: String?
+    /// Where the page sent us with a meta refresh, when it did.
+    public var redirectedTo: URL?
 
-    public init(kind: Kind? = nil, durationSeconds: Int? = nil, price: Double? = nil, currency: String? = nil, wordCount: Int? = nil) {
+    public init(kind: Kind? = nil, durationSeconds: Int? = nil, price: Double? = nil, currency: String? = nil, wordCount: Int? = nil,
+                title: String? = nil, author: String? = nil) {
         self.kind = kind
+        self.title = title
+        self.author = author
         self.durationSeconds = durationSeconds
         self.price = price
         self.currency = currency
@@ -108,6 +116,20 @@ public enum PageReader {
     public static func oEmbedDuration(_ json: Data) -> Int? {
         guard let object = try? JSONSerialization.jsonObject(with: json) as? [String: Any] else { return nil }
         return (object["duration"] as? Int) ?? (object["duration"] as? Double).map { Int($0) }
+    }
+
+    /// An oEmbed reply's title and author ("But what is a neural network?", "3Blue1Brown").
+    public static func oEmbedTitle(_ json: Data) -> (title: String, author: String?)? {
+        guard let object = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
+              let title = object["title"] as? String, !title.isEmpty else { return nil }
+        return (title, object["author_name"] as? String)
+    }
+
+    /// The address in `<meta http-equiv="refresh" content="0; url=…">`, resolved against the page.
+    public static func metaRefresh(_ html: String, base: URL) -> URL? {
+        guard let tag = firstMatch(#"(?is)(<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>)"#, in: html),
+              let target = firstMatch(#"(?i)url\s*=\s*['"]?([^'">\s]+)"#, in: tag) else { return nil }
+        return URL(string: decodeEntities(target), relativeTo: base)?.absoluteURL
     }
 
     /// Words of readable text: inside <article> when the page has one, else <body>,

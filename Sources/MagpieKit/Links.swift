@@ -65,6 +65,31 @@ public enum Links {
     }
 }
 
+extension Links {
+    /// A place's name from its maps link: "Torre de Belém" from
+    /// google.com/maps/place/Torre+de+Bel%C3%A9m or maps.apple.com/?q=Torre+de+Belem.
+    public static func placeName(_ url: URL) -> String? {
+        guard kind(url) == .place else { return nil }
+        let parts = url.pathComponents
+        if let index = parts.firstIndex(of: "place"), parts.indices.contains(index + 1) {
+            return clean(parts[index + 1])
+        }
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        for key in ["name", "q", "address", "daddr", "query"] {
+            if let value = items.first(where: { $0.name == key })?.value, !value.isEmpty { return clean(value) }
+        }
+        return nil
+    }
+
+    private static func clean(_ text: String) -> String? {
+        let decoded = (text.removingPercentEncoding ?? text).replacingOccurrences(of: "+", with: " ")
+        let trimmed = Titles.clean(decoded)
+        // Coordinates aren't a name.
+        if trimmed.isEmpty || trimmed.allSatisfy({ $0.isNumber || ".,- ".contains($0) }) { return nil }
+        return trimmed
+    }
+}
+
 /// A saved block's title from page text: whitespace collapsed, trimmed, and kept to one line.
 public enum Titles {
     public static func clean(_ text: String) -> String {

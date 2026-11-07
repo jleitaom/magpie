@@ -116,7 +116,41 @@ struct PageReaderTests {
     }
 }
 
-struct PlaceLinkTests {
+struct RedirectAndTitleTests {
+    @Test("A meta refresh is followed to its target")
+    func metaRefresh() {
+        let html = #"<html><head><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0; url=/essay/local-first"></head></html>"#
+        let target = PageReader.metaRefresh(html, base: URL(string: "https://www.inkandswitch.com/local-first/")!)
+        #expect(target?.absoluteString == "https://www.inkandswitch.com/essay/local-first")
+        #expect(PageReader.metaRefresh("<meta charset='utf-8'>", base: URL(string: "https://a.com")!) == nil)
+    }
+
+    @Test("oEmbed gives the real title and the author")
+    func oEmbedTitle() {
+        let json = Data(#"{"title":"But what is a neural network? | Deep learning chapter 1","author_name":"3Blue1Brown"}"#.utf8)
+        let named = PageReader.oEmbedTitle(json)
+        #expect(named?.title.hasPrefix("But what is a neural network?") == true && named?.author == "3Blue1Brown")
+    }
+}
+
+struct PlaceNameTests {
+    @Test("A place is named from its maps link", arguments: [
+        ("https://www.google.com/maps/place/Torre+de+Bel%C3%A9m", "Torre de Belém"),
+        ("https://www.google.com/maps/place/Torre+de+Bel%C3%A9m/@38.69,-9.21,17z/data=!3m1", "Torre de Belém"),
+        ("https://maps.apple.com/?q=Torre+de+Belem", "Torre de Belem"),
+        ("https://maps.apple.com/?ll=38.71,-9.13&q=Miradouro%20da%20Senhora%20do%20Monte", "Miradouro da Senhora do Monte"),
+    ])
+    func placeName(link: String, name: String) {
+        #expect(Links.placeName(URL(string: link)!) == name)
+    }
+
+    @Test("Coordinates or a short link give no name")
+    func noName() {
+        #expect(Links.placeName(URL(string: "https://maps.apple.com/?q=38.71,-9.13")!) == nil)
+        #expect(Links.placeName(URL(string: "https://maps.app.goo.gl/AbC123")!) == nil)
+        #expect(Links.placeName(URL(string: "https://example.com/place/x")!) == nil)
+    }
+
     @Test("Places come from Apple Maps and Google Maps links", arguments: [
         "https://maps.apple.com/?q=Miradouro&ll=38.71,-9.13",
         "https://www.google.com/maps/place/Miradouro+da+Senhora+do+Monte",

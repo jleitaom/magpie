@@ -188,7 +188,9 @@ final class AppModel {
             existing.createdAt = .now
             if existing.status == .archived { existing.status = .inbox }
             save()
-            flash("Already saved — moved to the top")
+            flash("Already saved — moved to the top and refreshed")
+            // Saving it again refreshes its title, picture, length and price.
+            enrich(existing)
             return existing
         }
         let kind: BlockKind = switch Links.kind(url) {
@@ -197,7 +199,8 @@ final class AppModel {
         case .image: .image
         case .link: .link
         }
-        let block = Block(kind: kind, title: Links.siteName(url))
+        // A place is named from its link ("Torre de Belém"); anything else starts with its site.
+        let block = Block(kind: kind, title: Links.placeName(url) ?? Links.siteName(url))
         block.urlString = url.absoluteString
         block.normalizedURL = normalized
         block.siteName = Links.siteName(url)
@@ -297,14 +300,27 @@ final class AppModel {
             defer { enriching.remove(uid) }
             // The preview (title, picture) and the page's facts (length, price) load side by side.
             async let factsTask = isPlace ? nil : Ingest.fetchFacts(url)
-            let preview = await Ingest.fetchPreview(url)
-            var processed: ProcessedImage?
-            if let data = preview?.imageData { processed = await Ingest.process(data) }
+            var preview = await Ingest.fetchPreview(url)
             let facts = await factsTask
+            // The page sent us elsewhere with a meta refresh: preview that page instead.
+            if let target = facts?.redirectedTo, preview?.title == nil || preview?.imageData == nil {
+                preview = await Ingest.fetchPreview(target) ?? preview
+            }
+            var processed: ProcessedImage?
+            if !isPlace, let data = preview?.imageData { processed = await Ingest.process(data) }
             guard let block = self.block(uid) else { return }   // deleted meanwhile
             apply(facts, to: block)
-            if let title = preview?.title.map(Titles.clean), !title.isEmpty, block.title == block.siteName {
-                block.title = title
+            // Title: oEmbed's (YouTube, Vimeo) beats the preview's. Either replaces only a stand-in
+            // title (the site, or the channel name an earlier preview put there), never one you typed.
+            let standIn = block.title == block.siteName || block.title == facts?.author
+                || (isPlace && (block.title == "Google Maps" || block.title.hasPrefix("Search for")))
+            if standIn, let title = (facts?.title ?? preview?.title).map(Titles.clean), !title.isEmpty {
+                block.title = isPlace ? (Links.placeName(url) ?? title) : title
+            }
+            if isPlace {
+                // Places show the mini map, not the map site's generic picture.
+                block.thumbnail = nil
+                block.colorHex = nil
             }
             apply(processed, to: block)
             block.enrich = preview == nil ? .failed : .done

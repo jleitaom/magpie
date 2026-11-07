@@ -33,22 +33,49 @@ enum Ingest {
 
     /// Reads a page's facts (video length, price, recipe, read time) from its HTML, or for
     /// Vimeo from its oEmbed. Best effort: nil when the page can't be read.
+    /// Follows one `<meta http-equiv="refresh">` (inkandswitch.com does this); `redirectedTo` says where.
     @concurrent
     nonisolated static func fetchFacts(_ url: URL, timeout: TimeInterval = 15) async -> PageFacts? {
         let site = Links.siteName(url)
         if site == "vimeo.com" || site.hasSuffix(".vimeo.com") {
-            var oembed = URLComponents(string: "https://vimeo.com/api/oembed.json")!
-            oembed.queryItems = [URLQueryItem(name: "url", value: url.absoluteString)]
-            guard let endpoint = oembed.url, let (data, _) = try? await URLSession.shared.data(for: request(endpoint, timeout: timeout)),
-                  let seconds = PageReader.oEmbedDuration(data) else { return nil }
-            return PageFacts(kind: .video, durationSeconds: seconds)
+            guard let data = await oEmbed("https://vimeo.com/api/oembed.json", for: url, timeout: timeout) else { return nil }
+            let named = PageReader.oEmbedTitle(data)
+            return PageFacts(kind: .video, durationSeconds: PageReader.oEmbedDuration(data), title: named?.title, author: named?.author)
         }
+        guard var html = await page(url, timeout: timeout) else { return nil }
+        var redirected: URL?
+        if let target = PageReader.metaRefresh(html, base: url), target != url, let next = await page(target, timeout: timeout) {
+            html = next
+            redirected = target
+        }
+        var facts = PageReader.read(html: html)
+        facts.redirectedTo = redirected
+        // YouTube's own title (LinkPresentation gives the channel's name instead).
+        if site.hasSuffix("youtube.com") || site == "youtu.be",
+           let data = await oEmbed("https://www.youtube.com/oembed", for: url, timeout: timeout),
+           let named = PageReader.oEmbedTitle(data) {
+            facts.title = named.title
+            facts.author = named.author
+            if facts.kind == nil { facts.kind = .video }
+        }
+        return facts
+    }
+
+    /// A page's HTML, or nil when it isn't an HTML page that loaded.
+    nonisolated private static func page(_ url: URL, timeout: TimeInterval) async -> String? {
         guard let (data, response) = try? await URLSession.shared.data(for: request(url, timeout: timeout)),
               (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,
               (response.mimeType ?? "text/html").contains("html") else { return nil }
         // A few MB is plenty for the head and article; very long pages are cut.
-        let html = String(decoding: data.prefix(4_000_000), as: UTF8.self)
-        return PageReader.read(html: html)
+        return String(decoding: data.prefix(4_000_000), as: UTF8.self)
+    }
+
+    nonisolated private static func oEmbed(_ endpoint: String, for url: URL, timeout: TimeInterval) async -> Data? {
+        var parts = URLComponents(string: endpoint)!
+        parts.queryItems = [URLQueryItem(name: "url", value: url.absoluteString), URLQueryItem(name: "format", value: "json")]
+        guard let address = parts.url, let (data, response) = try? await URLSession.shared.data(for: request(address, timeout: timeout)),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return data
     }
 
     /// A plain browser-like request. YouTube gets its consent cookie, or Europe sees a consent page instead.

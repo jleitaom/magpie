@@ -17,6 +17,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
+- YouTube videos show the video's title, not the channel's name, and Vimeo videos their real title too
+- Google Maps and Apple Maps links are named after the place ("Torre de Belém") and show the mini map instead of a generic picture
+- Pages that forward you with a redirect in their HTML (like inkandswitch.com) get their title, picture and read time
+- Saving a link you already have refreshes its title, picture, length and price
+
 - The Collections panel and the + New block menu have a solid background, so the cards behind them no longer show through the text
 
 ## [0.1.0] - 2026-11-07

@@ -181,7 +181,9 @@ enum SelfTest {
             check("a recipe page is marked as a recipe", nata.isRecipe)
             let map = model.save(url: URL(string: "https://maps.google.com/?q=Lisbon")!)
             check("a Google Maps link is a place", map.kind == .place)
-            [shop, clip, essay, nata, map].forEach { model.delete([$0.uid], undo: nil) }
+            let tower = model.save(url: URL(string: "https://www.google.com/maps/place/Torre+de+Bel%C3%A9m")!)
+            check("a place is named from its link", tower.kind == .place && tower.title == "Torre de Belém")
+            [shop, clip, essay, nata, map, tower].forEach { model.delete([$0.uid], undo: nil) }
 
             // S-002 real previews from the network (APP_SELFTEST_NETWORK=1 scripts/selftest.sh).
             if ProcessInfo.processInfo.environment["APP_SELFTEST_NETWORK"] == "1" {
@@ -200,6 +202,12 @@ enum SelfTest {
                 check("an essay gets a read time", (essay?.minutes ?? 0) > 10, "facts \(String(describing: essay))")
                 let youtube = await Ingest.fetchFacts(URL(string: "https://www.youtube.com/watch?v=jNQXAC9IVRw")!)
                 check("a YouTube page gives a video length", youtube?.durationSeconds != nil, "facts \(String(describing: youtube))")
+                let neural = await Ingest.fetchFacts(URL(string: "https://www.youtube.com/watch?v=aircAruvnKk")!)
+                check("YouTube's real title comes from oEmbed, not the channel", neural?.title?.hasPrefix("But what is a neural network") == true && neural?.author == "3Blue1Brown",
+                      "title \(neural?.title ?? "nil")")
+                let local = await Ingest.fetchFacts(URL(string: "https://www.inkandswitch.com/local-first/")!)
+                check("a meta refresh is followed (inkandswitch.com)", local?.redirectedTo != nil && (local?.minutes ?? 0) > 10,
+                      "facts \(String(describing: local))")
                 for shop in ["https://www.ikea.com/us/en/p/billy-bookcase-white-20522046/"] {
                     let product = await Ingest.fetchFacts(URL(string: shop)!)
                     check("a shop page gives a price (\(Links.siteName(URL(string: shop)!)))", product?.price != nil, "facts \(String(describing: product))")
