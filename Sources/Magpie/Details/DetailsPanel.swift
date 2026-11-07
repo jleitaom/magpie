@@ -67,6 +67,10 @@ struct DetailsPanel: View {
             }
             .buttonStyle(.plain)
             .help("Open")
+            .contextMenu {
+                Button("Open") { model.open(block) }
+                Button("Copy Link") { model.copy(block) }
+            }
         }
         switch block.kind {
         case .note:

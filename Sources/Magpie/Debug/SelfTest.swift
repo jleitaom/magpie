@@ -166,6 +166,23 @@ enum SelfTest {
             check("Inbox shows only Inbox blocks", model.blocks(in: .inbox, from: all).allSatisfy { $0.status == .inbox })
             check("nothing is lost after a save", (try? context.save()) != nil)
 
+            // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
+            // so the test never touches your clipboard.
+            let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))
+            let link = model.save(url: URL(string: "https://example.com/copy-me")!)
+            model.copy(link, to: board)
+            check("Copy Link puts the link on the pasteboard", board.string(forType: .string) == "https://example.com/copy-me"
+                  && (board.readObjects(forClasses: [NSURL.self]) as? [URL])?.first?.absoluteString == "https://example.com/copy-me")
+            model.addNote()
+            if let note = model.block(model.selection) {
+                note.bodyText = "Remember the bookshop"
+                model.copy(note, to: board)
+                check("Copy on a note copies its text", board.string(forType: .string)?.contains("Remember the bookshop") == true)
+                model.delete([note.uid], undo: nil)
+            }
+            model.delete([link.uid], undo: nil)
+            board.releaseGlobally()
+
             // S-063 page facts become the block's kind, length and price.
             let shop = model.save(url: URL(string: "https://shop.example.com/lamp")!)
             model.apply(PageFacts(kind: .product, price: 189, currency: "EUR"), to: shop)

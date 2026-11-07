@@ -353,6 +353,24 @@ final class AppModel {
         block.colorHex = processed.color.map(Int.init)
     }
 
+    // MARK: Copying
+
+    /// Copies a block's link (as a link and as text), or a note's text, so it pastes anywhere.
+    func copy(_ block: Block, to pasteboard: NSPasteboard = .general) {
+        pasteboard.clearContents()
+        if let url = block.url {
+            pasteboard.writeObjects([url as NSURL])
+            pasteboard.setString(url.isFileURL ? url.path : url.absoluteString, forType: .string)
+            flash("Link copied")
+        } else {
+            let text = block.kind == .checklist
+                ? block.checklist.map { ($0.done ? "☑ " : "☐ ") + $0.text }.joined(separator: "\n")
+                : block.bodyText
+            pasteboard.setString([block.title, text].filter { !$0.isEmpty }.joined(separator: "\n\n"), forType: .string)
+            flash("Copied")
+        }
+    }
+
     // MARK: Changing blocks
 
     func open(_ block: Block) {

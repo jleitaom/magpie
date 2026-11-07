@@ -53,6 +53,12 @@ struct GalleryView: View {
         .focusEffectDisabled()
         // Focused from the start, so ⌫ and Return work right away (and snapshots show the focused state).
         .onAppear { hasFocus = true }
+        // Edit → Copy (⌘C) copies the selected card's link, or a note's text.
+        .onCopyCommand {
+            guard let block = model.block(model.selection) else { return [] }
+            model.copy(block)
+            return []
+        }
         .onDeleteCommand {
             if let selection = model.selection { model.delete([selection], undo: undoManager) }
         }
@@ -99,10 +105,12 @@ struct BlockMenu: View {
     var body: some View {
         if block.url != nil {
             Button("Open") { model.open(block) }
-            Button("Copy Link") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(block.urlString ?? "", forType: .string)
-            }
+            Button("Copy Link") { model.copy(block) }
+                .keyboardShortcut("c")
+            Divider()
+        } else {
+            Button("Copy") { model.copy(block) }
+                .keyboardShortcut("c")
             Divider()
         }
         Menu("Move to") {

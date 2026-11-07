@@ -169,6 +169,14 @@ private struct SortCardStack: View {
             }
         }
         .frame(width: Metric.sortWidth)
+        .contextMenu {
+            if block.url != nil {
+                Button("Open") { model.open(block) }
+                Button("Copy Link") { model.copy(block) }
+            } else {
+                Button("Copy") { model.copy(block) }
+            }
+        }
         .id(block.uid)
         .transition(.asymmetric(insertion: .opacity, removal: .move(edge: .top).combined(with: .opacity)))
         .accessibilityElement(children: .contain)

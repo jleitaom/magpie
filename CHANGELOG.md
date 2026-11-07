@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- **Copy a link.** Select a card and press ⌘C (Edit → Copy) to copy its link, or a note's text. Right-click the link in the details panel, or the big card in Sort Inbox, for Open and Copy Link
 - **Videos, products and places are recognized.** A saved video shows its length ("13 min"), a shop page its price ("€189" or "189 €", in your Mac's format), and an article its read time. Read from the page's own data (schema.org and meta tags), Vimeo's oEmbed for Vimeo links, and Apple Maps and Google Maps links become places. Recipe pages are noted for the coming Cook pile
 - **Sort Inbox** (⌃⌘3, or the third button in the view switcher, or **Start sorting** in the Inbox): your Inbox one block at a time, big, with a suggested collection. Press **M** to move it there, **D** to mark it done, **→** to skip it (it goes to the back of the queue), **⌫** to delete it, or click any collection. A progress bar shows how many are sorted and how many are left. The suggestion comes from the site and kind (a YouTube link goes to Watch later, a shop to Shopping), else from where that site's blocks went last
 - **Inbox zero and a daily streak.** Sorting your last Inbox block shows "Inbox zero." with how many you sorted, kept, marked done and deleted. Each day you reach Inbox zero adds one to your streak, shown next to the window buttons with a ring that fills over a week. A day you saved nothing doesn't break it. Click the streak to start sorting
