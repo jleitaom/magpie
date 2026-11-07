@@ -112,13 +112,21 @@ enum Snapshot {
 
 /// The screens snapshot mode captures. Add a case for every new screen or state worth checking.
 enum SnapshotPage: String, CaseIterable {
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero
+    /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
+    @MainActor static var startedOriginal: (UUID, BlockStatus)?
+
+    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted
 
     /// Pages that open a popover. Their snapshot is the popover alone.
     var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename }
 
     func show(in model: AppModel) {
         model.viewMode = .gallery
+        // Lucky Dip pages leave no pick or started block behind for the next page.
+        model.todayIfAny?.pickUID = nil
+        model.todayIfAny?.spins = 0
+        if let (uid, status) = Self.startedOriginal, let block = model.block(uid) { block.status = status }
+        Self.startedOriginal = nil
         model.selection = nil
         model.renamingCollection = nil
         model.showsCollections = false
@@ -137,6 +145,21 @@ enum SnapshotPage: String, CaseIterable {
         case .sortInbox:
             model.scope = .all
             model.startSorting()
+        case .luckyDip:
+            model.dipPile = .read
+            model.viewMode = .luckyDip
+        case .luckyDipPick, .luckyDipStarted:
+            model.dipPile = .watch
+            model.viewMode = .luckyDip
+            if let pick = model.pileBlocks(.watch).first {
+                if self == .luckyDipStarted {
+                    Self.startedOriginal = (pick.uid, pick.status)
+                    pick.status = .inProgress
+                } else {
+                    model.today.pickUID = pick.uid
+                    model.today.spins = 1
+                }
+            }
         case .inboxZero:
             model.scope = .all
             model.viewMode = .sortInbox

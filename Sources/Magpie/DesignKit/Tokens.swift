@@ -111,7 +111,11 @@ enum Metric {
     /// The streak pill's distance from the window's left edge, clear of the traffic lights.
     static let streakInset: CGFloat = 88
     static let celebrationRing: CGFloat = 120
-    static let celebrationWidth: CGFloat = 520          // the key in a key button
+    static let celebrationWidth: CGFloat = 520
+    static let dipSidebar: CGFloat = 332      // Lucky Dip's pile column
+    static let dipPickMaxWidth: CGFloat = 760
+    static let dipPickHero: CGFloat = 280     // the pick's picture, on its left
+    static let dipPickMinHeight: CGFloat = 280          // the key in a key button
     static let sortWidth: CGFloat = 560      // Sort Inbox's card and progress line
     static let sortHero: CGFloat = 232       // the big card's picture
     static let radiusSortCard: CGFloat = 22

@@ -33,7 +33,7 @@ enum ViewMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var isAvailable: Bool { self == .gallery || self == .sortInbox }
+    var isAvailable: Bool { self != .journal }
 
     /// ⌃⌘1 to ⌃⌘4, in the View menu.
     var shortcut: Character {
@@ -89,6 +89,12 @@ final class AppModel {
     var selection: UUID? { didSet { MenuState.shared.update(selection) } }
     var showsCollections = false
     var showsNewMenu = false
+    /// Lucky Dip (S-069–S-072): the chosen pile and time limit, and whether the shuffle is running.
+    var dipPile: Pile = .read
+    var dipMaxMinutes: Int?
+    var isShuffling = false
+    /// Titles flicking past during the shuffle.
+    var shuffleTitle = ""
     /// The current Sort Inbox run (S-060).
     var sortSession = SortSession(inbox: [])
     /// The collection whose name is being edited in the Collections panel.
@@ -135,6 +141,7 @@ final class AppModel {
     func start() {
         applyAppearance()
         refreshStreak()
+        refreshDipStats()
         let pending = EnrichState.pending.rawValue
         let stuck = (try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.enrichRaw == pending }))) ?? []
         for block in stuck { enrich(block) }
@@ -619,6 +626,12 @@ final class AppModel {
 
     // MARK: Streak (S-061)
 
+    /// Today's activity record if there is one, without making it (safe while a view draws).
+    var todayIfAny: DayActivity? {
+        let number = DayActivity.number(for: .now)
+        return try? context.fetch(FetchDescriptor<DayActivity>(predicate: #Predicate { $0.day == number })).first
+    }
+
     /// Today's activity record, made on first use.
     var today: DayActivity {
         let number = DayActivity.number(for: .now)
@@ -651,6 +664,126 @@ final class AppModel {
         let records = ((try? context.fetch(FetchDescriptor<DayActivity>())) ?? [])
             .map { DayRecord(day: $0.day, saved: $0.saved, reachedInboxZero: $0.reachedInboxZero) }
         return Streak.days(records, today: DayActivity.number(for: .now))
+    }
+
+    // MARK: Lucky Dip (S-069–S-072)
+
+    /// Blocks on a pile that Lucky Dip could pick: not done, archived or already in progress.
+    func pileBlocks(_ pile: Pile) -> [Block] {
+        let all = (try? context.fetch(FetchDescriptor<Block>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)]))) ?? []
+        return all.filter { $0.pile == pile && ($0.status == .inbox || $0.status == .kept) }
+    }
+
+    /// The block you started and haven't finished, if any (newest first).
+    var inProgressBlock: Block? {
+        let started = BlockStatus.inProgress.rawValue
+        return try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.statusRaw == started },
+                                                          sortBy: [SortDescriptor(\.openedAt, order: .reverse)])).first
+    }
+
+    /// Today's pick, while it's still on its pile.
+    var dipPick: Block? {
+        guard let block = block(todayIfAny?.pickUID), block.status == .inbox || block.status == .kept else { return nil }
+        return block
+    }
+
+    var spinsToday: Int { todayIfAny?.spins ?? 0 }
+    var respinsLeft: Int { LuckyDip.respinsLeft(spinsToday: spinsToday) }
+
+    /// What the Lucky Dip menu needs, passed into the menu bar so it redraws.
+    var dipMenuState: DipMenuState {
+        guard viewMode == .luckyDip else { return DipMenuState() }
+        return DipMenuState(canSpin: canSpin && inProgressBlock == nil, hasPick: dipPick != nil, inProgress: inProgressBlock != nil)
+    }
+    var canSpin: Bool { LuckyDip.canSpin(spinsToday: spinsToday) && !isShuffling }
+
+    /// Randomize or Spin again: a short shuffle of titles, then one block lands as today's pick.
+    /// The first spin of the day is free, then 2 re-spins.
+    func spin(reduceMotion: Bool) {
+        guard canSpin else { return }
+        let pool = pileBlocks(dipPile)
+        let candidates = pool.map { DipCandidate(id: $0.uid, minutes: $0.minutes, timesSkipped: $0.timesSkipped) }
+        guard let chosen = LuckyDip.pick(from: candidates, maxMinutes: dipMaxMinutes, avoiding: todayIfAny?.pickUID) else {
+            flash(pool.isEmpty ? "The \(dipPile.title) pile is empty" : "Nothing on this pile fits that time")
+            return
+        }
+        let record = today
+        record.spins += 1
+        record.pickUID = nil
+        save()
+        let fitting = LuckyDip.fitting(candidates, maxMinutes: dipMaxMinutes).compactMap { c in pool.first { $0.uid == c.id }?.title }
+        isShuffling = true
+        Task {
+            // About a second of titles flicking past; none with Reduce Motion.
+            if !reduceMotion {
+                for step in 0..<12 {
+                    shuffleTitle = fitting.randomElement() ?? ""
+                    try? await Task.sleep(for: .milliseconds(50 + step * 8))
+                }
+            }
+            record.pickUID = chosen
+            isShuffling = false
+            save()
+        }
+    }
+
+    /// Start reading (watching, …): the pick opens and is marked In progress.
+    func startPick(_ block: Block) {
+        block.status = .inProgress
+        if let url = block.url {
+            block.openedAt = .now
+            NSWorkspace.shared.open(url)
+        } else {
+            block.openedAt = .now
+            selection = block.uid
+        }
+        if today.pickUID == block.uid { today.pickUID = nil }
+        save()
+    }
+
+    /// Mark as finished: it leaves the pile, and counts toward the dip streak and this week.
+    func finishPick(_ block: Block) {
+        block.status = .done
+        block.finishedAt = .now
+        today.finished += 1
+        if today.pickUID == block.uid { today.pickUID = nil }
+        save()
+        refreshDipStats()
+        flash("Finished. One less on the pile")
+    }
+
+    /// Not today: the pick goes back, and comes up less often from now on.
+    func notToday(_ block: Block) {
+        block.timesSkipped += 1
+        today.pickUID = nil
+        save()
+    }
+
+    /// "Still want this?" answered yes: Lucky Dip treats it as new again.
+    func keepWanting(_ block: Block) {
+        block.timesSkipped = 0
+        save()
+    }
+
+    func setPile(_ block: Block, to pile: Pile?) {
+        block.pileOverride = pile
+        save()
+    }
+
+    /// The dip streak and the picks finished this week (Monday to Sunday). Stored so the stats redraw.
+    private(set) var dipStreak = 0
+    private(set) var finishedThisWeek = 0
+
+    func refreshDipStats() {
+        let records = (try? context.fetch(FetchDescriptor<DayActivity>())) ?? []
+        let todayNumber = DayActivity.number(for: .now)
+        let finishedDays = Set(records.filter { $0.finished > 0 }.map(\.day))
+        dipStreak = LuckyDip.streak(finishedOn: finishedDays, today: todayNumber)
+        let weekday = Calendar(identifier: .iso8601).component(.weekday, from: .now)
+        // Calendar weekday: 1 = Sunday … 7 = Saturday. ISO: 1 = Monday … 7 = Sunday.
+        let iso = weekday == 1 ? 7 : weekday - 1
+        let start = LuckyDip.weekStart(today: todayNumber, weekday: iso)
+        finishedThisWeek = records.filter { $0.day >= start && $0.day <= todayNumber }.map(\.finished).reduce(0, +)
     }
 
     // MARK: Helpers
@@ -702,4 +835,10 @@ final class MenuState: ObservableObject {
 
 extension BlockCollection {
     var node: TreeNode { TreeNode(id: uid, parent: parent?.uid, sortIndex: sortIndex) }
+}
+
+struct DipMenuState: Equatable {
+    var canSpin = false
+    var hasPick = false
+    var inProgress = false
 }

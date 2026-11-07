@@ -166,6 +166,48 @@ enum SelfTest {
             check("Inbox shows only Inbox blocks", model.blocks(in: .inbox, from: all).allSatisfy { $0.status == .inbox })
             check("nothing is lost after a save", (try? context.save()) != nil)
 
+            // S-069 piles and S-070–S-072 Lucky Dip.
+            let essayToRead = model.save(url: URL(string: "https://example.com/long-read")!)
+            essayToRead.minutes = 25
+            let quickRead = model.save(url: URL(string: "https://example.com/quick-read")!)
+            quickRead.minutes = 5
+            let film2 = model.save(url: URL(string: "https://vimeo.com/123")!)
+            check("an article is on Read, a video on Watch", essayToRead.pile == .read && film2.pile == .watch)
+            model.setPile(film2, to: .cook)
+            check("a pile chosen by hand wins", film2.pile == .cook && model.pileBlocks(.cook).contains { $0.uid == film2.uid })
+            model.setPile(film2, to: nil)
+            model.addNote()
+            check("a note is on no pile", model.block(model.selection)?.pile == nil)
+            model.show(.luckyDip)
+            model.dipPile = .read
+            model.dipMaxMinutes = 10
+            model.spin(reduceMotion: true)
+            try? await Task.sleep(for: .milliseconds(200))
+            check("Randomize picks one block that fits the time", model.dipPick?.uid == quickRead.uid && model.spinsToday == 1)
+            model.dipMaxMinutes = nil
+            model.spin(reduceMotion: true)
+            try? await Task.sleep(for: .milliseconds(200))
+            check("Spin again picks a different block and uses a re-spin", model.dipPick != nil && model.dipPick?.uid != quickRead.uid && model.respinsLeft == 1)
+            model.spin(reduceMotion: true)
+            try? await Task.sleep(for: .milliseconds(200))
+            check("after two re-spins no more are allowed today", model.respinsLeft == 0 && !model.canSpin)
+            if let pick = model.dipPick {
+                model.notToday(pick)
+                check("Not today counts a skip and clears the pick", pick.timesSkipped == 1 && model.dipPick == nil)
+                pick.timesSkipped = 3
+                check("after 3 skips the details ask “Still want this?”", pick.timesSkipped >= LuckyDip.skipsBeforeAsking)
+                model.keepWanting(pick)
+                check("“Keep it” resets the skips", pick.timesSkipped == 0)
+            }
+            model.today.pickUID = essayToRead.uid
+            model.startPick(essayToRead)
+            check("Start marks it In progress and shows it on Lucky Dip", essayToRead.status == .inProgress && model.inProgressBlock?.uid == essayToRead.uid)
+            check("an In progress block is off the pile", !model.pileBlocks(.read).contains { $0.uid == essayToRead.uid })
+            model.finishPick(essayToRead)
+            check("Finish marks it done with a finished date", essayToRead.status == .done && essayToRead.finishedAt != nil && model.inProgressBlock == nil)
+            check("a finished pick counts toward the dip streak and this week", model.dipStreak >= 1 && model.finishedThisWeek >= 1 && model.today.finished >= 1)
+            model.show(.gallery)
+
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.
             let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))

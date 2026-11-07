@@ -17,6 +17,8 @@ Thanks for helping out!
   - `Gallery/`: the masonry of cards (`GalleryView.swift`)
   - `SortInbox/`: Sort Inbox, one Inbox block at a time (`SortInboxView.swift`). The queue and the
     collection suggestion are in `MagpieKit/Sorting.swift`
+  - `LuckyDip/`: Lucky Dip, one random pick from a pile (`LuckyDipView.swift`). Piles, the
+    weighted pick, re-spins and the dip streak are in `MagpieKit/LuckyDip.swift`
   - `Details/`: the panel that slides in for a selected Block (`DetailsPanel.swift`)
   - `Collections/`: the "N more" panel to find, pin and create collections (`CollectionsPopover.swift`)
   - `Settings/`: the Settings window (⌘,)
@@ -24,7 +26,7 @@ Thanks for helping out!
     top bar) and the window chrome
   - `Debug/`: the self-test, snapshot mode and sample data
 - `Sources/MagpieKit/` holds the rules with no UI (link parsing and normalizing, masonry math,
-  color math, the collection tree, the Sort Inbox queue and suggestions, the Inbox zero streak, and `PageReader`, which reads video length, price, recipes and read time from a page's HTML), so they can be unit tested. Put new logic there, not in the views.
+  color math, the collection tree, the Sort Inbox queue and suggestions, the Inbox zero streak, piles and Lucky Dip, and `PageReader`, which reads video length, price, recipes and read time from a page's HTML), so they can be unit tested. Put new logic there, not in the views.
 - The app target builds in Swift 6 mode with the main actor as its default isolation. Mark slow
   work `nonisolated` and run it off the main thread, like the preview fetch in `Ingest.swift`.
 - The data model follows CloudKit's rules so iCloud sync can be turned on later without a

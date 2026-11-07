@@ -18,6 +18,8 @@ struct MainView: View {
             Ink.window
             if model.viewMode == .sortInbox {
                 SortInboxView()
+            } else if model.viewMode == .luckyDip {
+                LuckyDipView()
             } else if shown.isEmpty {
                 EmptyGallery(isLibraryEmpty: blocks.isEmpty, scopeName: scopeName)
             } else {
@@ -34,7 +36,7 @@ struct MainView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if model.viewMode != .sortInbox { BottomHint(showsHint: selected == nil) }
+            if model.viewMode == .gallery { BottomHint(showsHint: selected == nil) }
         }
         .overlay {
             if model.isDropTargeted {
@@ -151,7 +153,7 @@ struct TopBar: View {
     private func tab(_ title: String, scope: Scope, count: Int? = nil) -> some View {
         Button(title) {
             model.scope = scope
-            if model.viewMode == .sortInbox { model.show(.gallery) }
+            if model.viewMode != .gallery { model.show(.gallery) }
             model.selection = nil
         }
         .buttonStyle(KitTabStyle(isSelected: model.scope == scope, count: count))

@@ -30,7 +30,7 @@ struct MagpieApp: App {
         .defaultSize(width: Metric.windowDefault.width, height: Metric.windowDefault.height)
         .commands {
             MagpieCommands(model: model, selection: menu.selection, appearance: model.appearance,
-                           viewMode: model.viewMode, canSort: model.canSortNow)
+                           viewMode: model.viewMode, canSort: model.canSortNow, dip: model.dipMenuState)
         }
 
         Settings {
@@ -52,6 +52,7 @@ struct MagpieCommands: Commands {
     /// Also passed in so the menus redraw: the open view, and whether M, D, → and ⌫ sort right now.
     let viewMode: ViewMode
     let canSort: Bool
+    let dip: DipMenuState
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
@@ -99,6 +100,22 @@ struct MagpieCommands: Commands {
             Button("Delete") { model.sortDelete(undo: NSApp.keyWindow?.undoManager) }
                 .keyboardShortcut(.delete, modifiers: [])
                 .disabled(!canSort)
+        }
+        CommandMenu("Lucky Dip") {
+            Button("Lucky Dip") { model.show(.luckyDip) }
+                .keyboardShortcut("4", modifiers: [.control, .command])
+            Divider()
+            Button(dip.hasPick ? "Spin Again" : "Randomize") { model.spin(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) }
+                .keyboardShortcut("r", modifiers: [.command])
+                .disabled(!dip.canSpin)
+            Button(dip.inProgress ? "Mark as Finished" : "Start") {
+                if let started = model.inProgressBlock { model.finishPick(started) } else if let pick = model.dipPick { model.startPick(pick) }
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+            .disabled(!dip.hasPick && !dip.inProgress)
+            Button("Not Today") { if let pick = model.dipPick { model.notToday(pick) } }
+                .keyboardShortcut(.delete, modifiers: [.command, .option])
+                .disabled(!dip.hasPick || dip.inProgress)
         }
         CommandMenu("Collection") {
             let open = model.openCollection

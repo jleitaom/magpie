@@ -21,6 +21,9 @@ struct DetailsPanel: View {
                     }
                     VStack(alignment: .leading, spacing: Space.lg) {
                         header
+                        if block.timesSkipped >= LuckyDip.skipsBeforeAsking {
+                            stillWant
+                        }
                         content
                         facts
                     }
@@ -111,6 +114,20 @@ struct DetailsPanel: View {
                 .fixedSize()
             }
             GridRow {
+                Text("Pile").kitType(.meta).foregroundStyle(Ink.secondary)
+                Menu(pileLabel) {
+                    Button("Automatic") { model.setPile(block, to: nil) }
+                    Divider()
+                    ForEach(Pile.allCases) { pile in
+                        Button(pile.title) { model.setPile(block, to: pile) }
+                    }
+                }
+                .menuStyle(.button)
+                .buttonStyle(.kit(.secondary))
+                .fixedSize()
+                .help("The Lucky Dip pile it’s on. Automatic works it out from the kind.")
+            }
+            GridRow {
                 Text("Saved").kitType(.meta).foregroundStyle(Ink.secondary)
                 Text(block.createdAt.formatted(.dateTime.day().month().hour().minute()))
                     .kitType(.meta).foregroundStyle(Ink.text)
@@ -126,6 +143,28 @@ struct DetailsPanel: View {
                 }
             }
         }
+    }
+
+    /// "Automatic · Read", "Cook" (chosen by hand), or "Automatic · none".
+    private var pileLabel: String {
+        if let chosen = block.pileOverride { return chosen.title }
+        return "Automatic · " + (block.pile?.title ?? "none")
+    }
+
+    /// After 3 "Not today"s in Lucky Dip.
+    private var stillWant: some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            Text("Still want this?").kitType(.labelStrong).foregroundStyle(Ink.text)
+            Text("You passed on it \(block.timesSkipped) times in Lucky Dip.").kitType(.meta).foregroundStyle(Ink.secondary)
+            HStack(spacing: Space.sm) {
+                Button("Keep it") { model.keepWanting(block) }.buttonStyle(.kit())
+                Button("Delete") { model.delete([block.uid], undo: undoManager) }.buttonStyle(.kit(.secondary))
+            }
+            .padding(.top, Space.xs)
+        }
+        .padding(Space.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Metric.radius, style: .continuous).fill(Ink.suggest))
     }
 
     private var actions: some View {

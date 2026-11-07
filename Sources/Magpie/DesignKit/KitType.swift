@@ -1,3 +1,4 @@
+import MagpieKit
 import SwiftUI
 
 /// Type roles (notes/design/KIT.md "Type"). Views set fonts only through `.kitType(...)`.
@@ -40,6 +41,7 @@ extension View {
 /// so the whole set changes in one place (notes/design/KIT.md "Icons").
 enum KitIcon: String, CaseIterable {
     case add, search, sort, gallery, journal, sortInbox, luckyDip, close, pin, chevronDown, check
+    case pileRead, pileWatch, pileListen, pileCook, pileVisit
 
     var symbol: String {
         switch self {
@@ -54,6 +56,11 @@ enum KitIcon: String, CaseIterable {
         case .pin: "star"
         case .chevronDown: "chevron.down"
         case .check: "checkmark"
+        case .pileRead: "book"
+        case .pileWatch: "play.rectangle"
+        case .pileListen: "music.note"
+        case .pileCook: "fork.knife"
+        case .pileVisit: "mappin.and.ellipse"
         }
     }
 
@@ -76,5 +83,17 @@ struct KitIconView: View {
             .font(.system(size: size, weight: .medium))
             .frame(width: size + 4, height: size + 4)
             .accessibilityHidden(true)
+    }
+}
+
+extension Pile {
+    var icon: KitIcon {
+        switch self {
+        case .read: .pileRead
+        case .watch: .pileWatch
+        case .listen: .pileListen
+        case .cook: .pileCook
+        case .visit: .pileVisit
+        }
     }
 }

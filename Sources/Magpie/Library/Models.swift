@@ -25,7 +25,8 @@ enum BlockKind: String, CaseIterable, Codable {
 }
 
 enum BlockStatus: String, Codable {
-    case inbox, kept, done, archived
+    /// inProgress: committed to from Lucky Dip and not finished yet.
+    case inbox, kept, inProgress, done, archived
 }
 
 /// Where a block's preview stands: waiting for the network, filled in, or given up on.
@@ -68,6 +69,11 @@ final class Block {
     var currency: String?
     /// The page is a schema.org Recipe (for the Cook pile).
     var isRecipe: Bool = false
+    /// A pile chosen by hand, over the one worked out from the kind (S-069).
+    var pileRaw: String?
+    /// How often Lucky Dip's "Not today" passed on it; it comes up less often (S-071).
+    var timesSkipped: Int = 0
+    var finishedAt: Date?
 
     init(kind: BlockKind, title: String = "") {
         self.kindRaw = kind.rawValue
@@ -97,6 +103,14 @@ final class Block {
     }
 
     var tint: UInt32? { colorHex.map { UInt32(truncatingIfNeeded: $0) } }
+
+    var pileOverride: Pile? {
+        get { pileRaw.flatMap(Pile.init(rawValue:)) }
+        set { pileRaw = newValue?.rawValue }
+    }
+
+    /// The Lucky Dip pile it's on, or nil (notes, products, images…).
+    var pile: Pile? { Pile.of(kind: kindRaw, site: siteName, isRecipe: isRecipe, override: pileOverride) }
 
     /// The card's badge: the price for a product, else the watch or read time.
     var badge: String? {
@@ -142,6 +156,10 @@ final class DayActivity {
     var saved: Int = 0
     var sorted: Int = 0
     var reachedInboxZero: Bool = false
+    /// Lucky Dip spins today (the first is free, then 2 re-spins), picks finished, and today's pick.
+    var spins: Int = 0
+    var finished: Int = 0
+    var pickUID: UUID?
 
     init(day: Int) {
         self.day = day

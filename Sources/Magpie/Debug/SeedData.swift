@@ -27,9 +27,12 @@ enum SeedData {
             day.saved = 3
             day.sorted = 3
             day.reachedInboxZero = true
+            // A Lucky Dip pick finished on each of the last 4 days.
+            day.finished = back <= 4 ? 1 : 0
             context.insert(day)
         }
         model.refreshStreak()
+        model.refreshDipStats()
         // One nested collection, so the Collections panel shows the tree.
         if let trip = collections["Lisbon trip"], let ideas = collections["Ideas"] { model.place(trip, .inside(ideas.uid)) }
 

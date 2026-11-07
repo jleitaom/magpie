@@ -1,3 +1,4 @@
+import MagpieKit
 import SwiftUI
 
 // MARK: - Button (primary, secondary, ghost)
@@ -114,6 +115,58 @@ struct KitKeyButtonStyle: ButtonStyle {
     }
 }
 
+// MARK: - Pile tile (Lucky Dip)
+
+/// A pile to dip into: icon, name, "8 waiting · 3 h 10 min". Selected: teal ring and fill.
+struct KitPileTileStyle: ButtonStyle {
+    let icon: KitIcon
+    let detail: String
+    var isSelected = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        Part(configuration: configuration, icon: icon, detail: detail, isSelected: isSelected)
+    }
+
+    private struct Part: View {
+        let configuration: Configuration
+        let icon: KitIcon
+        let detail: String
+        let isSelected: Bool
+        @Environment(\.forcedPartState) private var forced
+        @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.isFocused) private var isFocused
+        @State private var hovering = false
+
+        var body: some View {
+            let state = PartState.resolve(forced: forced, enabled: isEnabled, selected: isSelected,
+                                          pressed: configuration.isPressed, hovering: hovering, focused: isFocused)
+            let on = state == .selected
+            let shape = RoundedRectangle(cornerRadius: Metric.radiusCard - 2, style: .continuous)
+            HStack(spacing: Space.md) {
+                KitIconView(icon: icon, size: 16)
+                    .foregroundStyle(on ? Ink.accentText : Ink.secondary)
+                    .frame(width: Metric.control, height: Metric.control)
+                    .background(RoundedRectangle(cornerRadius: Metric.radius, style: .continuous).fill(on ? Ink.surface : Ink.control))
+                VStack(alignment: .leading, spacing: 2) {
+                    configuration.label.kitType(.labelStrong).foregroundStyle(Ink.text)
+                    Text(detail).kitType(.meta).foregroundStyle(Ink.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(Space.md)
+            .background(shape.fill(on ? Ink.suggest : state.isActive ? Ink.control : Ink.surface))
+            .overlay(shape.strokeBorder(on ? Ink.accentText : Ink.hairline, lineWidth: on ? 1.5 : 1))
+            .kitFocusRing(shape, state: state)
+            .opacity(state == .disabled ? 0.4 : 1)
+            .contentShape(shape)
+            .kitPress(state)
+            .onHover { hovering = $0 }
+            .animation(Motion.hover, value: hovering)
+            .accessibilityAddTraits(on ? .isSelected : [])
+        }
+    }
+}
+
 // MARK: - Round button (the + button)
 
 struct KitRoundButtonStyle: ButtonStyle {
@@ -168,6 +221,8 @@ struct KitChipStyle: ButtonStyle {
             configuration.label
                 .kitType(on ? .labelStrong : .label)
                 .foregroundStyle(on ? Ink.accentText : Ink.text)
+                .lineLimit(1)
+                .fixedSize()
                 .padding(.horizontal, Metric.chipPadding)
                 .frame(height: Metric.control)
                 .background(Capsule().fill(on ? Ink.suggest : state.isActive ? Ink.hover : .clear))
