@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // MARK: - Pill bar (the floating capsule that holds tabs)
@@ -64,6 +65,63 @@ struct KitTabStyle: ButtonStyle {
             .accessibilityAddTraits(on ? .isSelected : [])
         }
     }
+}
+
+// MARK: - Tab field (rename in place)
+
+/// A tab whose name is being edited where it stands in the top bar. Same size and type as
+/// a selected tab, with a teal ring. It opens with the whole name selected, so typing replaces
+/// it. Return saves, Escape cancels, clicking away saves.
+struct KitTabField: View {
+    let initial: String
+    let onCommit: (String) -> Void
+    let onCancel: () -> Void
+    @State private var text = ""
+    @State private var hadFocus = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        // The hidden text sizes the field to the name as it's typed.
+        Text(text.isEmpty ? initial : text)
+            .kitType(.labelStrong)
+            .hidden()
+            .overlay(alignment: .leading) {
+                TextField("", text: $text)
+                    .textFieldStyle(.plain)
+                    .kitType(.labelStrong)
+                    .foregroundStyle(Ink.text)
+                    .focused($focused)
+                    .onSubmit { onCommit(text) }
+                    .onExitCommand(perform: onCancel)
+            }
+            .padding(.trailing, Space.xs)  // room for the cursor after the last letter
+            .fixedSize()
+            .padding(.horizontal, Metric.tabPadding)
+            .frame(height: Metric.control)
+            .background(Capsule().fill(Ink.control))
+            .overlay(Capsule().strokeBorder(Ink.accentText, lineWidth: Metric.focusRing))
+            .task {
+                text = initial
+                await kitFocusAndSelectAll { focused = true; return focused }
+                hadFocus = true
+            }
+            .onChange(of: focused) { _, now in
+                if !now, hadFocus { onCommit(text) }
+            }
+            .accessibilityLabel("Collection name")
+    }
+}
+
+/// Gives a text field focus, asking again while a panel or menu is still settling, then selects
+/// all of its text so typing replaces it. `focus` sets the field's FocusState and returns it.
+@MainActor
+func kitFocusAndSelectAll(_ focus: () -> Bool) async {
+    for _ in 0..<10 {
+        if focus() { break }
+        try? await Task.sleep(for: .milliseconds(100))
+    }
+    try? await Task.sleep(for: .milliseconds(50))
+    NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
 }
 
 // MARK: - Segment (view switcher)

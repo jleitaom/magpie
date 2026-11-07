@@ -78,10 +78,8 @@ struct MagpieCommands: Commands {
         CommandMenu("Collection") {
             let open = model.openCollection
             Button("Rename Collection…") {
-                if let open {
-                    model.renamingCollection = open.uid
-                    model.showsCollections = true
-                }
+                // The open collection always has a tab in the top bar: rename it there.
+                if let open { model.renamingCollection = open.uid }
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
             .disabled(open == nil)

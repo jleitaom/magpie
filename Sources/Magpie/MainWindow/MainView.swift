@@ -124,9 +124,16 @@ struct TopBar: View {
         }
     }
 
+    @ViewBuilder
     private func collectionTab(_ target: BlockCollection) -> some View {
-        tab(target.name, scope: .collection(target.uid))
-            .contextMenu { CollectionMenu(target: target) }
+        if model.renamingCollection == target.uid, !model.showsCollections {
+            KitTabField(initial: target.name,
+                        onCommit: { model.rename(target, to: $0) },
+                        onCancel: { model.renamingCollection = nil })
+        } else {
+            tab(target.name, scope: .collection(target.uid))
+                .contextMenu { CollectionMenu(target: target) }
+        }
     }
 
     private func tab(_ title: String, scope: Scope, count: Int? = nil) -> some View {

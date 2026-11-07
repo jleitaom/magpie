@@ -14,6 +14,8 @@ struct CollectionsPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             TextField("Find a collection", text: $search).kitField()
+                // Off while a name is being edited, so the panel can't hand it the focus.
+                .disabled(model.renamingCollection != nil)
             HStack {
                 Text("All collections").kitType(.meta).foregroundStyle(Ink.secondary)
                 Spacer()
@@ -93,16 +95,19 @@ private struct CollectionRow: View {
                         .onSubmit { model.rename(target, to: draft) }
                         .onExitCommand { model.renamingCollection = nil }
                         .onChange(of: editing) { _, focused in
-                            if !focused, model.renamingCollection == target.uid { model.rename(target, to: draft) }
+                            // Clicking away saves a changed name. A focus change while the panel
+                            // is still opening (name unchanged) keeps the field open.
+                            if !focused, model.renamingCollection == target.uid, draft != target.name {
+                                model.rename(target, to: draft)
+                            }
                         }
                 }
                 .padding(.leading, Metric.rowInset + CGFloat(depth) * Metric.treeIndent)
                 .frame(height: Metric.menuRowHeight)
                 .task {
                     draft = target.name
-                    // Wait for the panel to give its first field focus, then take it.
-                    try? await Task.sleep(for: .milliseconds(150))
-                    editing = true
+                    // The panel may still be opening and hand focus elsewhere: keep asking, then select the name.
+                    await kitFocusAndSelectAll { editing = true; return editing }
                 }
             } else {
                 Button {
@@ -144,7 +149,7 @@ private struct CollectionRow: View {
                     .padding(.leading, Metric.rowInset + CGFloat(depth) * Metric.treeIndent)
             }
         }
-        .contextMenu { CollectionMenu(target: target) }
+        .contextMenu { CollectionMenu(target: target, inPanel: true) }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(target.name), \(target.blocks?.count ?? 0) blocks\(depth > 0 ? ", nested" : "")")
     }
@@ -202,12 +207,14 @@ private struct RowDrop: DropDelegate {
 /// The context menu for a collection, in the Collections panel and on its top bar tab.
 struct CollectionMenu: View {
     let target: BlockCollection
+    /// From the Collections panel the name is edited in its row; from a top bar tab, in the tab.
+    var inPanel = false
     @Environment(AppModel.self) private var model
 
     var body: some View {
         Button("Rename…") {
             model.renamingCollection = target.uid
-            model.showsCollections = true
+            if inPanel { model.showsCollections = true }
         }
         Menu("Move Into") {
             if target.parent != nil {
