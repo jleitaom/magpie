@@ -1,3 +1,4 @@
+import MagpieKit
 import SwiftUI
 
 // MARK: - Check (checklist items)
@@ -123,6 +124,65 @@ struct KitBanner: View {
     }
 }
 
+// MARK: - Streak pill (top bar, next to the traffic lights)
+
+/// "6-day streak" with a ring that fills over a week. A button: it opens Sort Inbox.
+struct KitStreakPillStyle: ButtonStyle {
+    let days: Int
+
+    func makeBody(configuration: Configuration) -> some View {
+        Part(configuration: configuration, days: days)
+    }
+
+    private struct Part: View {
+        let configuration: Configuration
+        let days: Int
+        @Environment(\.forcedPartState) private var forced
+        @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.isFocused) private var isFocused
+        @State private var hovering = false
+
+        var body: some View {
+            let state = PartState.resolve(forced: forced, enabled: isEnabled, pressed: configuration.isPressed,
+                                          hovering: hovering, focused: isFocused)
+            HStack(spacing: Space.sm) {
+                KitStreakRing(days: days)
+                configuration.label.kitType(.meta).foregroundStyle(Ink.text)
+            }
+            .fixedSize()
+            .padding(.leading, Space.sm)
+            .padding(.trailing, Space.md)
+            .frame(height: Metric.streakPill)
+            .background(Capsule().fill(state.isActive ? Ink.control : Ink.surface))
+            .overlay(Capsule().strokeBorder(Ink.hairline))
+            .kitFocusRing(Capsule(), state: state)
+            .contentShape(Capsule())
+            .kitPress(state)
+            .onHover { hovering = $0 }
+            .animation(Motion.hover, value: hovering)
+        }
+    }
+}
+
+// MARK: - Stat tile (Inbox zero)
+
+/// A big number over a small label: "5 sorted".
+struct KitStatTile: View {
+    let value: Int
+    let label: String
+
+    var body: some View {
+        VStack(spacing: Space.xs) {
+            Text("\(value)").kitType(.title).foregroundStyle(Ink.text)
+            Text(label).kitType(.meta).foregroundStyle(Ink.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Space.md)
+        .background(RoundedRectangle(cornerRadius: Metric.radius, style: .continuous).fill(Ink.surface))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 // MARK: - Progress bar and streak ring
 
 struct KitProgressBar: View {
@@ -153,7 +213,7 @@ struct KitStreakRing: View {
         ZStack {
             Circle().stroke(Ink.control, lineWidth: Metric.ringStroke)
             Circle()
-                .trim(from: 0, to: Double(min(days, 7)) / 7)
+                .trim(from: 0, to: Streak.ringFill(days))
                 .stroke(Ink.accentText, style: StrokeStyle(lineWidth: Metric.ringStroke, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }

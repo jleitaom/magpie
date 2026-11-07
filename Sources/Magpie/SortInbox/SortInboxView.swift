@@ -19,13 +19,15 @@ struct SortInboxView: View {
                 SortCardStack(block: current, behind: min(run.upNext.count, 2))
                     .padding(.top, Space.xxl)
                 Spacer(minLength: 0)
+            } else if run.sorted > 0 {
+                Spacer()
+                InboxZero(run: run, streak: model.streakDays)
+                Spacer()
             } else {
                 Spacer()
                 VStack(spacing: Space.sm) {
-                    Text(run.sorted > 0 ? "Inbox sorted" : "Nothing to sort").kitType(.display).foregroundStyle(Ink.text)
-                    Text(run.sorted > 0
-                         ? "\(run.sorted) sorted: \(run.kept) kept, \(run.done) done, \(run.deleted) deleted."
-                         : "New saves land in the Inbox. Come back after you’ve collected something.")
+                    Text("Nothing to sort").kitType(.display).foregroundStyle(Ink.text)
+                    Text("New saves land in the Inbox. Come back after you’ve collected something.")
                         .kitType(.body).foregroundStyle(Ink.secondary)
                     Button("Back to Gallery") { model.show(.gallery) }
                         .buttonStyle(.kit(.secondary))
@@ -56,6 +58,53 @@ struct SortInboxView: View {
         }
         .frame(width: Metric.sortWidth)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The celebration after the last Inbox block is sorted (S-061).
+private struct InboxZero: View {
+    let run: SortSession
+    let streak: Int
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = false
+
+    var body: some View {
+        VStack(spacing: Space.lg) {
+            ZStack {
+                Circle().stroke(Ink.suggest, lineWidth: Metric.celebrationRing / 12)
+                Circle()
+                    .trim(from: 0, to: shown || reduceMotion ? 1 : 0)
+                    .stroke(Ink.accentText, style: StrokeStyle(lineWidth: Metric.celebrationRing / 12, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                KitIconView(icon: .check, size: Metric.celebrationRing / 3).foregroundStyle(Ink.text)
+            }
+            .frame(width: Metric.celebrationRing, height: Metric.celebrationRing)
+            .accessibilityHidden(true)
+            Text("Inbox zero.").kitType(.display).foregroundStyle(Ink.text)
+            Group {
+                if streak > 1 {
+                    let days = Text("\(streak) days in a row").foregroundStyle(Ink.accentText).bold()
+                    Text("That’s \(days). Your nest is tidy.")
+                } else {
+                    Text("Day one of your streak. Your nest is tidy.")
+                }
+            }
+            .kitType(.body).foregroundStyle(Ink.secondary)
+            HStack(spacing: Space.sm) {
+                KitStatTile(value: run.sorted, label: "sorted")
+                KitStatTile(value: run.kept, label: "kept")
+                KitStatTile(value: run.done, label: "done")
+                KitStatTile(value: run.deleted, label: "deleted")
+            }
+            .padding(.top, Space.xs)
+            Button("Back to Gallery") { model.show(.gallery) }
+                .buttonStyle(.kit(large: true))
+                .keyboardShortcut(.defaultAction)
+                .padding(.top, Space.sm)
+        }
+        .frame(width: Metric.celebrationWidth)
+        .onAppear { withAnimation(reduceMotion ? nil : Motion.progress) { shown = true } }
     }
 }
 

@@ -193,7 +193,7 @@ enum Store {
 
     static func makeContainer() -> ModelContainer {
         do {
-            return try ModelContainer(for: Block.self, BlockCollection.self, configurations: ModelConfiguration(url: url))
+            return try ModelContainer(for: Block.self, BlockCollection.self, DayActivity.self, configurations: ModelConfiguration(url: url))
         } catch {
             fatalError("Could not open the database at \(url.path): \(error)")
         }

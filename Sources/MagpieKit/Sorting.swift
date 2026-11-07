@@ -15,6 +15,16 @@ public struct SortSession: Equatable, Sendable {
         queue = inbox
     }
 
+    /// A run that's over, with these counts: for snapshots of the Inbox zero screen.
+    public static func finished(kept: Int, done: Int, deleted: Int) -> SortSession {
+        var run = SortSession(inbox: [])
+        run.kept = kept
+        run.done = done
+        run.deleted = deleted
+        run.sorted = kept + done + deleted
+        return run
+    }
+
     public var current: UUID? { queue.first }
     /// The blocks after the current one, for the cards stacked behind it.
     public var upNext: ArraySlice<UUID> { queue.dropFirst() }

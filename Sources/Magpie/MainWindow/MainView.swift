@@ -81,7 +81,15 @@ struct TopBar: View {
     var body: some View {
         @Bindable var model = model
         HStack(spacing: Space.md) {
-            Color.clear.frame(width: sideWidth)
+            HStack {
+                Button(model.streakDays == 0 ? "Start a streak" : "\(model.streakDays)-day streak") { model.startSorting() }
+                    .buttonStyle(KitStreakPillStyle(days: model.streakDays))
+                    .help("Days in a row you reached Inbox zero. Click to sort your Inbox (⌃⌘3).")
+                    .accessibilityLabel("\(model.streakDays)-day Inbox zero streak. Sort Inbox")
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, Metric.streakInset - Space.lg)
+            .frame(width: sideWidth)
             Spacer(minLength: 0)
             ViewThatFits(in: .horizontal) {
                 pill(maxPins: 5)

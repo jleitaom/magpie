@@ -134,6 +134,7 @@ final class AppModel {
     /// Called once the window is up: retries previews that didn't finish last time.
     func start() {
         applyAppearance()
+        refreshStreak()
         let pending = EnrichState.pending.rawValue
         let stuck = (try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.enrichRaw == pending }))) ?? []
         for block in stuck { enrich(block) }
@@ -175,6 +176,7 @@ final class AppModel {
             block.status = .inbox
         }
         context.insert(block)
+        today.saved += 1
         save()
     }
 
@@ -329,6 +331,7 @@ final class AppModel {
         let beforeStatus = block.status
         block.collection = target
         block.status = target == nil ? .inbox : .kept
+        noteInboxZero()
         save()
         let uid = block.uid
         undo?.registerUndo(withTarget: self) { model in
@@ -346,6 +349,7 @@ final class AppModel {
         let copies = doomed.map(BlockCopy.init)
         doomed.forEach(context.delete)
         if let selection, uids.contains(selection) { self.selection = nil }
+        noteInboxZero()
         save()
         undo?.registerUndo(withTarget: self) { model in model.restore(copies, undo: undo) }
         undo?.setActionName(doomed.count == 1 ? "Delete Block" : "Delete Blocks")
@@ -527,6 +531,7 @@ final class AppModel {
     func sortMove(to target: BlockCollection?, undo: UndoManager?) {
         guard let current = sortingBlock, let target else { return }
         sortSession.finish(.kept)
+        today.sorted += 1
         move(current, to: target, undo: undo)
     }
 
@@ -534,7 +539,9 @@ final class AppModel {
     func sortDone() {
         guard let current = sortingBlock else { return }
         sortSession.finish(.done)
+        today.sorted += 1
         current.status = .done
+        noteInboxZero()
         save()
         flash("Marked done")
     }
@@ -548,8 +555,45 @@ final class AppModel {
     func sortDelete(undo: UndoManager?) {
         guard let current = sortingBlock else { return }
         sortSession.finish(.deleted)
+        today.sorted += 1
         delete([current.uid], undo: undo)
         flash("Deleted")
+    }
+
+    // MARK: Streak (S-061)
+
+    /// Today's activity record, made on first use.
+    var today: DayActivity {
+        let number = DayActivity.number(for: .now)
+        if let found = try? context.fetch(FetchDescriptor<DayActivity>(predicate: #Predicate { $0.day == number })).first {
+            return found
+        }
+        let new = DayActivity(day: number)
+        context.insert(new)
+        return new
+    }
+
+    /// Marks today as an Inbox zero day once the Inbox is empty. Called after every action
+    /// that can take a block out of the Inbox.
+    func noteInboxZero() {
+        guard inboxUIDs.isEmpty else { return }
+        let record = today
+        guard !record.reachedInboxZero else { return }
+        record.reachedInboxZero = true
+        streakDays = computeStreak()
+    }
+
+    /// Days in a row with Inbox zero. Stored, so the top bar redraws when it changes.
+    private(set) var streakDays = 0
+
+    func refreshStreak() {
+        streakDays = computeStreak()
+    }
+
+    private func computeStreak() -> Int {
+        let records = ((try? context.fetch(FetchDescriptor<DayActivity>())) ?? [])
+            .map { DayRecord(day: $0.day, saved: $0.saved, reachedInboxZero: $0.reachedInboxZero) }
+        return Streak.days(records, today: DayActivity.number(for: .now))
     }
 
     // MARK: Helpers

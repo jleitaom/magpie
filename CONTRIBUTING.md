@@ -24,7 +24,7 @@ Thanks for helping out!
     top bar) and the window chrome
   - `Debug/`: the self-test, snapshot mode and sample data
 - `Sources/MagpieKit/` holds the rules with no UI (link parsing and normalizing, masonry math,
-  color math, the collection tree, the Sort Inbox queue and suggestions), so they can be unit tested. Put new logic there, not in the views.
+  color math, the collection tree, the Sort Inbox queue and suggestions, the Inbox zero streak), so they can be unit tested. Put new logic there, not in the views.
 - The app target builds in Swift 6 mode with the main actor as its default isolation. Mark slow
   work `nonisolated` and run it off the main thread, like the preview fetch in `Ingest.swift`.
 - The data model follows CloudKit's rules so iCloud sync can be turned on later without a

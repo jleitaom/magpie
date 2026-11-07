@@ -20,6 +20,16 @@ enum SeedData {
         for name in ["Reading", "Watch later", "Shopping", "Ideas", "Vinyl", "Lisbon trip", "Recipes"] {
             collections[name] = model.createCollection(named: name)
         }
+        // Five past days of Inbox zero, so the top bar shows a streak.
+        let today = DayActivity.number(for: .now)
+        for back in 1...5 {
+            let day = DayActivity(day: today - back)
+            day.saved = 3
+            day.sorted = 3
+            day.reachedInboxZero = true
+            context.insert(day)
+        }
+        model.refreshStreak()
         // One nested collection, so the Collections panel shows the tree.
         if let trip = collections["Lisbon trip"], let ideas = collections["Ideas"] { model.place(trip, .inside(ideas.uid)) }
 

@@ -97,7 +97,7 @@ enum SelfTest {
                 let tops = model.collectionTree.filter { $0.depth == 0 }.map(\.collection)
                 if let last = tops.last { model.place(last, .before(tops[0].uid)) }
                 let expected = model.collectionTree.map(\.collection.name)
-                let reopened = try? ModelContainer(for: Block.self, BlockCollection.self, configurations: ModelConfiguration(url: Store.url))
+                let reopened = try? ModelContainer(for: Block.self, BlockCollection.self, DayActivity.self, configurations: ModelConfiguration(url: Store.url))
                 let stored = (try? reopened?.mainContext.fetch(FetchDescriptor<BlockCollection>())) ?? []
                 let reread = CollectionTree.flatten(stored.map(\.node)).compactMap { row in stored.first { $0.uid == row.id }?.name }
                 check("order and nesting are stored in sortIndex and survive a relaunch", reread == expected, "\(reread) vs \(expected)")
@@ -138,6 +138,14 @@ enum SelfTest {
             let film = model.save(url: URL(string: "https://www.youtube.com/watch?v=sort-test")!)
             let watch = model.createCollection(named: "Watch later")
             check("a YouTube link is suggested for Watch later", model.suggestion(for: film)?.uid == watch?.uid)
+            // S-061 Inbox zero: sorting the last block marks today and starts the streak.
+            model.startSorting()
+            check("today hasn't reached Inbox zero while blocks wait", !model.today.reachedInboxZero && !model.inboxUIDs.isEmpty)
+            while model.sortSession.current != nil { model.sortDone() }
+            check("sorting the last block reaches Inbox zero", model.inboxUIDs.isEmpty && model.today.reachedInboxZero)
+            check("the streak counts today", model.streakDays >= 1)
+            check("the run ends on the celebration with its counts", model.sortingBlock == nil && model.sortSession.sorted > 0)
+            check("today's activity counts what was saved and sorted", model.today.saved > 0 && model.today.sorted > 0)
             model.show(.gallery)
 
             // Appearance: ⌃⌘T flips Dark and Light. The choice lives in the app's real
