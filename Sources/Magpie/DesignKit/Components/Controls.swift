@@ -84,6 +84,16 @@ struct KitPanel<Content: View>: View {
     }
 }
 
+// MARK: - Popover surface
+
+extension View {
+    /// The background for a popover's content: solid Ink.surface instead of the system's
+    /// see-through glass, so cards behind it never show through the text.
+    func kitPopover() -> some View {
+        presentationBackground(Ink.surface)
+    }
+}
+
 // MARK: - Progress bar and streak ring
 
 struct KitProgressBar: View {

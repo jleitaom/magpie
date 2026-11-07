@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 - **View → Appearance** switches between Dark, Light and Match my Mac without opening Settings, and **⌃⌘T** flips between Dark and Light
 
+### Fixed
+
+- The Collections panel and the + New block menu have a solid background, so the cards behind them no longer show through the text
+
 ## [0.1.0] - 2026-11-07
 
 ### Added

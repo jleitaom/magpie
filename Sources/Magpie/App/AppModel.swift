@@ -76,6 +76,7 @@ final class AppModel {
     var viewMode: ViewMode = .gallery
     var selection: UUID? { didSet { MenuState.shared.update(selection) } }
     var showsCollections = false
+    var showsNewMenu = false
     var isDropTargeted = false
     var toast: String?
     var settingsTab: SettingsTab = .general

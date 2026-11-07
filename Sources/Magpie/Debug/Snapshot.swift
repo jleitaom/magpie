@@ -33,8 +33,20 @@ enum Snapshot {
                 NSApp.appearance = NSAppearance(named: mode == "light" ? .aqua : .darkAqua)
                 for page in SnapshotPage.allCases where only?.contains(page.rawValue) ?? true {
                     page.show(in: model)
+                    if page.hasPopover {
+                        // Let the previous popover finish closing, or the new one won't open.
+                        try? await Task.sleep(for: .seconds(0.8))
+                        page.openPopover(in: model)
+                    }
                     try? await Task.sleep(for: .seconds(1.2))
-                    capture(to: "\(dir)/\(page.rawValue)-\(mode).png")
+                    if page.hasPopover {
+                        // A popover is a window of its own: capture just that window.
+                        let popover = NSApp.windows.first { $0.isVisible && String(describing: type(of: $0)).contains("Popover") }
+                        if let popover { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: popover) }
+                        else { print("SNAPSHOT no popover for \(page.rawValue)") }
+                    } else {
+                        capture(to: "\(dir)/\(page.rawValue)-\(mode).png")
+                    }
                 }
             }
             if only == nil || only?.contains("settings") == true {
@@ -100,11 +112,15 @@ enum Snapshot {
 
 /// The screens snapshot mode captures. Add a case for every new screen or state worth checking.
 enum SnapshotPage: String, CaseIterable {
-    case all, inbox, collection, details, empty
+    case all, inbox, collection, details, empty, collections, newBlock
+
+    /// Pages that open a popover. Their snapshot is the popover alone.
+    var hasPopover: Bool { self == .collections || self == .newBlock }
 
     func show(in model: AppModel) {
         model.selection = nil
         model.showsCollections = false
+        model.showsNewMenu = false
         switch self {
         case .all: model.scope = .all
         case .inbox: model.scope = .inbox
@@ -116,6 +132,13 @@ enum SnapshotPage: String, CaseIterable {
             model.selection = newest?.uid
         case .empty:
             model.scope = model.collections.first { ($0.blocks ?? []).isEmpty }.map { .collection($0.uid) } ?? .all
+        case .collections, .newBlock:
+            model.scope = .all
         }
+    }
+
+    func openPopover(in model: AppModel) {
+        model.showsCollections = self == .collections
+        model.showsNewMenu = self == .newBlock
     }
 }

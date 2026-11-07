@@ -87,6 +87,7 @@ struct TopBar: View {
             .popover(isPresented: $model.showsCollections, arrowEdge: .bottom) {
                 CollectionsPopover(collections: collections)
                     .environment(model)
+                    .kitPopover()
             }
             Spacer(minLength: 0)
             RightControls().frame(width: sideWidth, alignment: .trailing)
@@ -132,9 +133,9 @@ struct TopBar: View {
 
 private struct RightControls: View {
     @Environment(AppModel.self) private var model
-    @State private var showsNewMenu = false
 
     var body: some View {
+        @Bindable var model = model
         HStack(spacing: Space.sm) {
             KitSegmentTrack {
                 ForEach(ViewMode.allCases) { mode in
@@ -145,12 +146,12 @@ private struct RightControls: View {
                         .accessibilityLabel(mode.title)
                 }
             }
-            Button { showsNewMenu.toggle() } label: { KitIconView(icon: .add) }
+            Button { model.showsNewMenu.toggle() } label: { KitIconView(icon: .add) }
                 .buttonStyle(KitRoundButtonStyle())
                 .help("New block")
                 .accessibilityLabel("New block")
-                .popover(isPresented: $showsNewMenu, arrowEdge: .bottom) {
-                    NewBlockMenu { showsNewMenu = false }.environment(model)
+                .popover(isPresented: $model.showsNewMenu, arrowEdge: .bottom) {
+                    NewBlockMenu { model.showsNewMenu = false }.environment(model).kitPopover()
                 }
         }
     }
