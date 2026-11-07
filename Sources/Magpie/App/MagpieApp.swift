@@ -1,4 +1,5 @@
 import AppKit
+import MagpieKit
 import SwiftData
 import SwiftUI
 
@@ -73,6 +74,29 @@ struct MagpieCommands: Commands {
                 if let selection { model.delete([selection], undo: NSApp.keyWindow?.undoManager) }
             }
             .disabled(selection == nil)
+        }
+        CommandMenu("Collection") {
+            let open = model.openCollection
+            Button("Rename Collection…") {
+                if let open {
+                    model.renamingCollection = open.uid
+                    model.showsCollections = true
+                }
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+            .disabled(open == nil)
+            Button("Move Up") { if let open { model.step(open, up: true) } }
+                .keyboardShortcut(.upArrow, modifiers: [.command, .option])
+                .disabled(open == nil)
+            Button("Move Down") { if let open { model.step(open, up: false) } }
+                .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+                .disabled(open == nil)
+            Button("Move to Top Level") { if let open { model.place(open, .topLevel) } }
+                .disabled(open?.parent == nil)
+            Divider()
+            Button("Delete Collection…") { model.collectionToDelete = open?.uid }
+                .keyboardShortcut(.delete, modifiers: [.command, .shift])
+                .disabled(open == nil)
         }
         CommandGroup(after: .sidebar) {
             Button("All Blocks") { model.scope = .all }

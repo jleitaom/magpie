@@ -20,6 +20,8 @@ enum SeedData {
         for name in ["Reading", "Watch later", "Shopping", "Ideas", "Vinyl", "Lisbon trip", "Recipes"] {
             collections[name] = model.createCollection(named: name)
         }
+        // One nested collection, so the Collections panel shows the tree.
+        if let trip = collections["Lisbon trip"], let ideas = collections["Ideas"] { model.place(trip, .inside(ideas.uid)) }
 
         let now = Date.now
         for (index, sample) in samples.reversed().enumerated() {

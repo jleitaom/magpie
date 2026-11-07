@@ -77,6 +77,41 @@ enum SelfTest {
                 check("deleting a collection sends its blocks back to the Inbox", block.collection == nil && block.status == .inbox)
             }
 
+            // S-011 nest, reorder, rename and delete collections.
+            if let two = model.collections.first(where: { $0.name == "Two" }),
+               let three = model.collections.first(where: { $0.name == "Three" }),
+               let four = model.collections.first(where: { $0.name == "Four" }) {
+                check("nesting puts a collection inside another", model.place(three, .inside(two.uid)) && three.parent?.uid == two.uid)
+                model.place(four, .inside(three.uid))
+                check("a collection can't go inside its own child", !model.place(two, .inside(four.uid)) && two.parent == nil)
+                let tree = model.collectionTree
+                let rowTwo = tree.firstIndex { $0.collection.uid == two.uid } ?? -1
+                check("the tree shows children right after their parent, indented",
+                      tree.indices.contains(rowTwo + 2) && tree[rowTwo + 1].collection.uid == three.uid && tree[rowTwo + 2].depth == 2)
+                model.rename(two, to: "  Second  ")
+                check("rename trims and saves the new name", two.name == "Second")
+                model.rename(two, to: "   ")
+                check("an empty name is ignored", two.name == "Second")
+
+                // Order survives a relaunch: read it back through a second container on the same file.
+                let tops = model.collectionTree.filter { $0.depth == 0 }.map(\.collection)
+                if let last = tops.last { model.place(last, .before(tops[0].uid)) }
+                let expected = model.collectionTree.map(\.collection.name)
+                let reopened = try? ModelContainer(for: Block.self, BlockCollection.self, configurations: ModelConfiguration(url: Store.url))
+                let stored = (try? reopened?.mainContext.fetch(FetchDescriptor<BlockCollection>())) ?? []
+                let reread = CollectionTree.flatten(stored.map(\.node)).compactMap { row in stored.first { $0.uid == row.id }?.name }
+                check("order and nesting are stored in sortIndex and survive a relaunch", reread == expected, "\(reread) vs \(expected)")
+
+                // Delete: blocks go to the Inbox, the collection inside moves up, nothing else is deleted.
+                let note = model.save(url: URL(string: "https://example.com/s-011")!)
+                model.move(note, to: three, undo: nil)
+                let count = blocks().count
+                check("the confirmation counts the blocks that go back", model.deleteMessage(for: three).hasPrefix("Its block goes back to the Inbox"))
+                model.deleteCollection(three)
+                check("deleting sends its blocks to the Inbox and deletes none", note.collection == nil && note.status == .inbox && blocks().count == count)
+                check("the collection inside moves up to the deleted one's parent", four.parent?.uid == two.uid)
+            }
+
             // Appearance: ⌃⌘T flips Dark and Light. The choice lives in the app's real
             // preferences, so the test puts it back afterwards.
             let theme = model.appearance

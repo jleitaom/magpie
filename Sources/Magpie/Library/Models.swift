@@ -102,6 +102,9 @@ final class BlockCollection {
     var pinIndex: Int = 0
     var createdAt: Date = Date.now
     @Relationship(deleteRule: .nullify, inverse: \Block.collection) var blocks: [Block]? = []
+    /// The collection this one is nested in, or nil at the top level.
+    var parent: BlockCollection?
+    @Relationship(deleteRule: .nullify, inverse: \BlockCollection.parent) var children: [BlockCollection]? = []
 
     init(name: String, colorHex: Int, sortIndex: Double) {
         self.name = name

@@ -47,6 +47,7 @@ struct MainView: View {
             return true
         }
         .ignoresSafeArea()
+        .collectionDeleteAlert(when: !model.showsCollections)
         .task {
             model.start()
             SeedData.insertIfRequested(into: model)
@@ -85,8 +86,9 @@ struct TopBar: View {
                 pill(maxPins: 0)
             }
             .popover(isPresented: $model.showsCollections, arrowEdge: .bottom) {
-                CollectionsPopover(collections: collections)
+                CollectionsPopover()
                     .environment(model)
+                    .onDisappear { model.renamingCollection = nil }
                     .kitPopover()
             }
             Spacer(minLength: 0)
@@ -108,8 +110,8 @@ struct TopBar: View {
         return KitPillBar {
             tab("All", scope: .all)
             tab("Inbox", scope: .inbox, count: inboxCount)
-            ForEach(pinned) { tab($0.name, scope: .collection($0.uid)) }
-            if let extra { tab(extra.name, scope: .collection(extra.uid)) }
+            ForEach(pinned) { collectionTab($0) }
+            if let extra { collectionTab(extra) }
             KitBarDivider()
             Button { model.showsCollections.toggle() } label: {
                 HStack(spacing: Metric.inlineGap) {
@@ -120,6 +122,11 @@ struct TopBar: View {
             .buttonStyle(KitTabStyle(isSelected: false))
             .help("All collections (⌘K)")
         }
+    }
+
+    private func collectionTab(_ target: BlockCollection) -> some View {
+        tab(target.name, scope: .collection(target.uid))
+            .contextMenu { CollectionMenu(target: target) }
     }
 
     private func tab(_ title: String, scope: Scope, count: Int? = nil) -> some View {

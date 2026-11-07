@@ -77,6 +77,10 @@ final class AppModel {
     var selection: UUID? { didSet { MenuState.shared.update(selection) } }
     var showsCollections = false
     var showsNewMenu = false
+    /// The collection whose name is being edited in the Collections panel.
+    var renamingCollection: UUID?
+    /// The collection waiting for the delete confirmation.
+    var collectionToDelete: UUID?
     var isDropTargeted = false
     var toast: String?
     var settingsTab: SettingsTab = .general
@@ -377,14 +381,82 @@ final class AppModel {
         save()
     }
 
+    /// Deletes the collection only. Its blocks go back to the Inbox, and the collections
+    /// inside it move up to its parent. Ask first with `collectionToDelete`.
     func deleteCollection(_ target: BlockCollection) {
-        // Its blocks go back to the Inbox; nothing is deleted with it.
         for block in target.blocks ?? [] {
             block.collection = nil
             block.status = .inbox
         }
+        for child in target.children ?? [] {
+            child.parent = nil
+            if let place = CollectionTree.move(child.uid, to: target.parent.map { .inside($0.uid) } ?? .topLevel, in: treeNodes) {
+                child.parent = collection(place.parent)
+                child.sortIndex = place.sortIndex
+            }
+        }
         if scope == .collection(target.uid) { scope = .all }
+        if collectionToDelete == target.uid { collectionToDelete = nil }
+        flash("Deleted \(target.name)")
         context.delete(target)
+        save()
+    }
+
+    /// The text of the delete confirmation, with the count of blocks that go back to the Inbox.
+    func deleteMessage(for target: BlockCollection) -> String {
+        CollectionTree.deleteMessage(blockCount: target.blocks?.count ?? 0, childCount: target.children?.count ?? 0)
+    }
+
+    func rename(_ target: BlockCollection, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        renamingCollection = nil
+        guard !trimmed.isEmpty, trimmed != target.name else { return }
+        target.name = trimmed
+        save()
+    }
+
+    /// The collection the window shows, if it shows one.
+    var openCollection: BlockCollection? {
+        if case .collection(let uid) = scope { collection(uid) } else { nil }
+    }
+
+    /// Collections in display order: each parent followed by its children.
+    var collectionTree: [(collection: BlockCollection, depth: Int)] {
+        let all = collections
+        let byID = Dictionary(all.map { ($0.uid, $0) }, uniquingKeysWith: { first, _ in first })
+        return CollectionTree.flatten(all.map(\.node)).compactMap { row in byID[row.id].map { ($0, row.depth) } }
+    }
+
+    private var treeNodes: [TreeNode] { collections.map(\.node) }
+
+    /// Drag and drop, Move Into, and the top level. Returns false when the move isn't allowed
+    /// (a collection can't go inside itself or its own child).
+    @discardableResult
+    func place(_ target: BlockCollection, _ placement: TreePlacement) -> Bool {
+        guard let place = CollectionTree.move(target.uid, to: placement, in: treeNodes) else { return false }
+        apply(place, to: target)
+        return true
+    }
+
+    /// Move Up and Move Down among the collections that share its parent.
+    @discardableResult
+    func step(_ target: BlockCollection, up: Bool) -> Bool {
+        guard let place = CollectionTree.step(target.uid, up: up, in: treeNodes) else { return false }
+        apply(place, to: target)
+        return true
+    }
+
+    /// The collections `target` can be moved into.
+    func possibleParents(for target: BlockCollection) -> [BlockCollection] {
+        let nodes = treeNodes
+        return collectionTree.map(\.collection).filter {
+            $0.uid != target.parent?.uid && CollectionTree.canNest(target.uid, under: $0.uid, in: nodes)
+        }
+    }
+
+    private func apply(_ place: (parent: UUID?, sortIndex: Double), to target: BlockCollection) {
+        target.parent = collection(place.parent)
+        target.sortIndex = place.sortIndex
         save()
     }
 
@@ -433,4 +505,8 @@ final class MenuState: ObservableObject {
     static let shared = MenuState()
     @Published private(set) var selection: UUID?
     func update(_ uid: UUID?) { if selection != uid { selection = uid } }
+}
+
+extension BlockCollection {
+    var node: TreeNode { TreeNode(id: uid, parent: parent?.uid, sortIndex: sortIndex) }
 }

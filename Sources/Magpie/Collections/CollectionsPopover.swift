@@ -1,12 +1,15 @@
 import MagpieKit
 import SwiftUI
+import UniformTypeIdentifiers
 
-/// Every collection: open one, pin it to the top bar (up to 5), or make a new one.
+/// Every collection as an indented tree: open one, pin it to the top bar (up to 5), drag it
+/// to reorder or nest it, rename or delete it from its context menu, or make a new one.
 struct CollectionsPopover: View {
-    let collections: [BlockCollection]
     @Environment(AppModel.self) private var model
     @State private var search = ""
     @State private var newName = ""
+    @State private var dragging: UUID?
+    @State private var drop: (target: UUID, placement: TreePlacement)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
@@ -14,20 +17,31 @@ struct CollectionsPopover: View {
             HStack {
                 Text("All collections").kitType(.meta).foregroundStyle(Ink.secondary)
                 Spacer()
-                Text("Pin up to \(Pins.limit) to the top bar").kitType(.meta).foregroundStyle(Ink.secondary)
+                Text("Drag to reorder or nest · pin up to \(Pins.limit)").kitType(.meta).foregroundStyle(Ink.secondary)
             }
             .padding(.horizontal, Space.xs)
-            if filtered.isEmpty {
-                Text(collections.isEmpty ? "No collections yet. Make your first one below." : "No collection matches “\(search)”.")
+            let rows = filtered
+            if rows.isEmpty {
+                Text(model.collections.isEmpty ? "No collections yet. Make your first one below." : "No collection matches “\(search)”.")
                     .kitType(.body).foregroundStyle(Ink.secondary)
                     .padding(.vertical, Space.md).padding(.horizontal, Space.xs)
             } else {
                 ScrollView {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: Space.xs), GridItem(.flexible())], spacing: Space.xs) {
-                        ForEach(filtered) { row($0) }
+                    VStack(spacing: 0) {
+                        ForEach(rows, id: \.collection.uid) { row in
+                            CollectionRow(target: row.collection, depth: isSearching ? 0 : row.depth,
+                                          dropPlacement: drop?.target == row.collection.uid ? drop?.placement : nil)
+                                .onDrag {
+                                    dragging = row.collection.uid
+                                    return NSItemProvider(object: row.collection.uid.uuidString as NSString)
+                                }
+                                .onDrop(of: [.text], delegate: RowDrop(target: row.collection.uid, model: model,
+                                                                       dragging: $dragging, drop: $drop))
+                        }
                     }
                 }
-                .frame(maxHeight: 320)
+                .frame(maxHeight: Metric.collectionsMaxHeight)
+                .fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: Space.sm) {
                 TextField("New collection", text: $newName).kitField().onSubmit(create)
@@ -35,17 +49,39 @@ struct CollectionsPopover: View {
             }
         }
         .padding(Space.md)
-        .frame(width: 460)
+        .frame(width: Metric.collectionsWidth)
+        .collectionDeleteAlert(when: true)
     }
 
-    private var filtered: [BlockCollection] {
+    private var isSearching: Bool { !search.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    private var filtered: [(collection: BlockCollection, depth: Int)] {
         let query = search.trimmingCharacters(in: .whitespaces)
-        return query.isEmpty ? collections : collections.filter { $0.name.localizedStandardContains(query) }
+        let tree = model.collectionTree
+        return query.isEmpty ? tree : tree.filter { $0.collection.name.localizedStandardContains(query) }
     }
 
-    private func row(_ target: BlockCollection) -> some View {
+    private func create() {
+        guard let created = model.createCollection(named: newName) else { return }
+        newName = ""
+        model.scope = .collection(created.uid)
+        model.showsCollections = false
+    }
+}
+
+/// One collection in the tree. Its name turns into a field while it's being renamed.
+private struct CollectionRow: View {
+    let target: BlockCollection
+    let depth: Int
+    let dropPlacement: TreePlacement?
+    @Environment(AppModel.self) private var model
+    @State private var draft = ""
+    @FocusState private var editing: Bool
+
+    var body: some View {
         let isOpen = model.scope == .collection(target.uid)
-        return HStack(spacing: 0) {
+        let isRenaming = model.renamingCollection == target.uid
+        HStack(spacing: 0) {
             Button {
                 model.scope = .collection(target.uid)
                 model.selection = nil
@@ -54,15 +90,32 @@ struct CollectionsPopover: View {
                 HStack(spacing: Space.sm) {
                     RoundedRectangle(cornerRadius: Metric.swatchRadius).fill(Ink.swatch(UInt32(target.colorHex)))
                         .frame(width: Metric.swatch, height: Metric.swatch)
-                    Text(target.name).kitType(.label).foregroundStyle(Ink.text).lineLimit(1)
-                    Text("\(target.blocks?.count ?? 0)").kitType(.meta).foregroundStyle(Ink.secondary)
+                    if isRenaming {
+                        TextField("Name", text: $draft)
+                            .textFieldStyle(.plain)
+                            .kitType(.label).foregroundStyle(Ink.text)
+                            .focused($editing)
+                            .onSubmit { model.rename(target, to: draft) }
+                            .onExitCommand { model.renamingCollection = nil }
+                            .onAppear {
+                                draft = target.name
+                                editing = true
+                            }
+                            .onChange(of: editing) { _, focused in
+                                if !focused, model.renamingCollection == target.uid { model.rename(target, to: draft) }
+                            }
+                    } else {
+                        Text(target.name).kitType(.label).foregroundStyle(Ink.text).lineLimit(1)
+                        Text("\(target.blocks?.count ?? 0)").kitType(.meta).foregroundStyle(Ink.secondary)
+                    }
                     Spacer(minLength: 0)
                 }
-                .padding(.leading, Metric.rowInset)
+                .padding(.leading, Metric.rowInset + CGFloat(depth) * Metric.treeIndent)
                 .frame(height: Metric.menuRowHeight)
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            .disabled(isRenaming)
             Button { model.togglePin(target) } label: {
                 KitIconView(icon: .pin, size: 12, filled: target.isPinned)
                     .foregroundStyle(target.isPinned ? Ink.accentText : Ink.tertiary)
@@ -73,16 +126,120 @@ struct CollectionsPopover: View {
             .help(target.isPinned ? "Unpin from the top bar" : "Pin to the top bar")
             .accessibilityLabel(target.isPinned ? "Unpin \(target.name)" : "Pin \(target.name)")
         }
-        .background(RoundedRectangle(cornerRadius: Metric.menuRowRadius).fill(isOpen ? Ink.hover : .clear))
-        .contextMenu {
-            Button("Delete Collection", role: .destructive) { model.deleteCollection(target) }
+        .background(RoundedRectangle(cornerRadius: Metric.menuRowRadius).fill(isOpen || dropPlacement == .inside(target.uid) ? Ink.hover : .clear))
+        .overlay {
+            if dropPlacement == .inside(target.uid) {
+                RoundedRectangle(cornerRadius: Metric.menuRowRadius).strokeBorder(Ink.accentText, lineWidth: Metric.dropLine)
+            }
         }
+        .overlay(alignment: dropPlacement == .before(target.uid) ? .top : .bottom) {
+            if dropPlacement == .before(target.uid) || dropPlacement == .after(target.uid) {
+                Capsule().fill(Ink.accentText).frame(height: Metric.dropLine)
+                    .padding(.leading, Metric.rowInset + CGFloat(depth) * Metric.treeIndent)
+            }
+        }
+        .contextMenu { CollectionMenu(target: target) }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(target.name), \(target.blocks?.count ?? 0) blocks\(depth > 0 ? ", nested" : "")")
+    }
+}
+
+/// Where a dragged row would land: the top quarter puts it before the row, the bottom
+/// quarter after it, and the middle inside it.
+private struct RowDrop: DropDelegate {
+    let target: UUID
+    let model: AppModel
+    @Binding var dragging: UUID?
+    @Binding var drop: (target: UUID, placement: TreePlacement)?
+
+    private func placement(_ info: DropInfo) -> TreePlacement? {
+        guard let dragging, dragging != target else { return nil }
+        let y = info.location.y
+        let placement: TreePlacement = y < Metric.menuRowHeight * 0.25 ? .before(target)
+            : y > Metric.menuRowHeight * 0.75 ? .after(target) : .inside(target)
+        let nodes = model.collections.map(\.node)
+        return CollectionTree.move(dragging, to: placement, in: nodes) == nil ? nil : placement
     }
 
-    private func create() {
-        guard let created = model.createCollection(named: newName) else { return }
-        newName = ""
-        model.scope = .collection(created.uid)
-        model.showsCollections = false
+    func validateDrop(info: DropInfo) -> Bool { dragging != nil }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        if let placement = placement(info) {
+            drop = (target, placement)
+            return DropProposal(operation: .move)
+        }
+        if drop?.target == target { drop = nil }
+        return DropProposal(operation: .forbidden)
+    }
+
+    func dropExited(info: DropInfo) {
+        if drop?.target == target { drop = nil }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer {
+            drop = nil
+            dragging = nil
+        }
+        guard let placement = placement(info), let moving = model.collection(dragging) else { return false }
+        return model.place(moving, placement)
+    }
+}
+
+/// The context menu for a collection, in the Collections panel and on its top bar tab.
+struct CollectionMenu: View {
+    let target: BlockCollection
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Button("Rename…") {
+            model.renamingCollection = target.uid
+            model.showsCollections = true
+        }
+        Menu("Move Into") {
+            if target.parent != nil {
+                Button("Top Level") { model.place(target, .topLevel) }
+                Divider()
+            }
+            ForEach(model.possibleParents(for: target), id: \.uid) { parent in
+                Button(parent.name) { model.place(target, .inside(parent.uid)) }
+            }
+        }
+        Button("Move Up") { model.step(target, up: true) }
+            .disabled(CollectionTree.step(target.uid, up: true, in: model.collections.map(\.node)) == nil)
+        Button("Move Down") { model.step(target, up: false) }
+            .disabled(CollectionTree.step(target.uid, up: false, in: model.collections.map(\.node)) == nil)
+        Divider()
+        Button(target.isPinned ? "Unpin from Top Bar" : "Pin to Top Bar") { model.togglePin(target) }
+        Divider()
+        Button("Delete Collection…", role: .destructive) { model.collectionToDelete = target.uid }
+    }
+}
+
+extension View {
+    /// The confirmation before a collection is deleted. It says how many blocks go back
+    /// to the Inbox. `when` picks which view shows it: the Collections panel while it's
+    /// open, the window otherwise.
+    func collectionDeleteAlert(when active: Bool) -> some View {
+        modifier(CollectionDeleteAlert(active: active))
+    }
+}
+
+private struct CollectionDeleteAlert: ViewModifier {
+    let active: Bool
+    @Environment(AppModel.self) private var model
+
+    func body(content: Content) -> some View {
+        let target = model.collection(model.collectionToDelete)
+        content.alert(
+            "Delete “\(target?.name ?? "")”?",
+            isPresented: Binding(get: { active && target != nil }, set: { if !$0 { model.collectionToDelete = nil } }),
+            presenting: target
+        ) { target in
+            Button("Delete", role: .destructive) { model.deleteCollection(target) }
+            Button("Cancel", role: .cancel) { model.collectionToDelete = nil }
+        } message: { target in
+            Text(model.deleteMessage(for: target))
+        }
     }
 }

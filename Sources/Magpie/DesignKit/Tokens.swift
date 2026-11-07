@@ -102,6 +102,10 @@ enum Metric {
     static let swatchRadius: CGFloat = 3
     static let dividerHeight: CGFloat = 18
     static let popoverPadding: CGFloat = 6
+    static let treeIndent: CGFloat = 16      // one nesting level in the Collections panel
+    static let dropLine: CGFloat = 2         // where a dragged row will land
+    static let collectionsWidth: CGFloat = 400
+    static let collectionsMaxHeight: CGFloat = 360
     static let mapRoad: CGFloat = 10
     static let tabPadding: CGFloat = 14
     static let chipPadding: CGFloat = 12
