@@ -94,6 +94,35 @@ extension View {
     }
 }
 
+// MARK: - Banner (a prompt above the cards)
+
+/// A quiet teal prompt with one action, e.g. "8 blocks waiting to be sorted · Start sorting".
+struct KitBanner: View {
+    let title: String
+    let detail: String
+    let action: String
+    let run: () -> Void
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Metric.radiusCard - 2, style: .continuous)
+        HStack(spacing: Space.lg) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).kitType(.labelStrong).foregroundStyle(Ink.text)
+                Text(detail).kitType(.meta).foregroundStyle(Ink.secondary)
+            }
+            Spacer(minLength: 0)
+            // It sits inside the Gallery, which holds keyboard focus, so it draws no focus ring.
+            // Its action is in the menu bar (Inbox → Sort Inbox, ⌃⌘3).
+            Button(action, action: run).buttonStyle(.kit(showsFocus: false))
+        }
+        .padding(.horizontal, Space.lg)
+        .padding(.vertical, Space.md)
+        .background(shape.fill(Ink.suggest))
+        .overlay(shape.strokeBorder(Ink.accentText.opacity(0.25)))
+        .accessibilityElement(children: .contain)
+    }
+}
+
 // MARK: - Progress bar and streak ring
 
 struct KitProgressBar: View {

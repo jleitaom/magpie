@@ -10,7 +10,7 @@ enum Scope: Hashable {
     case collection(UUID)
 }
 
-/// The view switcher's modes. Only the Gallery exists in v0.1 (notes/PLAN.md).
+/// The view switcher's modes. Gallery and Sort Inbox exist so far (notes/PLAN.md).
 enum ViewMode: String, CaseIterable, Identifiable {
     case gallery, journal, sortInbox, luckyDip
     var id: String { rawValue }
@@ -33,7 +33,19 @@ enum ViewMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var isAvailable: Bool { self == .gallery }
+    var isAvailable: Bool { self == .gallery || self == .sortInbox }
+
+    /// ⌃⌘1 to ⌃⌘4, in the View menu.
+    var shortcut: Character {
+        switch self {
+        case .gallery: "1"
+        case .journal: "2"
+        case .sortInbox: "3"
+        case .luckyDip: "4"
+        }
+    }
+
+    var shortcutLabel: String { "⌃⌘\(shortcut)" }
 }
 
 /// Dark by default, like the mockup; Light or "Match my Mac" in Settings.
@@ -77,6 +89,8 @@ final class AppModel {
     var selection: UUID? { didSet { MenuState.shared.update(selection) } }
     var showsCollections = false
     var showsNewMenu = false
+    /// The current Sort Inbox run (S-060).
+    var sortSession = SortSession(inbox: [])
     /// The collection whose name is being edited in the Collections panel.
     var renamingCollection: UUID?
     /// The collection waiting for the delete confirmation.
@@ -458,6 +472,84 @@ final class AppModel {
         target.parent = collection(place.parent)
         target.sortIndex = place.sortIndex
         save()
+    }
+
+    // MARK: Sort Inbox
+
+    /// Inbox blocks, newest first, the order the Inbox shows them.
+    var inboxUIDs: [UUID] {
+        let inbox = BlockStatus.inbox.rawValue
+        let descriptor = FetchDescriptor<Block>(predicate: #Predicate { $0.statusRaw == inbox },
+                                                sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        return ((try? context.fetch(descriptor)) ?? []).map(\.uid)
+    }
+
+    /// Opens Sort Inbox with a fresh run over everything in the Inbox.
+    func startSorting() {
+        sortSession = SortSession(inbox: inboxUIDs)
+        selection = nil
+        showsCollections = false
+        viewMode = .sortInbox
+    }
+
+    /// Switches the window to a view mode. Sort Inbox starts a new run each time it opens.
+    func show(_ mode: ViewMode) {
+        guard mode.isAvailable else { return }
+        if mode == .sortInbox, viewMode != .sortInbox { startSorting() } else { viewMode = mode }
+    }
+
+    var sortingBlock: Block? { block(sortSession.current) }
+
+    /// True when M, D, → and ⌫ should sort: Sort Inbox shows a block, and no field or panel is open.
+    var canSortNow: Bool {
+        viewMode == .sortInbox && sortSession.current != nil && !showsCollections && !showsNewMenu && renamingCollection == nil
+    }
+
+    /// Keeps the run in step when the Inbox changes outside it (a save, an Undo).
+    func syncSorting() {
+        sortSession.sync(inbox: inboxUIDs)
+    }
+
+    /// The collection Sort Inbox suggests for a block: from its site and kind, else the
+    /// collection the same site's blocks went to last.
+    func suggestion(for target: Block) -> BlockCollection? {
+        let all = collections
+        let site = target.siteName
+        let lastUsed = site.isEmpty ? nil : ((try? context.fetch(FetchDescriptor<Block>(
+            predicate: #Predicate { $0.siteName == site && $0.collection != nil },
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]))) ?? []).first?.collection?.uid
+        let id = SortSuggestion.collection(site: site, kind: target.kindRaw, title: target.title,
+                                           collections: all.map { ($0.uid, $0.name) }, lastUsedForSite: lastUsed)
+        return all.first { $0.uid == id }
+    }
+
+    /// M, or a collection chip: the current block goes into a collection.
+    func sortMove(to target: BlockCollection?, undo: UndoManager?) {
+        guard let current = sortingBlock, let target else { return }
+        sortSession.finish(.kept)
+        move(current, to: target, undo: undo)
+    }
+
+    /// D: the current block is done with. It leaves the Inbox and stays in All.
+    func sortDone() {
+        guard let current = sortingBlock else { return }
+        sortSession.finish(.done)
+        current.status = .done
+        save()
+        flash("Marked done")
+    }
+
+    /// →: the current block goes to the back of the queue.
+    func sortSkip() {
+        sortSession.skip()
+    }
+
+    /// ⌫: the current block is deleted (Undo brings it back into the queue).
+    func sortDelete(undo: UndoManager?) {
+        guard let current = sortingBlock else { return }
+        sortSession.finish(.deleted)
+        delete([current.uid], undo: undo)
+        flash("Deleted")
     }
 
     // MARK: Helpers

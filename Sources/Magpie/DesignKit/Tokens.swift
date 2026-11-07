@@ -106,6 +106,11 @@ enum Metric {
     static let dropLine: CGFloat = 2         // where a dragged row will land
     static let collectionsWidth: CGFloat = 400
     static let collectionsMaxHeight: CGFloat = 360
+    static let keyCap: CGFloat = 24          // the key in a key button
+    static let sortWidth: CGFloat = 560      // Sort Inbox's card and progress line
+    static let sortHero: CGFloat = 232       // the big card's picture
+    static let radiusSortCard: CGFloat = 22
+    static let stackStep: CGFloat = 12       // how far each card behind the big one is inset and lowered
     static let mapRoad: CGFloat = 10
     static let tabPadding: CGFloat = 14
     static let chipPadding: CGFloat = 12

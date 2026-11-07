@@ -112,6 +112,34 @@ enum SelfTest {
                 check("the collection inside moves up to the deleted one's parent", four.parent?.uid == two.uid)
             }
 
+            // S-060 Sort Inbox: each action moves on, Skip goes to the back of the queue.
+            model.startSorting()
+            let queue = model.sortSession.queue
+            check("Sort Inbox opens on the newest Inbox block", model.viewMode == .sortInbox && queue.first == model.inboxUIDs.first && !queue.isEmpty)
+            if queue.count >= 4, let first = model.sortingBlock {
+                model.sortSkip()
+                check("Skip puts the block at the end of the queue", model.sortSession.queue.last == first.uid && model.sortSession.current == queue[1])
+                let second = model.sortingBlock
+                let target = model.collections.first { $0.name == "Second" }
+                model.sortMove(to: target, undo: nil)
+                check("Move puts it in the collection and goes to the next", second?.collection?.uid == target?.uid && second?.status == .kept && model.sortSession.current == queue[2])
+                let third = model.sortingBlock
+                model.sortDone()
+                check("Done takes it out of the Inbox and goes to the next", third?.status == .done && model.sortSession.current == queue[3])
+                let fourth = model.sortingBlock?.uid
+                model.sortDelete(undo: undo)
+                check("Delete removes it and goes to the next", model.block(fourth) == nil && model.sortSession.current != fourth)
+                undo.undo()
+                model.syncSorting()
+                check("Undo brings it back at the end of the queue", model.sortSession.queue.last == fourth)
+                check("the run counts 3 sorted: 1 kept, 1 done, 1 deleted",
+                      model.sortSession.sorted == 3 && model.sortSession.kept == 1 && model.sortSession.done == 1 && model.sortSession.deleted == 1)
+            }
+            let film = model.save(url: URL(string: "https://www.youtube.com/watch?v=sort-test")!)
+            let watch = model.createCollection(named: "Watch later")
+            check("a YouTube link is suggested for Watch later", model.suggestion(for: film)?.uid == watch?.uid)
+            model.show(.gallery)
+
             // Appearance: ⌃⌘T flips Dark and Light. The choice lives in the app's real
             // preferences, so the test puts it back afterwards.
             let theme = model.appearance

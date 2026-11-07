@@ -6,15 +6,19 @@ struct KitButtonStyle: ButtonStyle {
     enum Kind { case primary, secondary, ghost }
     var kind: Kind = .primary
     var large = false
+    /// False inside a view that holds keyboard focus for its whole area (the Gallery):
+    /// SwiftUI reports every button in it as focused, which would draw a ring on each.
+    var showsFocus = true
 
     func makeBody(configuration: Configuration) -> some View {
-        Part(configuration: configuration, kind: kind, large: large)
+        Part(configuration: configuration, kind: kind, large: large, showsFocus: showsFocus)
     }
 
     private struct Part: View {
         let configuration: Configuration
         let kind: Kind
         let large: Bool
+        let showsFocus: Bool
         @Environment(\.forcedPartState) private var forced
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
@@ -22,7 +26,7 @@ struct KitButtonStyle: ButtonStyle {
 
         var body: some View {
             let state = PartState.resolve(forced: forced, enabled: isEnabled, pressed: configuration.isPressed,
-                                          hovering: hovering, focused: isFocused)
+                                          hovering: hovering, focused: isFocused && showsFocus)
             let shape = RoundedRectangle(cornerRadius: Metric.radius, style: .continuous)
             configuration.label
                 .lineLimit(1)
@@ -53,8 +57,60 @@ struct KitButtonStyle: ButtonStyle {
 }
 
 extension ButtonStyle where Self == KitButtonStyle {
-    static func kit(_ kind: KitButtonStyle.Kind = .primary, large: Bool = false) -> KitButtonStyle {
-        KitButtonStyle(kind: kind, large: large)
+    static func kit(_ kind: KitButtonStyle.Kind = .primary, large: Bool = false, showsFocus: Bool = true) -> KitButtonStyle {
+        KitButtonStyle(kind: kind, large: large, showsFocus: showsFocus)
+    }
+}
+
+// MARK: - Key button (Sort Inbox's action bar)
+
+/// A large action button that shows its key: a key cap, then the label. The prominent one
+/// (the main action) is filled with the accent.
+struct KitKeyButtonStyle: ButtonStyle {
+    let key: String
+    var prominent = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        Part(configuration: configuration, key: key, prominent: prominent)
+    }
+
+    private struct Part: View {
+        let configuration: Configuration
+        let key: String
+        let prominent: Bool
+        @Environment(\.forcedPartState) private var forced
+        @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.isFocused) private var isFocused
+        @State private var hovering = false
+
+        var body: some View {
+            let state = PartState.resolve(forced: forced, enabled: isEnabled, pressed: configuration.isPressed,
+                                          hovering: hovering, focused: isFocused)
+            let shape = RoundedRectangle(cornerRadius: Metric.radius, style: .continuous)
+            HStack(spacing: Space.sm) {
+                Text(key)
+                    .kitType(key.count == 1 && key.first!.isLetter ? .mono : .labelStrong)
+                    .foregroundStyle(prominent ? Ink.onAccent : Ink.text)
+                    .frame(minWidth: Metric.keyCap, minHeight: Metric.keyCap)
+                    .background(RoundedRectangle(cornerRadius: Metric.radiusBadge).fill(prominent ? Ink.onAccent.opacity(0.2) : Ink.control))
+                configuration.label.kitType(.label).foregroundStyle(prominent ? Ink.onAccent : Ink.text)
+            }
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.leading, Metric.rowInset)
+            .padding(.trailing, Metric.buttonPadding)
+            .frame(height: Metric.controlLarge)
+            .background(shape.fill(prominent ? Ink.accent.opacity(state == .pressed ? 0.8 : state == .hover ? 0.9 : 1)
+                                             : state.isActive ? Ink.control : Ink.surface))
+            .overlay(shape.strokeBorder(prominent ? .clear : Ink.hairline))
+            .kitFocusRing(shape, state: state)
+            .opacity(state == .disabled ? 0.4 : 1)
+            .contentShape(shape)
+            .kitPress(state)
+            .onHover { hovering = $0 }
+            .animation(Motion.hover, value: hovering)
+            .accessibilityHint("Shortcut: \(key)")
+        }
     }
 }
 

@@ -16,22 +16,26 @@ struct MainView: View {
 
         ZStack(alignment: .top) {
             Ink.window
-            if shown.isEmpty {
+            if model.viewMode == .sortInbox {
+                SortInboxView()
+            } else if shown.isEmpty {
                 EmptyGallery(isLibraryEmpty: blocks.isEmpty, scopeName: scopeName)
             } else {
-                GalleryView(blocks: shown)
+                GalleryView(blocks: shown, sortPrompt: model.scope == .inbox ? shown.count : 0)
             }
             TopBar(collections: collections, inboxCount: model.blocks(in: .inbox, from: blocks).count)
         }
         .overlay(alignment: .trailing) {
-            if let selected {
+            if let selected, model.viewMode != .sortInbox {
                 DetailsPanel(block: selected, collections: collections)
                     .padding(.top, Metric.barHeight)
                     .padding([.trailing, .bottom], Space.lg)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .overlay(alignment: .bottom) { BottomHint(showsHint: selected == nil) }
+        .overlay(alignment: .bottom) {
+            if model.viewMode != .sortInbox { BottomHint(showsHint: selected == nil) }
+        }
         .overlay {
             if model.isDropTargeted {
                 RoundedRectangle(cornerRadius: Metric.radiusPanel, style: .continuous)
@@ -139,6 +143,7 @@ struct TopBar: View {
     private func tab(_ title: String, scope: Scope, count: Int? = nil) -> some View {
         Button(title) {
             model.scope = scope
+            if model.viewMode == .sortInbox { model.show(.gallery) }
             model.selection = nil
         }
         .buttonStyle(KitTabStyle(isSelected: model.scope == scope, count: count))
@@ -153,10 +158,10 @@ private struct RightControls: View {
         HStack(spacing: Space.sm) {
             KitSegmentTrack {
                 ForEach(ViewMode.allCases) { mode in
-                    Button { model.viewMode = mode } label: { KitIconView(icon: mode.icon) }
+                    Button { model.show(mode) } label: { KitIconView(icon: mode.icon) }
                         .buttonStyle(KitSegmentStyle(isSelected: model.viewMode == mode))
                         .disabled(!mode.isAvailable)
-                        .help(mode.isAvailable ? mode.title : "\(mode.title) — coming in v0.2")
+                        .help(mode.isAvailable ? "\(mode.title) (\(mode.shortcutLabel))" : "\(mode.title) — coming soon")
                         .accessibilityLabel(mode.title)
                 }
             }

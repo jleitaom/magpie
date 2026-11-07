@@ -28,7 +28,10 @@ struct MagpieApp: App {
         .modelContainer(model.container)
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: Metric.windowDefault.width, height: Metric.windowDefault.height)
-        .commands { MagpieCommands(model: model, selection: menu.selection, appearance: model.appearance) }
+        .commands {
+            MagpieCommands(model: model, selection: menu.selection, appearance: model.appearance,
+                           viewMode: model.viewMode, canSort: model.canSortNow)
+        }
 
         Settings {
             SettingsView()
@@ -46,6 +49,9 @@ struct MagpieCommands: Commands {
     let selection: UUID?
     /// Passed in, not read from the model, so the menu redraws its checkmarks when it changes.
     let appearance: AppearanceChoice
+    /// Also passed in so the menus redraw: the open view, and whether M, D, → and ⌫ sort right now.
+    let viewMode: ViewMode
+    let canSort: Bool
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
@@ -75,6 +81,25 @@ struct MagpieCommands: Commands {
             }
             .disabled(selection == nil)
         }
+        CommandMenu("Inbox") {
+            Button("Sort Inbox") { model.startSorting() }
+                .keyboardShortcut("3", modifiers: [.control, .command])
+            Divider()
+            // Plain keys, like the action bar. Off unless Sort Inbox is showing a block with no field
+            // or panel open, so typing elsewhere is never caught.
+            Button("Move to Suggested") { model.sortMove(to: model.sortingBlock.flatMap(model.suggestion(for:)), undo: NSApp.keyWindow?.undoManager) }
+                .keyboardShortcut("m", modifiers: [])
+                .disabled(!canSort)
+            Button("Mark Done") { model.sortDone() }
+                .keyboardShortcut("d", modifiers: [])
+                .disabled(!canSort)
+            Button("Skip") { model.sortSkip() }
+                .keyboardShortcut(.rightArrow, modifiers: [])
+                .disabled(!canSort)
+            Button("Delete") { model.sortDelete(undo: NSApp.keyWindow?.undoManager) }
+                .keyboardShortcut(.delete, modifiers: [])
+                .disabled(!canSort)
+        }
         CommandMenu("Collection") {
             let open = model.openCollection
             Button("Rename Collection…") {
@@ -97,6 +122,11 @@ struct MagpieCommands: Commands {
                 .disabled(open == nil)
         }
         CommandGroup(after: .sidebar) {
+            ForEach(ViewMode.allCases.filter(\.isAvailable)) { mode in
+                Toggle(mode.title, isOn: Binding(get: { viewMode == mode }, set: { if $0 { model.show(mode) } }))
+                    .keyboardShortcut(KeyEquivalent(mode.shortcut), modifiers: [.control, .command])
+            }
+            Divider()
             Button("All Blocks") { model.scope = .all }
                 .keyboardShortcut("1")
             Button("Inbox") { model.scope = .inbox }

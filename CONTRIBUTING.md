@@ -15,6 +15,8 @@ Thanks for helping out!
     runs off the main thread (`Ingest.swift`)
   - `MainWindow/`: the window, its top bar, the drop target and the bottom hint (`MainView.swift`)
   - `Gallery/`: the masonry of cards (`GalleryView.swift`)
+  - `SortInbox/`: Sort Inbox, one Inbox block at a time (`SortInboxView.swift`). The queue and the
+    collection suggestion are in `MagpieKit/Sorting.swift`
   - `Details/`: the panel that slides in for a selected Block (`DetailsPanel.swift`)
   - `Collections/`: the "N more" panel to find, pin and create collections (`CollectionsPopover.swift`)
   - `Settings/`: the Settings window (⌘,)
@@ -22,7 +24,7 @@ Thanks for helping out!
     top bar) and the window chrome
   - `Debug/`: the self-test, snapshot mode and sample data
 - `Sources/MagpieKit/` holds the rules with no UI (link parsing and normalizing, masonry math,
-  color math), so they can be unit tested. Put new logic there, not in the views.
+  color math, the collection tree, the Sort Inbox queue and suggestions), so they can be unit tested. Put new logic there, not in the views.
 - The app target builds in Swift 6 mode with the main actor as its default isolation. Mark slow
   work `nonisolated` and run it off the main thread, like the preview fetch in `Ingest.swift`.
 - The data model follows CloudKit's rules so iCloud sync can be turned on later without a

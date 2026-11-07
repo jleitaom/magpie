@@ -1,0 +1,242 @@
+import MagpieKit
+import SwiftData
+import SwiftUI
+
+/// Sort Inbox (S-060): one Inbox block at a time, big, with a suggested collection.
+/// M moves it there, D marks it done, → skips it, ⌫ deletes it (menu bar: Inbox).
+struct SortInboxView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undo
+    /// Watched so the run follows the Inbox when something is saved or undone meanwhile.
+    @Query private var blocks: [Block]
+
+    var body: some View {
+        let run = model.sortSession
+        VStack(spacing: 0) {
+            if let current = model.sortingBlock {
+                progress(run)
+                    .padding(.top, Space.md)
+                SortCardStack(block: current, behind: min(run.upNext.count, 2))
+                    .padding(.top, Space.xxl)
+                Spacer(minLength: 0)
+            } else {
+                Spacer()
+                VStack(spacing: Space.sm) {
+                    Text(run.sorted > 0 ? "Inbox sorted" : "Nothing to sort").kitType(.display).foregroundStyle(Ink.text)
+                    Text(run.sorted > 0
+                         ? "\(run.sorted) sorted: \(run.kept) kept, \(run.done) done, \(run.deleted) deleted."
+                         : "New saves land in the Inbox. Come back after you’ve collected something.")
+                        .kitType(.body).foregroundStyle(Ink.secondary)
+                    Button("Back to Gallery") { model.show(.gallery) }
+                        .buttonStyle(.kit(.secondary))
+                        .padding(.top, Space.sm)
+                }
+                Spacer()
+            }
+        }
+        .padding(.top, Metric.barHeight)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .bottom) {
+            if model.sortingBlock != nil {
+                SortActionBar().padding(.bottom, Space.xxl)
+            }
+        }
+        .onChange(of: blocks.filter { $0.status == .inbox }.map(\.uid)) { model.syncSorting() }
+    }
+
+    private func progress(_ run: SortSession) -> some View {
+        VStack(spacing: Space.sm) {
+            HStack {
+                Text("Sorting your Inbox").kitType(.body).foregroundStyle(Ink.secondary)
+                Spacer()
+                let count = Text("\(run.sorted)").foregroundStyle(Ink.text).bold()
+                Text("\(count) sorted · \(run.left) left").kitType(.body).foregroundStyle(Ink.secondary)
+            }
+            KitProgressBar(value: run.progress)
+        }
+        .frame(width: Metric.sortWidth)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The current block, big, with up to two cards stacked behind it.
+private struct SortCardStack: View {
+    let block: Block
+    let behind: Int
+    @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undo
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Metric.radiusSortCard, style: .continuous)
+        let content = CardLayout.content(for: block, width: Metric.sortWidth)
+        let suggested = model.suggestion(for: block)
+        Group {
+            VStack(alignment: .leading, spacing: 0) {
+                switch content.body {
+                case .visual(let thumb):
+                    ThumbView(thumb: thumb, badge: content.badge)
+                        .frame(maxWidth: .infinity).frame(height: Metric.sortHero).clipped()
+                case .place:
+                    MapThumb().frame(maxWidth: .infinity).frame(height: Metric.sortHero).clipped()
+                case .note, .checklist, .plain: EmptyView()
+                }
+                VStack(alignment: .leading, spacing: Space.md) {
+                    Text(meta).kitType(.meta).foregroundStyle(Ink.secondary)
+                    Text(content.title).kitType(.title).foregroundStyle(Ink.text)
+                        .lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                    switch content.body {
+                    case .note(let text):
+                        Text(text).kitType(.body).foregroundStyle(Ink.text.opacity(0.85)).lineLimit(5)
+                            .fixedSize(horizontal: false, vertical: true)
+                    case .checklist(let lines):
+                        VStack(alignment: .leading, spacing: Metric.inlineGap) {
+                            ForEach(lines.prefix(5)) { Toggle($0.text, isOn: .constant($0.done)).toggleStyle(KitCheckStyle()) }
+                        }
+                    default:
+                        EmptyView()
+                    }
+                    MoveChips(suggested: suggested)
+                        .padding(.top, Space.xs)
+                }
+                .padding(.horizontal, Space.xxl)
+                .padding(.vertical, Space.xl)
+            }
+            .frame(width: Metric.sortWidth, alignment: .leading)
+            .background(Ink.card(tint: block.tint))
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(Ink.hairline))
+            .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+            // Up to two cards peeking out below: each one narrower and lower than the one in front.
+            .background(alignment: .top) {
+                ZStack(alignment: .top) {
+                    ForEach((0..<behind).reversed(), id: \.self) { index in
+                        let step = Metric.stackStep * CGFloat(index + 1)
+                        shape.fill(index == 0 ? Ink.surface : Ink.control)
+                            .overlay(shape.strokeBorder(Ink.hairline))
+                            .padding(.horizontal, step * 2)
+                            .offset(y: step) // grid: ok stacked cards peek out by one stackStep each
+                    }
+                }
+            }
+        }
+        .frame(width: Metric.sortWidth)
+        .id(block.uid)
+        .transition(.asymmetric(insertion: .opacity, removal: .move(edge: .top).combined(with: .opacity)))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(block.kind.label): \(content.title)")
+    }
+
+    private var meta: String {
+        let saved = block.createdAt.formatted(.relative(presentation: .named))
+        return [block.kind.label, block.siteName, "saved \(saved)"].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
+/// "Move to" chips: the suggested collection first, then the pinned ones, then "Other…" for the rest.
+private struct MoveChips: View {
+    let suggested: BlockCollection?
+    @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undo
+
+    var body: some View {
+        let pinned = model.pinnedCollections.filter { $0.uid != suggested?.uid }
+        let others = model.collectionTree.map(\.collection).filter { candidate in
+            candidate.uid != suggested?.uid && !pinned.contains { $0.uid == candidate.uid }
+        }
+        FlowRow(spacing: Space.sm) {
+            Text("Move to").kitType(.meta).foregroundStyle(Ink.secondary)
+                .frame(height: Metric.control)
+            if let suggested {
+                Button("Suggested: \(suggested.name)") { model.sortMove(to: suggested, undo: undo) }
+                    .buttonStyle(KitChipStyle(isSelected: true))
+                    .help("Move here (M)")
+            }
+            ForEach(pinned, id: \.uid) { target in
+                Button(target.name) { model.sortMove(to: target, undo: undo) }.buttonStyle(KitChipStyle())
+            }
+            if !others.isEmpty {
+                Menu {
+                    ForEach(others, id: \.uid) { target in
+                        Button(target.name) { model.sortMove(to: target, undo: undo) }
+                    }
+                } label: {
+                    Text("Other…")
+                }
+                .menuStyle(.button)
+                .buttonStyle(KitChipStyle())
+                .menuIndicator(.hidden)
+                .fixedSize()
+            }
+        }
+    }
+}
+
+/// The floating bar of actions, each showing its key.
+private struct SortActionBar: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undo
+
+    var body: some View {
+        let suggested = model.sortingBlock.flatMap(model.suggestion(for:))
+        HStack(spacing: Space.sm) {
+            Button(suggested.map { "Move to \($0.name)" } ?? "Move to suggested") { model.sortMove(to: suggested, undo: undo) }
+                .buttonStyle(KitKeyButtonStyle(key: "M", prominent: true))
+                .disabled(suggested == nil)
+            Button("Done") { model.sortDone() }
+                .buttonStyle(KitKeyButtonStyle(key: "D"))
+            Button("Skip") { model.sortSkip() }
+                .buttonStyle(KitKeyButtonStyle(key: "→"))
+                .disabled(model.sortSession.left < 2)
+            Button("Delete") { model.sortDelete(undo: undo) }
+                .buttonStyle(KitKeyButtonStyle(key: "⌫"))
+        }
+        .padding(Space.sm)
+        .background(RoundedRectangle(cornerRadius: Metric.radiusCard, style: .continuous).fill(Ink.surface))
+        .overlay(RoundedRectangle(cornerRadius: Metric.radiusCard, style: .continuous).strokeBorder(Ink.hairline))
+        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Sort this block")
+    }
+}
+
+/// Lays its children out left to right and wraps to a new line when the width runs out.
+private struct FlowRow: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(subviews, width: proposal.width ?? .infinity)
+        let width = rows.map { $0.width }.max() ?? 0
+        let height = rows.map(\.height).reduce(0, +) + spacing * CGFloat(max(rows.count - 1, 0))
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in arrange(subviews, width: bounds.width) {
+            var x = bounds.minX
+            for index in row.items {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y + (row.height - size.height) / 2), proposal: .unspecified)
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private func arrange(_ subviews: Subviews, width: CGFloat) -> [(items: [Int], width: CGFloat, height: CGFloat)] {
+        var rows: [(items: [Int], width: CGFloat, height: CGFloat)] = []
+        var current: (items: [Int], width: CGFloat, height: CGFloat) = ([], 0, 0)
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let needed = current.items.isEmpty ? size.width : current.width + spacing + size.width
+            if needed > width, !current.items.isEmpty {
+                rows.append(current)
+                current = ([index], size.width, size.height)
+            } else {
+                current = (current.items + [index], needed, max(current.height, size.height))
+            }
+        }
+        if !current.items.isEmpty { rows.append(current) }
+        return rows
+    }
+}

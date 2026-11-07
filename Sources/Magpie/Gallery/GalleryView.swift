@@ -6,6 +6,8 @@ import SwiftUI
 /// cards on screen are built, even with thousands of blocks.
 struct GalleryView: View {
     let blocks: [Block]
+    /// The Inbox shows "N blocks waiting to be sorted" with a Start sorting button above its cards.
+    var sortPrompt: Int = 0
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @FocusState private var hasFocus: Bool
@@ -22,6 +24,12 @@ struct GalleryView: View {
             let columns = Masonry.columns(heights: heights, count: count, gap: Metric.cardGap)
 
             ScrollView {
+                VStack(spacing: Space.lg) {
+                if sortPrompt > 0 {
+                    KitBanner(title: "\(sortPrompt) \(sortPrompt == 1 ? "block" : "blocks") waiting to be sorted",
+                              detail: "Sort them one at a time, from the keyboard. About a minute.",
+                              action: "Start sorting") { model.startSorting() }
+                }
                 HStack(alignment: .top, spacing: Metric.cardGap) {
                     ForEach(Array(columns.enumerated()), id: \.offset) { _, indexes in
                         LazyVStack(spacing: Metric.cardGap) {
@@ -31,6 +39,7 @@ struct GalleryView: View {
                         }
                         .frame(width: columnWidth)
                     }
+                }
                 }
                 .padding(.horizontal, Self.margin)
                 .padding(.top, Metric.barHeight + Space.sm)
