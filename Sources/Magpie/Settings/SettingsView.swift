@@ -60,7 +60,7 @@ struct GeneralSettings: View {
                 ForEach(AppearanceChoice.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
-            Text("Magpie is designed dark. Light and “Match my Mac” follow the same layout.")
+            Text("Magpie is designed dark. Switch any time with View → Appearance, or ⌃⌘T.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         Section("Library") {

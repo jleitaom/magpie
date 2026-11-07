@@ -82,7 +82,6 @@ final class AppModel {
 
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     @ObservationIgnored private var enriching: Set<UUID> = []
-    @ObservationIgnored @AppStorage("appearance") private var appearanceRaw = AppearanceChoice.dark.rawValue
 
     init(container: ModelContainer) {
         self.container = container
@@ -90,16 +89,27 @@ final class AppModel {
 
     // MARK: Appearance
 
-    var appearance: AppearanceChoice {
-        get { AppearanceChoice(rawValue: appearanceRaw) ?? .dark }
-        set {
-            appearanceRaw = newValue.rawValue
+    /// Saved in the app's preferences. A stored property, so the View menu's checkmarks follow it.
+    var appearance: AppearanceChoice = AppearanceChoice(rawValue: UserDefaults.standard.string(forKey: "appearance") ?? "") ?? .dark {
+        didSet {
+            UserDefaults.standard.set(appearance.rawValue, forKey: "appearance")
             applyAppearance()
         }
     }
 
     func applyAppearance() {
         NSApp.appearance = appearance.nsAppearance
+    }
+
+    /// Flips between Dark and Light (⌃⌘T). From "Match my Mac", it picks the opposite of what
+    /// the Mac shows now.
+    func toggleAppearance() {
+        let isDark = switch appearance {
+        case .dark: true
+        case .light: false
+        case .system: NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        }
+        appearance = isDark ? .light : .dark
     }
 
     /// Called once the window is up: retries previews that didn't finish last time.

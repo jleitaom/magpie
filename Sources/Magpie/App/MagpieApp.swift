@@ -27,7 +27,7 @@ struct MagpieApp: App {
         .modelContainer(model.container)
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: Metric.windowDefault.width, height: Metric.windowDefault.height)
-        .commands { MagpieCommands(model: model, selection: menu.selection) }
+        .commands { MagpieCommands(model: model, selection: menu.selection, appearance: model.appearance) }
 
         Settings {
             SettingsView()
@@ -43,6 +43,8 @@ struct MagpieApp: App {
 struct MagpieCommands: Commands {
     let model: AppModel
     let selection: UUID?
+    /// Passed in, not read from the model, so the menu redraws its checkmarks when it changes.
+    let appearance: AppearanceChoice
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
@@ -79,6 +81,18 @@ struct MagpieCommands: Commands {
                 .keyboardShortcut("2")
             Button("Collections…") { model.showsCollections = true }
                 .keyboardShortcut("k")
+            Divider()
+            Menu("Appearance") {
+                ForEach(AppearanceChoice.allCases) { choice in
+                    Toggle(choice.title, isOn: Binding(
+                        get: { appearance == choice },
+                        set: { if $0 { model.appearance = choice } }
+                    ))
+                }
+                Divider()
+                Button("Switch Dark and Light") { model.toggleAppearance() }
+                    .keyboardShortcut("t", modifiers: [.control, .command])
+            }
             Divider()
         }
     }

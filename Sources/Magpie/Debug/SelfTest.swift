@@ -77,6 +77,19 @@ enum SelfTest {
                 check("deleting a collection sends its blocks back to the Inbox", block.collection == nil && block.status == .inbox)
             }
 
+            // Appearance: ⌃⌘T flips Dark and Light. The choice lives in the app's real
+            // preferences, so the test puts it back afterwards.
+            let theme = model.appearance
+            model.appearance = .dark
+            model.toggleAppearance()
+            check("Switch Dark and Light goes from Dark to Light", model.appearance == .light && NSApp.appearance?.name == .aqua)
+            model.toggleAppearance()
+            check("and back to Dark", model.appearance == .dark && NSApp.appearance?.name == .darkAqua)
+            model.appearance = .system
+            model.toggleAppearance()
+            check("from Match my Mac it picks a fixed look", model.appearance != .system)
+            model.appearance = theme
+
             // Scopes.
             let all = blocks()
             check("Inbox shows only Inbox blocks", model.blocks(in: .inbox, from: all).allSatisfy { $0.status == .inbox })
