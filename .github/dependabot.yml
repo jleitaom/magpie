@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # One pull request for all workflow updates instead of one per action.
+    groups:
+      github-actions:
+        patterns: ["*"]

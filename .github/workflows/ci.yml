@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build app
+        run: ./build.sh
+
+      - name: Unit tests
+        run: swift test
+
+      - name: Grid check
+        run: scripts/grid-lint.sh
+
+      - name: Design kit check
+        run: |
+          if grep -rnE 'Color\(hex|Color\(red|\.font\(\.system|systemName:' Sources/Magpie | grep -v DesignKit/; then
+            echo "Views must use Ink, .kitType and KitIconView (see CONTRIBUTING.md)"; exit 1
+          fi
+
+      # The app's real actions on a fresh store in /tmp.
+      - name: Self-test
+        run: scripts/selftest.sh
+
+      - name: Snapshots
+        run: |
+          scripts/snap.sh
+          mkdir -p snapshots && cp /tmp/Magpie-shots/*.png snapshots/
+          test -s snapshots/all-light.png && test -s snapshots/all-dark.png
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: Magpie.app
+          path: build/Magpie.app
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: snapshots
+          path: snapshots/
+          if-no-files-found: ignore

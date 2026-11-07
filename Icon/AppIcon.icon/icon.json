@@ -1,0 +1,23 @@
+{
+  "fill-specializations" : [
+    { "value" : { "automatic-gradient" : "srgb:0.95000,0.95500,0.94000,1.00000" } },
+    { "appearance" : "dark", "value" : { "automatic-gradient" : "srgb:0.07000,0.10000,0.10000,1.00000" } }
+  ],
+  "groups" : [
+    {
+      "layers" : [
+        { "glass" : false, "image-name" : "quill.svg", "name" : "quill" },
+        { "glass" : true, "image-name" : "feather.svg", "name" : "feather" }
+      ],
+      "shadow" : { "kind" : "layer-color", "opacity" : 0.45 },
+      "translucency" : { "enabled" : false, "value" : 0 }
+    },
+    {
+      "layers" : [
+        { "glass" : false, "image-name" : "glow.svg", "name" : "glow" }
+      ],
+      "shadow" : { "kind" : "none", "opacity" : 0 }
+    }
+  ],
+  "supported-platforms" : { "squares" : [ "macOS" ] }
+}
