@@ -148,7 +148,7 @@ enum CardLayout {
             }
         }
         return CardContent(body: body, kindLabel: block.kind.label, title: block.title.isEmpty ? "Untitled" : block.title,
-                           site: block.siteName, badge: nil, tint: block.tint, thumbHeight: height)
+                           site: block.siteName, badge: block.badge, tint: block.tint, thumbHeight: height)
     }
 
     /// A close guess of the card's height, so columns come out even before cards render.

@@ -42,6 +42,12 @@ enum SeedData {
                 block.normalizedURL = Links.normalize(url)
             }
             block.bodyText = sample.text ?? ""
+            block.minutes = sample.minutes
+            if let price = sample.price {
+                block.price = price
+                block.currency = "EUR"
+            }
+            block.isRecipe = sample.recipe
             if let items = sample.checklist { block.checklist = items }
             if let art = sample.art, let image = render(art) {
                 block.thumbnail = image.data
@@ -69,32 +75,34 @@ enum SeedData {
     private struct Sample {
         var kind: BlockKind, title: String, site: String, url: String?
         var collection: String? = nil, text: String? = nil, checklist: [ChecklistItem]? = nil, art: Art? = nil
+        /// What S-063 would read from the page: watch or read time, price.
+        var minutes: Int? = nil, price: Double? = nil, recipe = false
     }
 
     private static let samples: [Sample] = [
         Sample(kind: .link, title: "Local-first software: you own your data, in spite of the cloud", site: "inkandswitch.com",
-               url: "https://www.inkandswitch.com/local-first/", art: Art(background: 0xE9E5DC, shape: 0x1E1E1E, size: 0.34, round: false, aspect: 1.6)),
+               url: "https://www.inkandswitch.com/local-first/", art: Art(background: 0xE9E5DC, shape: 0x1E1E1E, size: 0.34, round: false, aspect: 1.6), minutes: 34),
         Sample(kind: .video, title: "How to make Neapolitan pizza at home in a regular oven", site: "youtube.com",
-               url: "https://www.youtube.com/watch?v=sample-pizza", art: Art(background: 0xF3D9BD, shape: 0xC8553D, size: 0.58, aspect: 1.78)),
-        Sample(kind: .link, title: "Desk lamp, brass", site: "nordicnest.com", url: "https://www.nordicnest.com/sample-lamp",
-               art: Art(background: 0xEDEBE7, shape: 0xD9A441, size: 0.48, aspect: 1)),
+               url: "https://www.youtube.com/watch?v=sample-pizza", art: Art(background: 0xF3D9BD, shape: 0xC8553D, size: 0.58, aspect: 1.78), minutes: 13),
+        Sample(kind: .product, title: "Desk lamp, brass", site: "nordicnest.com", url: "https://www.nordicnest.com/sample-lamp",
+               art: Art(background: 0xEDEBE7, shape: 0xD9A441, size: 0.48, aspect: 1), price: 189),
         Sample(kind: .place, title: "Miradouro da Senhora do Monte", site: "maps.apple.com", url: "https://maps.apple.com/?q=Miradouro+da+Senhora+do+Monte"),
         Sample(kind: .note, title: "Gift idea for Ana", site: "Note", url: nil,
                text: "A Japanese pressing of Kind of Blue, the one with the obi strip. Check Flur in Cais do Sodré."),
         Sample(kind: .link, title: "Kind of Blue – 1959 original pressing", site: "discogs.com", url: "https://www.discogs.com/release/sample-kob",
                art: Art(background: 0x1F3A5F, shape: 0x0B0B0C, size: 0.78, aspect: 1)),
         Sample(kind: .video, title: "The making of a typeface that changed how we read signs", site: "vimeo.com", url: "https://vimeo.com/sample",
-               art: Art(background: 0x26262A, shape: 0xF2F2F2, size: 0.2, shapeAspect: 3, round: false, aspect: 1.78)),
+               art: Art(background: 0x26262A, shape: 0xF2F2F2, size: 0.2, shapeAspect: 3, round: false, aspect: 1.78), minutes: 22),
         Sample(kind: .image, title: "Japandi shelf styling", site: "pinterest.com", url: "https://www.pinterest.com/pin/sample",
                art: Art(background: 0xE3E9DF, shape: 0x7A8F6A, size: 0.7, shapeAspect: 0.75, round: false, aspect: 0.75)),
         Sample(kind: .video, title: "Lisbon in 4K — a slow walk through Alfama", site: "youtube.com", url: "https://www.youtube.com/watch?v=sample-alfama",
-               collection: "Watch later", art: Art(background: 0xF2DE9B, shape: 0x3E7CB1, size: 0.4, shapeAspect: 2, aspect: 1.78)),
+               collection: "Watch later", art: Art(background: 0xF2DE9B, shape: 0x3E7CB1, size: 0.4, shapeAspect: 2, aspect: 1.78), minutes: 47),
         Sample(kind: .video, title: "How espresso actually works", site: "youtube.com", url: "https://www.youtube.com/watch?v=sample-espresso",
-               collection: "Watch later", art: Art(background: 0x3B2A22, shape: 0xC8A27A, size: 0.46, aspect: 1.78)),
-        Sample(kind: .link, title: "Ceramic pour-over set", site: "etsy.com", url: "https://www.etsy.com/listing/sample-pourover",
-               collection: "Shopping", art: Art(background: 0xE8D8CC, shape: 0xA86E52, size: 0.5, shapeAspect: 0.8, aspect: 0.8)),
-        Sample(kind: .link, title: "Wool throw, oat", site: "hay.dk", url: "https://hay.dk/sample-throw",
-               collection: "Shopping", art: Art(background: 0xE6DFD1, shape: 0xB5A588, size: 0.56, shapeAspect: 1.5, round: false, aspect: 1.5)),
+               collection: "Watch later", art: Art(background: 0x3B2A22, shape: 0xC8A27A, size: 0.46, aspect: 1.78), minutes: 18),
+        Sample(kind: .product, title: "Ceramic pour-over set", site: "etsy.com", url: "https://www.etsy.com/listing/sample-pourover",
+               collection: "Shopping", art: Art(background: 0xE8D8CC, shape: 0xA86E52, size: 0.5, shapeAspect: 0.8, aspect: 0.8), price: 64),
+        Sample(kind: .product, title: "Wool throw, oat", site: "hay.dk", url: "https://hay.dk/sample-throw",
+               collection: "Shopping", art: Art(background: 0xE6DFD1, shape: 0xB5A588, size: 0.56, shapeAspect: 1.5, round: false, aspect: 1.5), price: 129),
         Sample(kind: .checklist, title: "Lisbon weekend", site: "Checklist", url: nil, collection: "Ideas",
                checklist: [ChecklistItem(text: "Book the train", done: true), ChecklistItem(text: "Time Out Market for lunch"),
                            ChecklistItem(text: "Sunset at Senhora do Monte")]),
@@ -105,11 +113,11 @@ enum SeedData {
         Sample(kind: .link, title: "A Love Supreme – Acoustic Sounds", site: "discogs.com", url: "https://www.discogs.com/release/sample-supreme",
                collection: "Vinyl", art: Art(background: 0x1A1A1A, shape: 0xE6E6E6, size: 0.74, aspect: 1)),
         Sample(kind: .link, title: "How to do great work", site: "paulgraham.com", url: "https://paulgraham.com/greatwork.html",
-               collection: "Reading", art: Art(background: 0xEFEDE6, shape: 0x8B2E2E, size: 0.3, shapeAspect: 0.75, round: false, aspect: 1.6)),
+               collection: "Reading", art: Art(background: 0xEFEDE6, shape: 0x8B2E2E, size: 0.3, shapeAspect: 0.75, round: false, aspect: 1.6), minutes: 42),
         Sample(kind: .link, title: "An architect’s guide to Lisbon", site: "dezeen.com", url: "https://www.dezeen.com/sample-lisbon",
-               collection: "Lisbon trip", art: Art(background: 0xF2E6D8, shape: 0xC46A3C, size: 0.44, shapeAspect: 2, aspect: 1.6)),
+               collection: "Lisbon trip", art: Art(background: 0xF2E6D8, shape: 0xC46A3C, size: 0.44, shapeAspect: 2, aspect: 1.6), minutes: 9),
         Sample(kind: .link, title: "Pastéis de nata at home", site: "seriouseats.com", url: "https://www.seriouseats.com/sample-nata",
-               collection: "Recipes", art: Art(background: 0xF3DDA6, shape: 0xB5651D, size: 0.5, aspect: 1.3)),
+               collection: "Recipes", art: Art(background: 0xF3DDA6, shape: 0xB5651D, size: 0.5, aspect: 1.3), minutes: 7, recipe: true),
     ]
 
     private static func cgColor(_ hex: UInt32) -> CGColor {

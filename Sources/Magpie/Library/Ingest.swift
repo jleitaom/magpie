@@ -31,6 +31,38 @@ enum Ingest {
         }
     }
 
+    /// Reads a page's facts (video length, price, recipe, read time) from its HTML, or for
+    /// Vimeo from its oEmbed. Best effort: nil when the page can't be read.
+    @concurrent
+    nonisolated static func fetchFacts(_ url: URL, timeout: TimeInterval = 15) async -> PageFacts? {
+        let site = Links.siteName(url)
+        if site == "vimeo.com" || site.hasSuffix(".vimeo.com") {
+            var oembed = URLComponents(string: "https://vimeo.com/api/oembed.json")!
+            oembed.queryItems = [URLQueryItem(name: "url", value: url.absoluteString)]
+            guard let endpoint = oembed.url, let (data, _) = try? await URLSession.shared.data(for: request(endpoint, timeout: timeout)),
+                  let seconds = PageReader.oEmbedDuration(data) else { return nil }
+            return PageFacts(kind: .video, durationSeconds: seconds)
+        }
+        guard let (data, response) = try? await URLSession.shared.data(for: request(url, timeout: timeout)),
+              (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,
+              (response.mimeType ?? "text/html").contains("html") else { return nil }
+        // A few MB is plenty for the head and article; very long pages are cut.
+        let html = String(decoding: data.prefix(4_000_000), as: UTF8.self)
+        return PageReader.read(html: html)
+    }
+
+    /// A plain browser-like request. YouTube gets its consent cookie, or Europe sees a consent page instead.
+    nonisolated static func request(_ url: URL, timeout: TimeInterval) -> URLRequest {
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+                         forHTTPHeaderField: "User-Agent")
+        request.setValue("en", forHTTPHeaderField: "Accept-Language")
+        if Links.siteName(url).hasSuffix("youtube.com") || Links.siteName(url) == "youtu.be" {
+            request.setValue("SOCS=CAI", forHTTPHeaderField: "Cookie")
+        }
+        return request
+    }
+
     /// Downsamples image data to a JPEG thumbnail and finds its main color. CPU work, off the main actor.
     @concurrent
     nonisolated static func process(_ data: Data) async -> ProcessedImage? {

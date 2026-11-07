@@ -1,4 +1,5 @@
 import Foundation
+import MagpieKit
 import SwiftData
 
 // The data. Written to CloudKit's rules so iCloud sync can be turned on later
@@ -7,12 +8,13 @@ import SwiftData
 // are found in code by `normalizedURL`), order is a Double.
 
 enum BlockKind: String, CaseIterable, Codable {
-    case link, video, place, image, file, note, checklist
+    case link, video, product, place, image, file, note, checklist
 
     var label: String {
         switch self {
         case .link: "Link"
         case .video: "Video"
+        case .product: "Product"
         case .place: "Place"
         case .image: "Image"
         case .file: "File"
@@ -59,6 +61,13 @@ final class Block {
     var createdAt: Date = Date.now
     var openedAt: Date?
     var collection: BlockCollection?
+    /// Watch time for a video, read time for an article (S-063).
+    var minutes: Int?
+    /// A product's price when it was saved, in `currency` (an ISO code like "EUR").
+    var price: Double?
+    var currency: String?
+    /// The page is a schema.org Recipe (for the Cook pile).
+    var isRecipe: Bool = false
 
     init(kind: BlockKind, title: String = "") {
         self.kindRaw = kind.rawValue
@@ -88,6 +97,12 @@ final class Block {
     }
 
     var tint: UInt32? { colorHex.map { UInt32(truncatingIfNeeded: $0) } }
+
+    /// The card's badge: the price for a product, else the watch or read time.
+    var badge: String? {
+        if let price { return Badges.price(price, currency: currency) }
+        return minutes.map(Badges.minutes)
+    }
 }
 
 /// A named place for blocks (Watch later, Shopping…). Called BlockCollection in code

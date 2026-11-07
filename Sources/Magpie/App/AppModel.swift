@@ -291,19 +291,42 @@ final class AppModel {
     private func enrich(_ block: Block) {
         guard let url = block.url, !url.isFileURL, !enriching.contains(block.uid) else { return }
         let uid = block.uid
+        let isPlace = block.kind == .place
         enriching.insert(uid)
         Task {
             defer { enriching.remove(uid) }
+            // The preview (title, picture) and the page's facts (length, price) load side by side.
+            async let factsTask = isPlace ? nil : Ingest.fetchFacts(url)
             let preview = await Ingest.fetchPreview(url)
             var processed: ProcessedImage?
             if let data = preview?.imageData { processed = await Ingest.process(data) }
+            let facts = await factsTask
             guard let block = self.block(uid) else { return }   // deleted meanwhile
+            apply(facts, to: block)
             if let title = preview?.title.map(Titles.clean), !title.isEmpty, block.title == block.siteName {
                 block.title = title
             }
             apply(processed, to: block)
             block.enrich = preview == nil ? .failed : .done
             save()
+        }
+    }
+
+    /// Video length, price, recipe and read time from the page (S-063).
+    func apply(_ facts: PageFacts?, to block: Block) {
+        guard let facts else { return }
+        block.minutes = facts.minutes ?? block.minutes
+        switch facts.kind {
+        case .video where block.kind == .link:
+            block.kind = .video
+        case .product where block.kind == .link:
+            block.kind = .product
+            block.price = facts.price
+            block.currency = facts.currency
+        case .recipe:
+            block.isRecipe = true
+        default:
+            break
         }
     }
 

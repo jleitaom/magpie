@@ -59,8 +59,8 @@ public enum Links {
         if imageTypes.contains(url.pathExtension.lowercased()) { return .image }
         if host == "youtu.be" || host.hasSuffix("youtube.com") || host == "vimeo.com" || host.hasSuffix(".vimeo.com")
             || host.hasSuffix("tiktok.com") { return .video }
-        if host == "maps.apple.com" || host == "maps.app.goo.gl" || host == "goo.gl" && path.hasPrefix("/maps")
-            || (host.hasSuffix("google.com") && path.hasPrefix("/maps")) { return .place }
+        if host == "maps.apple.com" || host == "maps.app.goo.gl" || (host == "goo.gl" && path.hasPrefix("/maps"))
+            || (host.hasPrefix("maps.google.")) || (host.hasSuffix("google.com") && path.hasPrefix("/maps")) { return .place }
         return .link
     }
 }

@@ -166,6 +166,23 @@ enum SelfTest {
             check("Inbox shows only Inbox blocks", model.blocks(in: .inbox, from: all).allSatisfy { $0.status == .inbox })
             check("nothing is lost after a save", (try? context.save()) != nil)
 
+            // S-063 page facts become the block's kind, length and price.
+            let shop = model.save(url: URL(string: "https://shop.example.com/lamp")!)
+            model.apply(PageFacts(kind: .product, price: 189, currency: "EUR"), to: shop)
+            check("a shop page with a price becomes a product with a badge", shop.kind == .product && shop.price == 189 && shop.badge?.contains("189") == true)
+            let clip = model.save(url: URL(string: "https://example.com/talk")!)
+            model.apply(PageFacts(kind: .video, durationSeconds: 782), to: clip)
+            check("a page with a video length becomes a video with “13 min”", clip.kind == .video && clip.minutes == 13 && clip.badge == "13 min")
+            let essay = model.save(url: URL(string: "https://example.com/essay")!)
+            model.apply(PageFacts(kind: .article, wordCount: 2300), to: essay)
+            check("an article gets its read time", essay.kind == .link && essay.minutes == 10)
+            let nata = model.save(url: URL(string: "https://example.com/nata")!)
+            model.apply(PageFacts(kind: .recipe), to: nata)
+            check("a recipe page is marked as a recipe", nata.isRecipe)
+            let map = model.save(url: URL(string: "https://maps.google.com/?q=Lisbon")!)
+            check("a Google Maps link is a place", map.kind == .place)
+            [shop, clip, essay, nata, map].forEach { model.delete([$0.uid], undo: nil) }
+
             // S-002 real previews from the network (APP_SELFTEST_NETWORK=1 scripts/selftest.sh).
             if ProcessInfo.processInfo.environment["APP_SELFTEST_NETWORK"] == "1" {
                 for link in ["https://www.apple.com/macbook-air/", "https://en.wikipedia.org/wiki/Magpie"] {
@@ -175,6 +192,17 @@ enum SelfTest {
                     check("  title filled in: “\(block.title.prefix(50))”", block.title != block.siteName)
                     check("  thumbnail and card color stored", block.thumbnail != nil && block.colorHex != nil,
                           "thumbnail \(block.thumbnail?.count ?? 0) bytes")
+                }
+                // S-063 real page facts.
+                let facts = await Ingest.fetchFacts(URL(string: "https://vimeo.com/76979871")!)
+                check("Vimeo's oEmbed gives a video length", (facts?.minutes ?? 0) > 0, "facts \(String(describing: facts))")
+                let essay = await Ingest.fetchFacts(URL(string: "https://paulgraham.com/greatwork.html")!)
+                check("an essay gets a read time", (essay?.minutes ?? 0) > 10, "facts \(String(describing: essay))")
+                let youtube = await Ingest.fetchFacts(URL(string: "https://www.youtube.com/watch?v=jNQXAC9IVRw")!)
+                check("a YouTube page gives a video length", youtube?.durationSeconds != nil, "facts \(String(describing: youtube))")
+                for shop in ["https://www.ikea.com/us/en/p/billy-bookcase-white-20522046/"] {
+                    let product = await Ingest.fetchFacts(URL(string: shop)!)
+                    check("a shop page gives a price (\(Links.siteName(URL(string: shop)!)))", product?.price != nil, "facts \(String(describing: product))")
                 }
             }
 
