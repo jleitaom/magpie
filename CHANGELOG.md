@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-08
+
 ### Added
 
 - **Install with Homebrew** (`brew install --cask jleitaom/tap/magpie`) or from a `.dmg`, and **update checks** through GitHub: Magpie asks before it checks on its own, and Settings → General has *Check for updates automatically* and **Check Now** (also Magpie → Check for Updates…)

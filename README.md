@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/jleitaom/magpie/releases/latest"><img src="https://img.shields.io/github/v/release/jleitaom/magpie" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-26%2B-blue" alt="macOS 26+">
-  <img src="https://img.shields.io/badge/status-early-orange" alt="Early">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
 </p>
 
@@ -97,6 +97,26 @@ To try it with sample data without touching your library:
 ```sh
 open --env APP_STORE=/tmp/Magpie-demo.store --env APP_SEED=1 /Applications/Magpie.app
 ```
+
+## How it works
+
+Your library is a SwiftData database in `~/Library/Application Support/Magpie/`, shaped so iCloud
+sync can be turned on later without a migration. When you save a link, Apple's LinkPresentation
+fetches its title and picture (like Messages does), and Magpie reads the page once for a video's
+length, a product's price or an article's read time. Text in pictures and screenshots is read on
+your Mac with Apple's Vision. Quick Save asks Safari for its front tab with Apple Events, and its
+shortcut uses the system's hot key service, which needs no permission.
+
+## Releasing
+
+Push a version tag. GitHub Actions builds a universal (Apple silicon + Intel) app and publishes a
+`.dmg`, a `.zip`, checksums, build attestations and the update feed, then updates the Homebrew cask:
+
+```sh
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+To package locally: `scripts/package.sh 1.0.0`. To rebuild the icon: `scripts/make-icon.sh`.
 
 ## Contributing
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-## v1: the Mac app (done, not yet released)
+## v1: the Mac app (released as 1.0.0)
 
 Saving from anywhere (Quick Save, the Dock icon, screenshots, bookmark import), the Gallery
 and Journal, nested collections and tags, Sort Inbox with a daily streak, Lucky Dip,
