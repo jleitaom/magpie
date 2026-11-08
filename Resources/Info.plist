@@ -14,11 +14,16 @@
 <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSAppleEventsUsageDescription</key><string>Quick Save reads the address and title of Safari’s front tab when you press its shortcut. Nothing else.</string>
+<key>CFBundleURLTypes</key><array><dict>
+<key>CFBundleURLName</key><string>Web links dropped on the Dock</string>
+<key>CFBundleTypeRole</key><string>Viewer</string>
+<key>CFBundleURLSchemes</key><array><string>http</string><string>https</string></array>
+</dict></array>
 <key>CFBundleDocumentTypes</key><array><dict>
 <key>CFBundleTypeName</key><string>Anything to save</string>
 <key>CFBundleTypeRole</key><string>Viewer</string>
 <key>LSHandlerRank</key><string>Alternate</string>
-<key>LSItemContentTypes</key><array><string>public.item</string><string>public.url</string></array>
+<key>LSItemContentTypes</key><array><string>public.image</string><string>public.data</string><string>public.content</string><string>public.url</string><string>com.apple.web-internet-location</string><string>public.file-url</string></array>
 </dict></array>
 <key>UTExportedTypeDeclarations</key><array><dict>
 <key>UTTypeIdentifier</key><string>com.jleitaom.magpie.block</string>

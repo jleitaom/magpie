@@ -14,6 +14,9 @@
   does for a link. It also downloads the page once to read a video's length, a product's price or
   an article's length. For Vimeo links it asks Vimeo's public oEmbed address instead. These
   requests go to the site you saved and nowhere else. Magpie has no server and no analytics.
+- **Dock drops.** So that links and files can be dropped on its Dock icon, Magpie tells macOS it can
+  open web links, pictures and files, at the lowest rank. It never becomes the default app or browser
+  for any of them.
 - **No data collection.** Your library is stored locally in
   `~/Library/Application Support/Magpie/`. There is no account, and nothing is uploaded.
 
