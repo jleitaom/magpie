@@ -15,8 +15,10 @@ Thanks for helping out!
     runs off the main thread (`Ingest.swift`), and export and import of the whole library
     (`ExportImport.swift`; the file formats are in `MagpieKit/Export.swift`). A new model field
     must be added to the export too, or the round-trip check in the self-test fails
-  - `MainWindow/`: the window, its top bar, the drop target and the bottom hint (`MainView.swift`)
-  - `Gallery/`: the masonry of cards (`GalleryView.swift`)
+  - `MainWindow/`: the window, its top bar, the drop target and the bottom hint (`MainView.swift`),
+    and the "Saved to Inbox" message shown after a drop on the Dock icon (`DropHUD.swift`)
+  - `Gallery/`: the masonry of cards and the right-click menu every Block shares (`GalleryView.swift`),
+    and dragging cards into your own order (`Reorder.swift`)
   - `Journal/`: the Journal, a numbered list of the same blocks (`JournalView.swift`). Sort
     orders are in `MagpieKit/BlockOrder.swift`
   - `SortInbox/`: Sort Inbox, one Inbox block at a time (`SortInboxView.swift`). The queue and the
@@ -33,12 +35,14 @@ Thanks for helping out!
     tag menu and prompts (`TagViews.swift`). Name rules are in `MagpieKit/Tags.swift`
   - `Details/`: the panel that slides in for a selected Block (`DetailsPanel.swift`)
   - `Collections/`: the "N more" panel to find, pin and create collections (`CollectionsPopover.swift`)
-  - `Settings/`: the Settings window (⌘,)
+  - `Settings/`: the Settings window (⌘,), with General and Shortcuts tabs (`SettingsView.swift`)
   - `DesignKit/`: Magpie's own look. Tokens, type, icons, parts (buttons, cards, controls, the
     top bar) and the window chrome
   - `Debug/`: the self-test, snapshot mode and sample data
 - `Sources/MagpieKit/` holds the rules with no UI (link parsing and normalizing, masonry math,
-  color math, the collection tree, the Sort Inbox queue and suggestions, the Inbox zero streak, piles and Lucky Dip, and `PageReader`, which reads video length, price, recipes and read time from a page's HTML), so they can be unit tested. Put new logic there, not in the views.
+  color math, the collection tree, the Sort Inbox queue and suggestions, the Inbox zero streak, piles and Lucky Dip,
+  sort orders, tags, search, Rediscover and expiry, the bookmarks file, the export format, and `PageReader`,
+  which reads video length, price, recipes and read time from a page's HTML), so they can be unit tested. Put new logic there, not in the views.
 - The app target builds in Swift 6 mode with the main actor as its default isolation. Mark slow
   work `nonisolated` and run it off the main thread, like the preview fetch in `Ingest.swift`.
 - The data model follows CloudKit's rules so iCloud sync can be turned on later without a

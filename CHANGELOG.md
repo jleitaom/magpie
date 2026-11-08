@@ -40,20 +40,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Fixed
 
 - A crash when a block was deleted while its card was still fading out (for example ⌫ in Sort Inbox)
-
 - Magpie's own checks no longer open pages in your browser
-
 - Deleting a card no longer makes the other cards overlap while the Gallery rearranges
-
 - Dropping onto the Dock icon now works for pictures, files, Safari link files and website links dragged from Chrome or Safari. Magpie never becomes your default app or browser for any of them
-
 - The demo and test libraries no longer change how your real library is sorted
-
 - YouTube videos show the video's title, not the channel's name, and Vimeo videos their real title too
 - Google Maps and Apple Maps links are named after the place ("Torre de Belém") and show the mini map instead of a generic picture
 - Pages that forward you with a redirect in their HTML (like inkandswitch.com) get their title, picture and read time
 - Saving a link you already have refreshes its title, picture, length and price
-
 - The Collections panel and the + New block menu have a solid background, so the cards behind them no longer show through the text
 
 ## [0.1.0] - 2026-11-07

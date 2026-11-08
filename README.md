@@ -32,15 +32,20 @@ and then nudges you to read, watch and use what you saved.
 
 ## Features
 
-- **Paste or drop anything.** Links get their title, picture and site name filled in on their own
-- **Gallery** of image-first cards, each tinted with its picture's color
-- **Collections**, with up to 5 pinned in the top bar
-- **Details panel** for any Block
-- Dark by default, with Light or Match my Mac in Settings
+- **Save anything.** Paste, drop or add links, images, videos, files, notes and checklists. Links get their title, picture and site name on their own, and videos, products and places show their length, price or a map
+- **Quick Save** (⌃⌥Space, anywhere) saves Safari's front tab or the clipboard without leaving what you're doing. You can also drop things onto the Dock icon, or turn a screenshot into a Block (⌃⌥S)
+- **Gallery and Journal.** See image-first cards, each tinted with its picture's color, or a dense list. Sort by newest, quickest, title, site, color, shuffle or your own order
+- **Collections and tags.** Nest collections, pin up to 5 to the top bar, and tag across them
+- **Sort Inbox.** Go through new saves one at a time from the keyboard, with a suggested collection. Reaching Inbox zero keeps a daily streak
+- **Lucky Dip.** Can't decide what to read or watch? Pick a pile and how much time you have, and Magpie picks one. You get two re-spins a day, then you commit
+- **Rediscover.** Five old saves a day to keep or archive. Collections like Watch later can expire their Blocks, so they empty themselves
+- **Search everything,** including the text inside your images
+- **Import your bookmarks** from Safari, Chrome or Firefox, with folders becoming collections
+- Dark by default, with Light or Match my Mac. Every action has a keyboard shortcut
 - Local and private. Everything stays on your Mac, with no account and no server
 - Never locked in: File → Export Library writes everything to plain files (JSON, pictures, and a bookmarks file any browser imports)
 
-Coming next: Sort Inbox, Lucky Dip, Rediscover, search, tags and Quick Save. See the [roadmap](ROADMAP.md).
+Coming next: an iPhone app with iCloud sync, and saving from the Share menu. See the [roadmap](ROADMAP.md).
 
 ## Build from source
 
