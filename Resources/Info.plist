@@ -68,6 +68,8 @@
 	<string>NSApplication</string>
 	<key>SUFeedURL</key>
 	<string>https://github.com/jleitaom/magpie/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>KWEuSErOZzQha4OdXuLj5ujHREL8Y4KzJevwjPfqOHk=</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

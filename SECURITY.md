@@ -48,8 +48,10 @@ To check a downloaded app:
 
 ```sh
 codesign -dr - /Applications/Magpie.app
-# designated => identifier "com.jleitaom.magpie" and certificate leaf = H"…"
+# designated => identifier "com.jleitaom.magpie" and certificate leaf = H"3c0d7df33d8eccb464d9ec0fd77e6a58958887a6"
 ```
+
+If a release ever shows a different certificate hash, don't install it and report it as below.
 
 Updates are checked twice before they're installed: Sparkle only accepts an archive signed with
 the project's EdDSA key (its public half is `SUPublicEDKey` in `Info.plist`), and the new app
