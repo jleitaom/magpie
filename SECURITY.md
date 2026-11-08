@@ -9,16 +9,59 @@
 - **Screen Recording, only for screenshots.** ⌃⌥S runs macOS's own screenshot tool to save the area
   you select. macOS asks for Screen Recording permission the first time. The picture stays in your
   library, and its text is read on your Mac with Apple's Vision. Turn the shortcut off in Settings.
-- **Network: link previews only.** When you save a link, Magpie asks Apple's LinkPresentation
+- **Network: link previews and update checks.** When you save a link, Magpie asks Apple's LinkPresentation
   framework to fetch that page's title, picture and site name, which is the same thing Messages
   does for a link. It also downloads the page once to read a video's length, a product's price or
   an article's length. For Vimeo links it asks Vimeo's public oEmbed address instead. These
   requests go to the site you saved and nowhere else. Magpie has no server and no analytics.
+- **Update checks.** Magpie also connects to GitHub to see whether there's a newer release (the
+  `appcast.xml` attached to the latest release), using [Sparkle](https://sparkle-project.org).
+  Sparkle asks before it checks on its own, it checks at most once a day, and you can turn it off
+  in Settings → General → *Check for updates automatically*. The request carries Magpie's and
+  Sparkle's version numbers and nothing else: no system profile, no identifiers.
 - **Dock drops.** So that links and files can be dropped on its Dock icon, Magpie tells macOS it can
   open web links, pictures and files, at the lowest rank. It never becomes the default app or browser
   for any of them.
 - **No data collection.** Your library is stored locally in
   `~/Library/Application Support/Magpie/`. There is no account, and nothing is uploaded.
+
+## Verifying a download
+
+Releases are built by GitHub Actions directly from the tagged source code. They are not notarized
+by Apple (the project doesn't use a paid developer account), so you can verify them yourself:
+
+```sh
+# 1. Check the file was built by this repo's release workflow
+gh attestation verify Magpie-1.0.0.dmg --repo jleitaom/magpie
+
+# 2. Or compare the checksum with SHA256SUMS.txt from the release page
+shasum -a 256 Magpie-1.0.0.dmg
+```
+
+Or skip downloads entirely and build from source with `./build.sh`.
+
+## Code signing
+
+Releases are signed with the project's self-signed certificate, `Magpie Self-Signed`, so every
+version has the same code identity and keeps the Safari and Screen Recording access you granted.
+To check a downloaded app:
+
+```sh
+codesign -dr - /Applications/Magpie.app
+# designated => identifier "com.jleitaom.magpie" and certificate leaf = H"…"
+```
+
+Updates are checked twice before they're installed: Sparkle only accepts an archive signed with
+the project's EdDSA key (its public half is `SUPublicEDKey` in `Info.plist`), and the new app
+must be signed with the same certificate as the one you have.
+
+The app is signed with the hardened runtime and two entitlements:
+
+- `com.apple.security.automation.apple-events`, so Quick Save can ask Safari for its front tab.
+  macOS still asks you before it allows it.
+- `com.apple.security.cs.disable-library-validation`, so the hardened runtime can load
+  `Sparkle.framework`, which is signed with the same self-signed certificate. That certificate
+  has no Apple Team ID, and library validation requires one.
 
 ## Reporting a vulnerability
 

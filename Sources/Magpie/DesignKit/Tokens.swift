@@ -142,6 +142,8 @@ enum Metric {
     static let pressScale: CGFloat = 0.97
     static let windowDefault = CGSize(width: 1200, height: 800)
     static let windowMinimum = CGSize(width: 1040, height: 560)
+    /// Settings tabs grow to fit their content up to this, then scroll (fits a 13-inch screen).
+    static let settingsMaxHeight: CGFloat = 800
     /// Traffic lights: center of the close button, and the distance between buttons.
     static let trafficLights = CGPoint(x: 28, y: 28)
     static let trafficLightSpacing: CGFloat = 20

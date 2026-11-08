@@ -1,34 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleIdentifier</key><string>com.jleitaom.magpie</string>
-<key>CFBundleName</key><string>Magpie</string>
-<key>CFBundleDisplayName</key><string>Magpie</string>
-<key>CFBundleExecutable</key><string>Magpie</string>
-<key>CFBundleIconFile</key><string>AppIcon</string>
-<key>CFBundleIconName</key><string>AppIcon</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1</string>
-<key>CFBundleVersion</key><string>1</string>
-<key>LSMinimumSystemVersion</key><string>26.0</string>
-<key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
-<key>NSHighResolutionCapable</key><true/>
-<key>NSAppleEventsUsageDescription</key><string>Quick Save reads the address and title of Safari’s front tab when you press its shortcut. Nothing else.</string>
-<key>CFBundleURLTypes</key><array><dict>
-<key>CFBundleURLName</key><string>Web links dropped on the Dock</string>
-<key>CFBundleTypeRole</key><string>Viewer</string>
-<key>CFBundleURLSchemes</key><array><string>http</string><string>https</string></array>
-</dict></array>
-<key>CFBundleDocumentTypes</key><array><dict>
-<key>CFBundleTypeName</key><string>Anything to save</string>
-<key>CFBundleTypeRole</key><string>Viewer</string>
-<key>LSHandlerRank</key><string>Alternate</string>
-<key>LSItemContentTypes</key><array><string>public.image</string><string>public.data</string><string>public.content</string><string>public.url</string><string>com.apple.web-internet-location</string><string>public.file-url</string></array>
-</dict></array>
-<key>UTExportedTypeDeclarations</key><array><dict>
-<key>UTTypeIdentifier</key><string>com.jleitaom.magpie.block</string>
-<key>UTTypeDescription</key><string>Magpie block</string>
-<key>UTTypeConformsTo</key><array><string>public.data</string></array>
-</dict></array>
-<key>NSPrincipalClass</key><string>NSApplication</string>
-</dict></plist>
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Magpie</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Anything to save</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.image</string>
+				<string>public.data</string>
+				<string>public.content</string>
+				<string>public.url</string>
+				<string>com.apple.web-internet-location</string>
+				<string>public.file-url</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleExecutable</key>
+	<string>Magpie</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.jleitaom.magpie</string>
+	<key>CFBundleName</key>
+	<string>Magpie</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>Web links dropped on the Dock</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>http</string>
+				<string>https</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Quick Save reads the address and title of Safari’s front tab when you press its shortcut. Nothing else.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 José Leitão. MIT License.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/jleitaom/magpie/releases/latest/download/appcast.xml</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Magpie block</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.jleitaom.magpie.block</string>
+		</dict>
+	</array>
+</dict>
+</plist>

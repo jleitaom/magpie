@@ -28,7 +28,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .fitsContent()
+        .fitsContent(max: Metric.settingsMaxHeight)
         .frame(width: 520)
     }
 }
@@ -57,6 +57,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 /// Appearance, new collections, Rediscover and the library (S-053).
 struct GeneralSettings: View {
     @Environment(AppModel.self) private var model
+    @ObservedObject private var updater = Updater.shared
 
     var body: some View {
         @Bindable var model = model
@@ -90,6 +91,19 @@ struct GeneralSettings: View {
             }
             LabeledContent("Back up") {
                 Button("Export Library…") { model.chooseExportFolder() }
+            }
+        }
+        Section("Updates") {
+            Toggle("Check for updates automatically",
+                   isOn: Binding(get: { updater.automaticallyChecks }, set: { updater.automaticallyChecks = $0 }))
+                .disabled(!updater.isAvailable)
+            LabeledContent {
+                Button("Check Now") { updater.checkForUpdates() }
+                    .disabled(!updater.canCheck)
+            } label: {
+                Text(updater.isAvailable ? "Once a day, from Magpie’s releases on GitHub. Nothing else is sent."
+                                         : "Updates are off while Magpie uses a test library.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
     }

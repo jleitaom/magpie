@@ -43,19 +43,54 @@ and then nudges you to read, watch and use what you saved.
 - **Import your bookmarks** from Safari, Chrome or Firefox, with folders becoming collections
 - Dark by default, with Light or Match my Mac. Every action has a keyboard shortcut
 - Local and private. Everything stays on your Mac, with no account and no server
+- **Update checks** through GitHub, with your permission and a switch to turn them off
 - Never locked in: File → Export Library writes everything to plain files (JSON, pictures, and a bookmarks file any browser imports)
 
 Coming next: an iPhone app with iCloud sync, and saving from the Share menu. See the [roadmap](ROADMAP.md).
 
+## Install
+
+Magpie needs macOS 26 (Tahoe) or later. With [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask jleitaom/tap/magpie
+```
+
+Or download `Magpie-x.y.z.dmg` from the [latest release](https://github.com/jleitaom/magpie/releases/latest)
+and drag **Magpie** into **Applications**. The first time you open it, macOS will say it can't verify
+the app. Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. You only
+need to do this once.
+
+Magpie checks for updates through GitHub, after asking you first. Updates keep the access you gave
+Quick Save (Safari) and screenshots (Screen Recording): every release is signed with the same
+certificate, so macOS recognizes the new version as the same app.
+
+### Why the warning?
+
+Magpie is free and isn't distributed through Apple's paid developer program, so macOS can't vouch
+for it. Instead, every release is built in public by GitHub Actions from the source in this repo,
+and you can check that your download matches:
+
+```sh
+gh attestation verify Magpie-1.0.0.dmg --repo jleitaom/magpie
+```
+
+See [SECURITY.md](SECURITY.md) for details, or build it yourself (below).
+
 ## Build from source
 
-You need macOS 26 and Xcode 26 (Swift 6.2) or the matching Swift toolchain.
+Building needs Xcode 26 (Swift 6.2) or the matching Swift toolchain.
 
 ```sh
 git clone https://github.com/jleitaom/magpie.git
 cd magpie
 ./build.sh --install    # builds, copies to /Applications and launches
 ```
+
+Your builds are ad hoc signed, so macOS treats each rebuild as a new app and asks again for Safari
+and Screen Recording access. To avoid that, create a self-signed code signing certificate named
+`Magpie Self-Signed` in Keychain Access (Certificate Assistant → Create a Certificate, type Code
+Signing); `build.sh` uses it automatically.
 
 To try it with sample data without touching your library:
 

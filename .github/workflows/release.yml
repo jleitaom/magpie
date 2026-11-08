@@ -1,0 +1,140 @@
+name: Release
+
+# Push a tag like v0.1.0 to build, package and publish a GitHub release.
+# Every file gets a SHA-256 checksum and a signed build provenance attestation,
+# so anyone can verify a download was built by this workflow from this repo:
+#   gh attestation verify Magpie-1.0.0.dmg --repo jleitaom/magpie
+#
+# Builds are signed with the project's self-signed certificate (secrets SIGNING_CERT_P12
+# and SIGNING_CERT_PASSWORD), so every release has the same code identity and keeps the
+# Safari (Quick Save) and Screen Recording access people granted to the previous one.
+#
+# Run it by hand (Actions → Release → Run workflow) for a dry run: it builds and signs
+# the same way, and uploads the files as a workflow artifact instead of publishing.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version for the dry-run build
+        default: 0.0.0
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: macos-26
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      SIGN_IDENTITY: Magpie Self-Signed
+      PUBLISH: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # build.sh numbers builds by commit count
+
+      # A temporary keychain that holds only the signing certificate, deleted at the end.
+      - name: Import signing certificate
+        env:
+          SIGNING_CERT_P12: ${{ secrets.SIGNING_CERT_P12 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password=$(openssl rand -base64 24)
+          echo "$SIGNING_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$SIGNING_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          security find-identity -p codesigning "$keychain" | grep -q "\"$SIGN_IDENTITY\"" \
+            || { echo "::error::$SIGN_IDENTITY not found in the imported certificate"; exit 1; }
+
+      - name: Package
+        env:
+          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+        run: scripts/package.sh "${VERSION#v}"
+
+      # The appcast Sparkle reads from the latest release (SUFeedURL in Info.plist), signed
+      # with the project's EdDSA key so the app only installs updates built here.
+      - name: Write appcast
+        env:
+          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          version="${VERSION#v}"
+          build=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" build/Magpie.app/Contents/Info.plist)
+          export SPARKLE_KEY_FILE="$RUNNER_TEMP/sparkle.key"
+          (umask 077 && printf '%s' "$SPARKLE_PRIVATE_KEY" > "$SPARKLE_KEY_FILE")
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${version}/Magpie-${version}.zip"
+          scripts/appcast.sh "$version" "$build" "dist/Magpie-${version}.zip" "$url" > dist/appcast.xml
+          rm -f "$SPARKLE_KEY_FILE"
+          cat dist/appcast.xml
+
+      # Fails the release if the app ended up ad hoc signed, which would cost every user
+      # their Safari and Screen Recording access on update.
+      - name: Check signature
+        run: |
+          codesign --verify --strict build/Magpie.app
+          codesign -dr - build/Magpie.app 2>&1 | tee /dev/stderr | grep -q "certificate leaf"
+
+      # Free attestations are only available for public repositories.
+      - name: Attest build provenance
+        if: ${{ env.PUBLISH == 'true' && !github.event.repository.private }}
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with:
+          subject-path: |
+            dist/*.dmg
+            dist/*.zip
+
+      - name: Publish release
+        if: ${{ env.PUBLISH == 'true' }}
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          files: dist/*
+          generate_release_notes: true
+
+      # Pushes the new version to jleitaom/homebrew-tap with a deploy key that can only write
+      # to that repo (secret TAP_DEPLOY_KEY).
+      - name: Update Homebrew tap
+        if: ${{ env.PUBLISH == 'true' }}
+        env:
+          VERSION: ${{ github.ref_name }}
+          TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+        run: |
+          version="${VERSION#v}"
+          sha=$(shasum -a 256 "dist/Magpie-${version}.zip" | cut -d' ' -f1)
+          key="$RUNNER_TEMP/tap_key"
+          known_hosts="$RUNNER_TEMP/known_hosts"
+          (umask 077 && printf '%s\n' "$TAP_DEPLOY_KEY" > "$key")
+          # GitHub's published host key (api.github.com/meta), so the push can't be redirected.
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$known_hosts -o StrictHostKeyChecking=yes"
+          git clone --depth 1 git@github.com:jleitaom/homebrew-tap.git "$RUNNER_TEMP/tap"
+          mkdir -p "$RUNNER_TEMP/tap/Casks"
+          scripts/cask.sh "$version" "$sha" > "$RUNNER_TEMP/tap/Casks/magpie.rb"
+          cd "$RUNNER_TEMP/tap"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/magpie.rb
+          git commit -m "magpie $version"
+          git push
+          rm -f "$key"
+
+      - name: Upload dry-run build
+        if: ${{ env.PUBLISH != 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: Magpie-dry-run
+          path: dist/*
+
+      - name: Delete signing keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true

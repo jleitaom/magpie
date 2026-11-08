@@ -62,6 +62,9 @@ struct MagpieCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            CheckForUpdatesButton()
+        }
         CommandGroup(replacing: .newItem) {
             Button("New Note") { model.addNote() }
                 .keyboardShortcut("n")
@@ -248,6 +251,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Started from a terminal, the process is not a foreground app yet.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
+        _ = Updater.shared // starts Sparkle's scheduled checks
         // Remember the app you were in, to give it the focus back after a quick Dock drop.
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification,
                                                           object: nil, queue: .main) { note in
@@ -312,6 +316,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The self-test's result becomes the exit code, after a normal quit.
     func applicationWillTerminate(_ notification: Notification) {
         if SelfTest.requested { exit(SelfTest.exitCode) }
+    }
+}
+
+/// Magpie → Check for Updates…, greyed out while a check runs or in builds without updates.
+struct CheckForUpdatesButton: View {
+    @ObservedObject private var updater = Updater.shared
+
+    var body: some View {
+        Button("Check for Updates…") { updater.checkForUpdates() }
+            .disabled(!updater.canCheck)
     }
 }
 

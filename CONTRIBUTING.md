@@ -9,8 +9,9 @@ Thanks for helping out!
 ```
 
 - Source lives in `Sources/Magpie/`, grouped by area:
-  - `App/`: startup and the menu bar commands (`MagpieApp.swift`), and every action the app
-    can take, such as saving, moving, deleting and pinning (`AppModel.swift`)
+  - `App/`: startup and the menu bar commands (`MagpieApp.swift`), every action the app
+    can take, such as saving, moving, deleting and pinning (`AppModel.swift`), and update
+    checks through Sparkle (`Updater.swift`)
   - `Library/`: the SwiftData models (`Models.swift`), the link preview fetcher, which
     runs off the main thread (`Ingest.swift`), and export and import of the whole library
     (`ExportImport.swift`; the file formats are in `MagpieKit/Export.swift`). A new model field
@@ -86,6 +87,23 @@ open --env APP_STORE=/tmp/Magpie-demo.store --env APP_SEED=1 build/Magpie.app
 
 CI runs the build, the unit tests, the grid and design kit checks, the self-test and the
 snapshots on every PR. Download the snapshots from the run's artifacts to review design changes.
+
+## Releases
+
+- Push a tag like `v1.0.0` and `.github/workflows/release.yml` builds a universal app, signs it,
+  packages `Magpie-1.0.0.dmg` and `.zip` (`scripts/package.sh`), and publishes a GitHub release
+  with checksums and a build provenance attestation. Before tagging, move the **Unreleased**
+  notes in `CHANGELOG.md` under the new version. Run the workflow by hand for a dry run.
+- Releases are signed with the `Magpie Self-Signed` certificate (the `SIGNING_CERT_P12` and
+  `SIGNING_CERT_PASSWORD` secrets), so updates keep the access people granted.
+- Releases publish an `appcast.xml` (written by `scripts/appcast.sh`) that Sparkle reads from
+  the latest release. It's signed with the EdDSA key in the `SPARKLE_PRIVATE_KEY` secret; the
+  maintainer keeps a copy in the login keychain (`generate_keys --account magpie`). Without that
+  key, existing installs can't be updated, so don't lose it.
+- Releases also update the Homebrew cask in
+  [jleitaom/homebrew-tap](https://github.com/jleitaom/homebrew-tap) (written by `scripts/cask.sh`),
+  using a deploy key that can only write to that repo (the `TAP_DEPLOY_KEY` secret).
+- Sparkle never starts with a test library (`APP_STORE`), so the self-test and snapshots stay offline.
 
 ## Pull requests
 
