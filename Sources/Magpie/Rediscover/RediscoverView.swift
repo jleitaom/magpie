@@ -62,6 +62,10 @@ private struct RediscoverCard: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        if block.isGone { EmptyView() } else { live }
+    }
+
+    @ViewBuilder private var live: some View {
         let shape = RoundedRectangle(cornerRadius: Metric.radiusSortCard, style: .continuous)
         let content = CardLayout.content(for: block, width: Metric.sortWidth)
         VStack(alignment: .leading, spacing: 0) {

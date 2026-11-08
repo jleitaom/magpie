@@ -36,6 +36,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
+- A crash when a block was deleted while its card was still fading out (for example ⌫ in Sort Inbox)
+
 - Magpie's own checks no longer open pages in your browser
 
 - Deleting a card no longer makes the other cards overlap while the Gallery rearranges

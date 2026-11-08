@@ -9,6 +9,10 @@ struct DetailsPanel: View {
     @Environment(\.undoManager) private var undoManager
 
     var body: some View {
+        if block.isGone { EmptyView() } else { live }
+    }
+
+    @ViewBuilder private var live: some View {
         KitPanel {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {

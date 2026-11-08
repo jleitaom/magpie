@@ -130,6 +130,10 @@ private struct JournalRow: View {
     @State private var hovering = false
 
     var body: some View {
+        if block.isGone { EmptyView() } else { live }
+    }
+
+    @ViewBuilder private var live: some View {
         let ink = isSelected ? Ink.onChosen : Ink.text
         let quiet = isSelected ? Ink.onChosen.opacity(0.7) : Ink.secondary
         JournalColumns(widths: JournalColumns.widths, gap: Space.lg) {

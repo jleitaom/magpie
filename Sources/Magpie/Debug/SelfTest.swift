@@ -593,6 +593,7 @@ enum SelfTest {
                 picture.thumbnail = dot.tiffRepresentation
                 model.addTags("export, Jazz", to: picture)
                 picture.note = "Why: “quotes” & ampersands"
+                let pictureID = picture.uid   // read before the library is emptied below
                 let base = FileManager.default.temporaryDirectory.appending(path: "magpie-selftest-export")
                 try? FileManager.default.removeItem(at: base)
                 try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
@@ -628,8 +629,8 @@ enum SelfTest {
                 }
                 check("reading an export back loses nothing: every block, field, collection, tag and day",
                       added == before.blocks.count && normal(before) == normal(after), "\(added) of \(before.blocks.count) blocks")
-                let pictureBefore = try Data(contentsOf: first.appending(path: "images/\(picture.uid.uuidString).jpg"))
-                let pictureAfter = model.block(picture.uid)?.thumbnail
+                let pictureBefore = try Data(contentsOf: first.appending(path: "images/\(pictureID.uuidString).jpg"))
+                let pictureAfter = model.block(pictureID)?.thumbnail
                 check("…pictures included", pictureAfter == pictureBefore)
                 check("reading the same export twice adds nothing", try model.importExport(first.appending(path: "library.json")) == 0)
                 try? FileManager.default.removeItem(at: base)

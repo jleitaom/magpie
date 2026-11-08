@@ -117,6 +117,10 @@ final class Block {
 
     var tint: UInt32? { colorHex.map { UInt32(truncatingIfNeeded: $0) } }
 
+    /// Deleted (or detached from its library). A view still on screen for a moment after a
+    /// delete must not read it: SwiftData stops the app when a deleted block's picture is read.
+    var isGone: Bool { isDeleted || modelContext == nil }
+
     var pileOverride: Pile? {
         get { pileRaw.flatMap(Pile.init(rawValue:)) }
         set { pileRaw = newValue?.rawValue }

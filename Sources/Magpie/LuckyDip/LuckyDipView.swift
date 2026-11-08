@@ -172,6 +172,10 @@ private struct PickCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        if block.isGone { EmptyView() } else { live }
+    }
+
+    @ViewBuilder private var live: some View {
         let shape = RoundedRectangle(cornerRadius: Metric.radiusPanel, style: .continuous)
         let content = CardLayout.content(for: block, width: Metric.dipPickHero)
         let pile = block.pile ?? model.dipPile
