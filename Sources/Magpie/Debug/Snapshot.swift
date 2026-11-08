@@ -33,16 +33,19 @@ enum Snapshot {
                 NSApp.appearance = NSAppearance(named: mode == "light" ? .aqua : .darkAqua)
                 for page in SnapshotPage.allCases where only?.contains(page.rawValue) ?? true {
                     page.show(in: model)
-                    if page == .quickSave {
-                        if let panel = model.quickSavePanel.window { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: panel) }
-                        model.quickSavePanel.close()
-                    } else if page.hasPopover {
+                    if page.hasPopover {
                         // Let the previous popover finish closing, or the new one won't open.
                         try? await Task.sleep(for: .seconds(0.8))
                         page.openPopover(in: model)
                     }
                     try? await Task.sleep(for: .seconds(1.2))
-                    if page == .quickSave {
+                    if page == .importSheet {
+                        let sheet = NSApp.windows.compactMap(\.attachedSheet).first ?? NSApp.windows.first { $0.isSheet && $0.isVisible }
+                        if let sheet { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: sheet) }
+                        else { print("SNAPSHOT no sheet: \(NSApp.windows.map { "\(type(of: $0)) visible:\($0.isVisible) sheet:\($0.isSheet)" })") }
+                        model.bookmarkImport = nil
+                        try? await Task.sleep(for: .seconds(0.6))
+                    } else if page == .quickSave {
                         if let panel = model.quickSavePanel.window { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: panel) }
                         model.quickSavePanel.close()
                     } else if page.hasPopover {
@@ -121,7 +124,7 @@ enum SnapshotPage: String, CaseIterable {
     /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
     @MainActor static var startedOriginal: (UUID, BlockStatus)?
 
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave
+    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet
 
     /// Pages that open a popover. Their snapshot is the popover alone.
     var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename || self == .sortMenu }
@@ -169,6 +172,9 @@ enum SnapshotPage: String, CaseIterable {
             model.scope = .all
             model.startSearch()
             model.searchQuery = "lisbon"
+        case .importSheet:
+            model.scope = .all
+            model.previewBookmarks(Snapshot.sampleBookmarks, file: "Safari Bookmarks.html")
         case .quickSave:
             model.scope = .all
             model.quickSavePanel.show(QuickSaveDraft(content: .web(URL(string: "https://www.dezeen.com/lisbon-guide")!),
@@ -212,4 +218,30 @@ enum SnapshotPage: String, CaseIterable {
         model.showsNewMenu = self == .newBlock
         model.showsSortMenu = self == .sortMenu
     }
+}
+
+extension Snapshot {
+    /// A small Safari export for the import sheet's snapshot.
+    static let sampleBookmarks = """
+    <DL><p>
+      <DT><H3>Favorites</H3>
+      <DL><p>
+        <DT><A HREF="https://news.ycombinator.com">Hacker News</A>
+        <DT><A HREF="https://www.inkandswitch.com/local-first/">Local-first software</A>
+      </DL><p>
+      <DT><H3>Bookmarks Menu</H3>
+      <DL><p>
+        <DT><H3>Recipes</H3>
+        <DL><p>
+          <DT><A HREF="https://www.seriouseats.com/a">Neapolitan dough</A><DT><A HREF="https://www.seriouseats.com/b">Bacalhau à Brás</A>
+          <DT><A HREF="https://www.seriouseats.com/c">Arroz de pato</A>
+        </DL><p>
+        <DT><H3>Design</H3>
+        <DL><p>
+          <DT><A HREF="https://example.com/1">Type specimen</A><DT><A HREF="https://example.com/2">Grid systems</A>
+        </DL><p>
+      </DL><p>
+      <DT><A HREF="https://example.com/loose">Reading list item</A>
+    </DL><p>
+    """
 }

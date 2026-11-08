@@ -4,6 +4,9 @@ import SwiftUI
 // MARK: - Check (checklist items)
 
 struct KitCheckStyle: ToggleStyle {
+    /// Checklist items are crossed out when done; a plain choice (an import folder) isn't.
+    var isTask = true
+
     func makeBody(configuration: Configuration) -> some View {
         Button { configuration.isOn.toggle() } label: {
             HStack(spacing: Space.sm) {
@@ -18,13 +21,13 @@ struct KitCheckStyle: ToggleStyle {
                 .frame(width: Metric.check, height: Metric.check)
                 configuration.label
                     .kitType(.body)
-                    .strikethrough(configuration.isOn)
-                    .foregroundStyle(configuration.isOn ? Ink.secondary : Ink.text)
+                    .strikethrough(isTask && configuration.isOn)
+                    .foregroundStyle(isTask && configuration.isOn ? Ink.secondary : Ink.text)
             }
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .accessibilityValue(configuration.isOn ? "Done" : "Not done")
+        .accessibilityValue(isTask ? (configuration.isOn ? "Done" : "Not done") : (configuration.isOn ? "On" : "Off"))
     }
 }
 

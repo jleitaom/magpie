@@ -338,11 +338,16 @@ final class AppModel {
     // MARK: Previews
 
     private func enrich(_ block: Block) {
-        guard let url = block.url, !url.isFileURL, !enriching.contains(block.uid) else { return }
         let uid = block.uid
+        Task { await enrichNow(uid) }
+    }
+
+    /// Fetches a block's preview and page facts. Awaitable, so imports can go a few at a time.
+    func enrichNow(_ uid: UUID) async {
+        guard let block = block(uid), let url = block.url, !url.isFileURL, !enriching.contains(uid) else { return }
         let isPlace = block.kind == .place
         enriching.insert(uid)
-        Task {
+        do {
             defer { enriching.remove(uid) }
             // The preview (title, picture) and the page's facts (length, price) load side by side.
             async let factsTask = isPlace ? nil : Ingest.fetchFacts(url)
@@ -471,14 +476,14 @@ final class AppModel {
     // MARK: Collections
 
     @discardableResult
-    func createCollection(named name: String, colorHex: Int? = nil) -> BlockCollection? {
+    func createCollection(named name: String, colorHex: Int? = nil, pin: Bool = true) -> BlockCollection? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let existing = collections
         let color = colorHex ?? CollectionColors.all[existing.count % CollectionColors.all.count]
         let new = BlockCollection(name: trimmed, colorHex: color, sortIndex: (existing.last?.sortIndex ?? 0) + 1)
         let pinned = existing.filter(\.isPinned).count
-        if Pins.canPin(currentlyPinned: pinned) {
+        if pin, Pins.canPin(currentlyPinned: pinned) {
             new.isPinned = true
             new.pinIndex = pinned
         }
@@ -918,10 +923,17 @@ final class AppModel {
     }
 
     private(set) var placePrefs: [String: PlacePrefs] = {
-        guard let data = UserDefaults.standard.data(forKey: "placePrefs") else { return [:] }
+        guard let data = UserDefaults.standard.data(forKey: AppModel.placePrefsKey) else { return [:] }
         return (try? JSONDecoder().decode([String: PlacePrefs].self, from: data)) ?? [:]
     }() {
-        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(placePrefs), forKey: "placePrefs") }
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(placePrefs), forKey: Self.placePrefsKey) }
+    }
+
+    /// A demo, test or snapshot library (APP_STORE in /tmp) keeps its own choices, so it never
+    /// changes how your real library is sorted.
+    nonisolated static var placePrefsKey: String {
+        let store = ProcessInfo.processInfo.environment["APP_STORE"] ?? ""
+        return store.isEmpty ? "placePrefs" : "placePrefs-" + (store as NSString).lastPathComponent
     }
 
     private func key(_ scope: Scope) -> String? {
@@ -1278,6 +1290,113 @@ final class AppModel {
             flash("Nothing to preview")
         }
     }
+
+    // MARK: Import bookmarks (S-042)
+
+    /// The bookmarks file being previewed in the import sheet.
+    var bookmarkImport: BookmarkImport?
+
+    struct BookmarkImport: Identifiable {
+        let id = UUID()
+        let file: String
+        let root: BookmarkFolder
+        /// Folder ids ticked for import (all at first), and whether loose links go to the Inbox.
+        var chosen: Set<String>
+        var includeLoose = true
+    }
+
+    /// File → Import Bookmarks: pick the HTML file a browser exported, then preview it.
+    func chooseBookmarksFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.html]
+        panel.prompt = "Preview"
+        panel.message = "Choose the bookmarks file you exported from Safari (File ▸ Export ▸ Bookmarks), Chrome or Firefox."
+        guard panel.runModal() == .OK, let url = panel.url, let html = try? String(contentsOf: url, encoding: .utf8) else { return }
+        previewBookmarks(html, file: url.lastPathComponent)
+    }
+
+    func previewBookmarks(_ html: String, file: String) {
+        let root = BookmarkFile.parse(html)
+        guard root.total > 0 else { flash("No bookmarks found in \(file)"); return }
+        bookmarkImport = BookmarkImport(file: file, root: root, chosen: Set(root.flattened().map(\.folder.id)))
+    }
+
+    var existingURLs: Set<String> {
+        Set(((try? context.fetch(FetchDescriptor<Block>())) ?? []).compactMap(\.normalizedURL))
+    }
+
+    /// Imports the chosen folders: folders become nested collections (reusing ones with the same
+    /// name in the same place), duplicates are skipped, and previews load a few at a time.
+    @discardableResult
+    func importBookmarks(_ plan: BookmarkImport) -> (saved: Int, duplicates: Int) {
+        let result = BookmarkFile.plan(plan.root, folders: plan.chosen, includeLoose: plan.includeLoose, existing: existingURLs)
+        var folders: [String: BlockCollection] = [:]
+        func collection(for path: [String]) -> BlockCollection? {
+            guard !path.isEmpty else { return nil }
+            let key = path.joined(separator: "/")
+            if let found = folders[key] { return found }
+            let parent = collection(for: Array(path.dropLast()))
+            let name = path.last!
+            let existing = collections.first { $0.parent?.uid == parent?.uid && Tags.key($0.name) == Tags.key(name) }
+            let made = existing ?? createCollection(named: name, pin: false)
+            if existing == nil, let made, let parent { place(made, .inside(parent.uid)) }
+            folders[key] = made
+            return made
+        }
+        var queue: [UUID] = []
+        for item in result.items {
+            let block = Block(kind: { switch Links.kind(item.link.url) {
+                case .video: .video
+                case .place: .place
+                case .image: .image
+                case .link: .link
+            } }(), title: item.link.title)
+            block.urlString = item.link.url.absoluteString
+            block.normalizedURL = Links.normalize(item.link.url)
+            block.siteName = Links.siteName(item.link.url)
+            block.createdAt = item.link.added ?? .now
+            if let target = collection(for: item.folder) {
+                block.collection = target
+                block.status = .kept
+            } else {
+                block.status = .inbox
+            }
+            block.enrich = .pending
+            context.insert(block)
+            queue.append(block.uid)
+        }
+        save()
+        bookmarkImport = nil
+        flash("Imported \(result.items.count) bookmarks" + (result.duplicates > 0 ? ", skipped \(result.duplicates) already saved" : ""))
+        // Previews in the background, three at a time, so a big import never floods the network.
+        Task {
+            for start in stride(from: 0, to: queue.count, by: Self.importBatch) {
+                let batch = queue[start..<min(start + Self.importBatch, queue.count)]
+                await withTaskGroup(of: Void.self) { group in
+                    for uid in batch {
+                        group.addTask {
+                            await self.importStarted()
+                            await self.enrichNow(uid)
+                            await self.importFinished()
+                        }
+                    }
+                }
+            }
+        }
+        return (result.items.count, result.duplicates)
+    }
+
+    static let importBatch = 3
+    /// Import previews loading now, and the most there ever were at once (the self-test checks it).
+    @ObservationIgnored private(set) var importInFlight = 0
+    @ObservationIgnored private(set) var importInFlightMost = 0
+
+    private func importStarted() {
+        importInFlight += 1
+        importInFlightMost = max(importInFlightMost, importInFlight)
+    }
+
+    private func importFinished() { importInFlight -= 1 }
 
     // MARK: Helpers
 

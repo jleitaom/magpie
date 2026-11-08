@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- **Import bookmarks** (File → Import Bookmarks…, ⇧⌘I): choose the file Safari (File ▸ Export ▸ Bookmarks), Chrome or Firefox exports. A preview shows the folder tree with counts; tick the folders you want. Folders become nested collections, links outside folders go to the Inbox, ones you already have are skipped and counted, and each keeps the date you bookmarked it. Previews load in the background, a few at a time
 - **Your own order.** Drag a card (or a Journal row) onto another to put it there. The Sort menu gains **Manual**; dragging while sorted any other way switches to Manual and keeps what you see
 - **Keyboard.** Arrow keys move between cards (up and down a column, left and right across), **Space** (or ⌘Y) opens Quick Look on a block's picture or file, and **⌘3–⌘7** open your pinned collections (⌘1 All, ⌘2 Inbox)
 - **Quick Save** (⌃⌥Space, anywhere): a small panel saves Safari's front tab, or the clipboard when Safari isn't in front. Change the title, pick a collection (Inbox by default), add tags and a note, and press Return; Escape cancels. You stay in Safari. The first time, macOS asks whether Magpie may read Safari; if not, Quick Save uses the clipboard and says so. Choose another shortcut, or turn it off, in Settings → General
@@ -30,6 +31,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - **View → Appearance** switches between Dark, Light and Match my Mac without opening Settings, and **⌃⌘T** flips between Dark and Light
 
 ### Fixed
+
+- The demo and test libraries no longer change how your real library is sorted
 
 - YouTube videos show the video's title, not the channel's name, and Vimeo videos their real title too
 - Google Maps and Apple Maps links are named after the place ("Torre de Belém") and show the mini map instead of a generic picture

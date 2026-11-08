@@ -75,6 +75,8 @@ struct MagpieCommands: Commands {
             Divider()
             Button("Quick Save…") { model.quickSavePanel.open() }
                 .keyboardShortcut(.space, modifiers: [.control, .option])
+            Button("Import Bookmarks…") { model.chooseBookmarksFile() }
+                .keyboardShortcut("i", modifiers: [.command, .shift])
         }
         CommandGroup(after: .pasteboard) {
             Divider()

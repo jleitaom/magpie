@@ -77,6 +77,7 @@ struct MainView: View {
         }
         .ignoresSafeArea()
         .quickLookPreview($model.quickLookURL)
+        .sheet(item: $model.bookmarkImport) { plan in ImportSheet(plan: plan).environment(model) }
         .collectionDeleteAlert(when: !model.showsCollections)
         .tagPrompts(when: !model.showsCollections)
         .task {

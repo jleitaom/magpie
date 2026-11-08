@@ -25,6 +25,8 @@ Thanks for helping out!
     the expiry rules are in `MagpieKit/Rediscover.swift`
   - `QuickSave/`: the global shortcut (`HotKey.swift`, Carbon, no permission needed) and the floating
     panel that saves Safari's front tab or the clipboard (`QuickSave.swift`)
+  - `Import/`: the bookmarks import sheet (`ImportSheet.swift`); the file format is read by
+    `MagpieKit/Bookmarks.swift`
   - `Tags/`: the tag editor in the details panel, the tag list in the Collections panel, and the
     tag menu and prompts (`TagViews.swift`). Name rules are in `MagpieKit/Tags.swift`
   - `Details/`: the panel that slides in for a selected Block (`DetailsPanel.swift`)
@@ -68,7 +70,7 @@ scripts/grid-lint.sh                     # must print PASS
 ```
 
 The self-test, snapshots and sample data refuse to run unless the store is in `/tmp`, so they
-never touch your real library. Add a check to `Debug/SelfTest.swift` for every change with logic.
+never touch your real library. A `/tmp` library also keeps its own sort and view choices. Add a check to `Debug/SelfTest.swift` for every change with logic.
 
 To try the app with sample data:
 

@@ -437,6 +437,43 @@ enum SelfTest {
                 (row + [picture]).forEach { model.delete([$0.uid], undo: nil) }
             }
 
+            // S-042 import bookmarks.
+            let already = model.save(url: URL(string: "https://example.org/already-saved")!)
+            let html = """
+            <!DOCTYPE NETSCAPE-Bookmark-file-1>
+            <DL><p>
+              <DT><H3>Imported Bar</H3>
+              <DL><p>
+                <DT><A HREF="http://example.org/already-saved/" ADD_DATE="1700000000">Same page again</A>
+                <DT><H3>Imported Recipes</H3>
+                <DL><p>
+                  \((0..<8).map { "<DT><A HREF=\"https://bookmarks.invalid/recipe-\($0)\" ADD_DATE=\"1700000\($0)00\">Recipe \($0)</A>" }.joined(separator: "\n"))
+                </DL><p>
+              </DL><p>
+              <DT><A HREF="https://bookmarks.invalid/loose">Loose</A>
+            </DL><p>
+            """
+            model.previewBookmarks(html, file: "bookmarks.html")
+            if let plan = model.bookmarkImport {
+                let result = model.importBookmarks(plan)
+                try? await Task.sleep(for: .milliseconds(1500))
+                check("previews for imported bookmarks load a few at a time", model.importInFlightMost > 0
+                      && model.importInFlightMost <= AppModel.importBatch, "\(model.importInFlightMost) at once")
+                let bar = model.collections.first { $0.name == "Imported Bar" }
+                let recipes = model.collections.first { $0.name == "Imported Recipes" }
+                check("bookmark folders become nested collections", recipes?.parent?.uid == bar?.uid && (recipes?.blocks ?? []).count == 8)
+                check("imported collections aren't pinned", bar?.isPinned == false && recipes?.isPinned == false)
+                check("duplicates are skipped and counted", result.duplicates == 1 && result.saved == 9)
+                let loose = blocks().first { $0.urlString == "https://bookmarks.invalid/loose" }
+                check("links outside folders go to the Inbox", loose?.status == .inbox)
+                check("imported bookmarks keep their date", (recipes?.blocks ?? []).allSatisfy { $0.createdAt < Date(timeIntervalSince1970: 1_700_100_000) })
+                for block in (recipes?.blocks ?? []) + [loose].compactMap({ $0 }) { model.delete([block.uid], undo: nil) }
+                [recipes, bar].compactMap { $0 }.forEach(model.deleteCollection)
+            } else {
+                check("the bookmarks file is read", false)
+            }
+            model.delete([already.uid], undo: nil)
+
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.
             let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))
