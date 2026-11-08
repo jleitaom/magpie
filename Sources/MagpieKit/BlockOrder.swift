@@ -2,7 +2,7 @@ import Foundation
 
 /// How a collection (or All, the Inbox, a tag) lists its blocks (S-065).
 public enum BlockOrder: String, CaseIterable, Identifiable, Sendable {
-    case newest, oldest, quickest, title, site, color, shuffle
+    case newest, oldest, quickest, title, site, color, shuffle, manual
 
     public var id: String { rawValue }
 
@@ -16,6 +16,7 @@ public enum BlockOrder: String, CaseIterable, Identifiable, Sendable {
         case .site: "Site"
         case .color: "Color"
         case .shuffle: "Shuffle"
+        case .manual: "Manual"
         }
     }
 
@@ -29,6 +30,7 @@ public enum BlockOrder: String, CaseIterable, Identifiable, Sendable {
         case .site: "Site"
         case .color: "Color"
         case .shuffle: "Shuffled"
+        case .manual: "Manual"
         }
     }
 
@@ -41,6 +43,7 @@ public enum BlockOrder: String, CaseIterable, Identifiable, Sendable {
         case .site: "Group by where it’s from"
         case .color: "By the image’s main color"
         case .shuffle: "A new random order each time"
+        case .manual: "Drag cards into your own order"
         }
     }
 }
@@ -53,8 +56,11 @@ public struct OrderItem: Sendable {
     public let title: String
     public let site: String
     public let color: UInt32?
+    /// Your own order (S-066).
+    public let sortIndex: Double
 
-    public init(id: UUID, createdAt: Date, minutes: Int?, title: String, site: String, color: UInt32?) {
+    public init(id: UUID, createdAt: Date, minutes: Int?, title: String, site: String, color: UInt32?, sortIndex: Double = 0) {
+        self.sortIndex = sortIndex
         self.id = id
         self.createdAt = createdAt
         self.minutes = minutes
@@ -108,6 +114,8 @@ extension BlockOrder {
                 default: newestFirst(a, b)
                 }
             }
+        case .manual:
+            ordered = items.sorted { $0.sortIndex == $1.sortIndex ? newestFirst($0, $1) : $0.sortIndex < $1.sortIndex }
         case .shuffle:
             ordered = items.sorted(by: newestFirst).map { ($0, Self.mix($0.id, seed)) }.sorted { $0.1 < $1.1 }.map(\.0)
         }
@@ -124,5 +132,37 @@ extension BlockOrder {
             }
         }
         return hash ^ (hash >> 29)
+    }
+}
+
+/// Your own order (S-066): a `sortIndex` per block. Dropping between two blocks takes the
+/// midpoint of theirs, so nothing else is renumbered.
+public enum ManualOrder {
+    /// The sortIndex for a block dropped between `before` and `after` (nil at either end).
+    public static func index(between before: Double?, and after: Double?) -> Double {
+        switch (before, after) {
+        case let (a?, b?): (a + b) / 2
+        case let (a?, nil): a + 1
+        case let (nil, b?): b - 1
+        case (nil, nil): 0
+        }
+    }
+
+    /// Indexes for the order you see when switching to Manual: 1, 2, 3 …
+    public static func numbered(_ count: Int) -> [Double] {
+        (0..<count).map { Double($0 + 1) }
+    }
+
+    /// Where `moving` lands when dropped onto `target` in `ids` (shown order): it takes the
+    /// target's place, pushing the target after it when moving up and before it when moving down.
+    public static func drop(_ moving: UUID, onto target: UUID, in ids: [UUID], indexes: [UUID: Double]) -> Double? {
+        guard moving != target, let from = ids.firstIndex(of: moving), let to = ids.firstIndex(of: target) else { return nil }
+        var rest = ids
+        rest.remove(at: from)
+        guard let at = rest.firstIndex(of: target) else { return nil }
+        let insert = from < to ? at + 1 : at
+        let before = insert > 0 ? indexes[rest[insert - 1]] : nil
+        let after = insert < rest.count ? indexes[rest[insert]] : nil
+        return index(between: before, and: after)
     }
 }

@@ -50,3 +50,54 @@ struct BlockOrderTests {
         #expect(first != BlockOrder.newest.sorted(items))
     }
 }
+
+struct ManualOrderTests {
+    @Test("Inserting between two blocks uses the midpoint, with no renumbering")
+    func midpoint() {
+        #expect(ManualOrder.index(between: 1, and: 2) == 1.5)
+        #expect(ManualOrder.index(between: 3, and: nil) == 4)
+        #expect(ManualOrder.index(between: nil, and: 1) == 0)
+        #expect(ManualOrder.numbered(3) == [1, 2, 3])
+    }
+
+    @Test("A dropped block takes the target's place")
+    func drop() {
+        let a = UUID(), b = UUID(), c = UUID(), d = UUID()
+        let ids = [a, b, c, d]
+        let indexes: [UUID: Double] = [a: 1, b: 2, c: 3, d: 4]
+        #expect(ManualOrder.drop(d, onto: b, in: ids, indexes: indexes) == 1.5)   // d moves up, before b
+        #expect(ManualOrder.drop(a, onto: c, in: ids, indexes: indexes) == 3.5)   // a moves down, after c
+        #expect(ManualOrder.drop(a, onto: d, in: ids, indexes: indexes) == 5)     // to the end
+        #expect(ManualOrder.drop(a, onto: a, in: ids, indexes: indexes) == nil)
+    }
+
+    @Test("Manual lists blocks by their sortIndex")
+    func manual() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let a = OrderItem(id: UUID(), createdAt: now, minutes: nil, title: "a", site: "", color: nil, sortIndex: 2)
+        let b = OrderItem(id: UUID(), createdAt: now, minutes: nil, title: "b", site: "", color: nil, sortIndex: 1.5)
+        #expect(BlockOrder.manual.sorted([a, b]) == [b.id, a.id])
+    }
+}
+
+struct GridNavigationTests {
+    // Two columns: [0 (h 100), 2 (h 100)] and [1 (h 220), 3 (h 50)].
+    let columns = [[0, 2], [1, 3]]
+    let heights: [Double] = [100, 220, 100, 50]
+
+    @Test("Up and down stay in the column")
+    func vertical() {
+        #expect(GridNavigation.next(from: 0, .down, columns: columns, heights: heights, gap: 16) == 2)
+        #expect(GridNavigation.next(from: 2, .up, columns: columns, heights: heights, gap: 16) == 0)
+        #expect(GridNavigation.next(from: 2, .down, columns: columns, heights: heights, gap: 16) == nil)
+    }
+
+    @Test("Left and right go to the nearest card in the next column")
+    func horizontal() {
+        #expect(GridNavigation.next(from: 0, .right, columns: columns, heights: heights, gap: 16) == 1)
+        // Item 2's top is 116; item 1's top is 0 and item 3's is 236: 1 is closer.
+        #expect(GridNavigation.next(from: 2, .right, columns: columns, heights: heights, gap: 16) == 1)
+        #expect(GridNavigation.next(from: 3, .left, columns: columns, heights: heights, gap: 16) == 2)
+        #expect(GridNavigation.next(from: 0, .left, columns: columns, heights: heights, gap: 16) == nil)
+    }
+}

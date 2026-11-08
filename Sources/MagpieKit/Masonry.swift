@@ -38,3 +38,31 @@ public enum Pins {
 
     public static func canPin(currentlyPinned: Int) -> Bool { currentlyPinned < limit }
 }
+
+/// Arrow keys in the masonry (S-032): up and down within a column, left and right to the card
+/// in the next column whose top is closest.
+public enum GridNavigation {
+    public enum Direction: Sendable { case up, down, left, right }
+
+    /// `columns` holds item indexes per column, top to bottom; `heights` each item's height.
+    public static func next(from item: Int, _ direction: Direction, columns: [[Int]], heights: [Double], gap: Double) -> Int? {
+        var tops: [Int: Double] = [:]
+        for column in columns {
+            var y = 0.0
+            for index in column {
+                tops[index] = y
+                y += heights[index] + gap
+            }
+        }
+        guard let column = columns.firstIndex(where: { $0.contains(item) }),
+              let row = columns[column].firstIndex(of: item), let top = tops[item] else { return nil }
+        switch direction {
+        case .up: return row > 0 ? columns[column][row - 1] : nil
+        case .down: return row + 1 < columns[column].count ? columns[column][row + 1] : nil
+        case .left, .right:
+            let target = column + (direction == .left ? -1 : 1)
+            guard columns.indices.contains(target), !columns[target].isEmpty else { return nil }
+            return columns[target].min { abs((tops[$0] ?? 0) - top) < abs((tops[$1] ?? 0) - top) }
+        }
+    }
+}

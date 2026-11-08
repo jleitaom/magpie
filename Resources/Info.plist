@@ -14,5 +14,10 @@
 <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSAppleEventsUsageDescription</key><string>Quick Save reads the address and title of Safari’s front tab when you press its shortcut. Nothing else.</string>
+<key>UTExportedTypeDeclarations</key><array><dict>
+<key>UTTypeIdentifier</key><string>com.jleitaom.magpie.block</string>
+<key>UTTypeDescription</key><string>Magpie block</string>
+<key>UTTypeConformsTo</key><array><string>public.data</string></array>
+</dict></array>
 <key>NSPrincipalClass</key><string>NSApplication</string>
 </dict></plist>

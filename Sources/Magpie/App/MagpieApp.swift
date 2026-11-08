@@ -31,7 +31,8 @@ struct MagpieApp: App {
         .commands {
             MagpieCommands(model: model, selection: menu.selection, appearance: model.appearance,
                            viewMode: model.viewMode, canSort: model.canSortNow, sortOrder: model.order(for: model.scope),
-                           canRediscover: model.canRediscoverNow, dip: model.dipMenuState)
+                           canRediscover: model.canRediscoverNow,
+                           pinned: model.pinnedCollections.map { PinnedItem(id: $0.uid, name: $0.name) }, dip: model.dipMenuState)
         }
 
         Settings {
@@ -55,6 +56,8 @@ struct MagpieCommands: Commands {
     let canSort: Bool
     let sortOrder: BlockOrder
     let canRediscover: Bool
+    /// Pinned collections for ⌘3–⌘7, passed in so the menu follows pin changes.
+    let pinned: [PinnedItem]
     let dip: DipMenuState
     @Environment(\.openWindow) private var openWindow
 
@@ -181,6 +184,11 @@ struct MagpieCommands: Commands {
                 .keyboardShortcut("1")
             Button("Inbox") { model.scope = .inbox }
                 .keyboardShortcut("2")
+            // ⌘3–⌘7: the pinned collections, in top bar order (S-032).
+            ForEach(Array(pinned.enumerated()), id: \.element.id) { index, pin in
+                Button(pin.name) { model.scope = .collection(pin.id); if viewMode != .journal { model.show(.gallery) } }
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 3)")))
+            }
             Button("Archive") { model.scope = .archive; model.show(.gallery) }
                 .keyboardShortcut("0", modifiers: [.control, .command])
             Button("Collections…") { model.showsCollections = true }
@@ -258,4 +266,9 @@ enum Store {
             fatalError("Could not open the database at \(url.path): \(error)")
         }
     }
+}
+
+struct PinnedItem: Equatable {
+    let id: UUID
+    let name: String
 }

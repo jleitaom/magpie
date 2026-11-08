@@ -9,6 +9,8 @@ struct JournalView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @FocusState private var hasFocus: Bool
+    @State private var dragging: UUID?
+    @State private var dropTarget: UUID?
 
     var body: some View {
         let order = model.order(for: model.scope)
@@ -29,6 +31,10 @@ struct JournalView: View {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(blocks.enumerated()), id: \.element.uid) { index, block in
                             JournalRow(number: index + 1, block: block, isSelected: model.selection == block.uid)
+                                .overlay(alignment: .top) {
+                                    if dropTarget == block.uid { Rectangle().fill(Ink.accentText).frame(height: Metric.dropLine) }
+                                }
+                                .reorderable(block, shown: blocks, model: model, dragging: $dragging, target: $dropTarget)
                                 .id(block.uid)
                         }
                     }
@@ -65,6 +71,11 @@ struct JournalView: View {
         .onKeyPress(.escape) {
             guard model.selection != nil else { return .ignored }
             model.selection = nil
+            return .handled
+        }
+        .onKeyPress(.space) {
+            guard model.selection != nil else { return .ignored }
+            model.quickLook(model.block(model.selection))
             return .handled
         }
         .onKeyPress("t") {

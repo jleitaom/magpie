@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- **Your own order.** Drag a card (or a Journal row) onto another to put it there. The Sort menu gains **Manual**; dragging while sorted any other way switches to Manual and keeps what you see
+- **Keyboard.** Arrow keys move between cards (up and down a column, left and right across), **Space** (or ⌘Y) opens Quick Look on a block's picture or file, and **⌘3–⌘7** open your pinned collections (⌘1 All, ⌘2 Inbox)
 - **Quick Save** (⌃⌥Space, anywhere): a small panel saves Safari's front tab, or the clipboard when Safari isn't in front. Change the title, pick a collection (Inbox by default), add tags and a note, and press Return; Escape cancels. You stay in Safari. The first time, macOS asks whether Magpie may read Safari; if not, Quick Save uses the clipboard and says so. Choose another shortcut, or turn it off, in Settings → General
 - **Search everything** (⌘F, or the magnifier in the top bar): titles, notes, links, sites, tags, collection names and the text in your images (read on your Mac with Apple's Vision). Ignores case and accents, matches the start of words, and includes the Archive. Matching words are highlighted
 - **Video time and wishlist totals.** A collection with videos shows how much there is to watch ("1 h 5 min of video saved") and an **I have 20 minutes** filter; one with products shows the total, per currency ("€442 + $60")

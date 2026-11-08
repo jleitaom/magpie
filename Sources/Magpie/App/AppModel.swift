@@ -980,7 +980,7 @@ final class AppModel {
     /// Blocks in the place's chosen order.
     func ordered(_ blocks: [Block], in scope: Scope) -> [Block] {
         let items = blocks.map { OrderItem(id: $0.uid, createdAt: $0.createdAt, minutes: $0.minutes, title: $0.title,
-                                           site: $0.siteName, color: $0.tint) }
+                                           site: $0.siteName, color: $0.tint, sortIndex: $0.sortIndex) }
         let byID = Dictionary(blocks.map { ($0.uid, $0) }, uniquingKeysWith: { first, _ in first })
         return order(for: scope).sorted(items, seed: seed(for: scope)).compactMap { byID[$0] }
     }
@@ -1243,6 +1243,39 @@ final class AppModel {
     private func saveFile(_ url: URL) -> Block? {
         save(.file(url))
         return (try? context.fetch(FetchDescriptor<Block>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])))?.first
+    }
+
+    // MARK: Manual order (S-066) and Quick Look (S-032)
+
+    /// Drops `moving` onto `target` in the order shown. A place sorted any other way switches to
+    /// Manual first, numbering what you see, so nothing jumps.
+    func reorder(_ moving: UUID, onto target: UUID, shown: [Block], in scope: Scope) {
+        if order(for: scope) != .manual {
+            for (block, index) in zip(shown, ManualOrder.numbered(shown.count)) { block.sortIndex = index }
+            setOrder(.manual, for: scope)
+        }
+        let indexes = Dictionary(shown.map { ($0.uid, $0.sortIndex) }, uniquingKeysWith: { first, _ in first })
+        guard let index = ManualOrder.drop(moving, onto: target, in: shown.map(\.uid), indexes: indexes),
+              let block = shown.first(where: { $0.uid == moving }) else { return }
+        block.sortIndex = index
+        save()
+    }
+
+    /// The file Quick Look shows: the block's file, or its picture written to a temporary file.
+    var quickLookURL: URL?
+
+    func quickLook(_ block: Block?) {
+        guard let block else { return }
+        if quickLookURL != nil { quickLookURL = nil; return }
+        if let url = block.url, url.isFileURL {
+            quickLookURL = url
+        } else if let data = block.thumbnail {
+            let file = FileManager.default.temporaryDirectory.appending(path: "Magpie-\(block.uid.uuidString).jpg")
+            try? data.write(to: file)
+            quickLookURL = file
+        } else {
+            flash("Nothing to preview")
+        }
     }
 
     // MARK: Helpers

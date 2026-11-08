@@ -1,4 +1,5 @@
 import MagpieKit
+import QuickLook
 import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
@@ -75,6 +76,7 @@ struct MainView: View {
             return true
         }
         .ignoresSafeArea()
+        .quickLookPreview($model.quickLookURL)
         .collectionDeleteAlert(when: !model.showsCollections)
         .tagPrompts(when: !model.showsCollections)
         .task {

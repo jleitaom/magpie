@@ -14,6 +14,16 @@ struct GalleryView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @FocusState private var hasFocus: Bool
+    /// The card being dragged into a new place, and the one it's over (S-066).
+    @State private var dragging: UUID?
+    @State private var dropTarget: UUID?
+    /// The last layout, for the arrow keys (S-032). A box, so updating it never redraws.
+    @State private var layout = LayoutBox()
+
+    final class LayoutBox {
+        var columns: [[Int]] = []
+        var heights: [Double] = []
+    }
 
     static let minColumn: CGFloat = 220
     static let margin: CGFloat = 24
@@ -25,6 +35,7 @@ struct GalleryView: View {
             let columnWidth = CGFloat(Masonry.columnWidth(width: width, count: count, gap: Metric.cardGap))
             let heights = blocks.map { CardLayout.estimatedHeight($0, width: columnWidth) }
             let columns = Masonry.columns(heights: heights, count: count, gap: Metric.cardGap)
+            let _ = { layout.columns = columns; layout.heights = heights }()
 
             ScrollView {
                 VStack(spacing: Space.lg) {
@@ -41,7 +52,9 @@ struct GalleryView: View {
                     ForEach(Array(columns.enumerated()), id: \.offset) { _, indexes in
                         LazyVStack(spacing: Metric.cardGap) {
                             ForEach(indexes, id: \.self) { index in
-                                BlockCard(block: blocks[index], width: columnWidth)
+                                BlockCard(block: blocks[index], width: columnWidth, isDropTarget: dropTarget == blocks[index].uid)
+                                    .reorderable(blocks[index], shown: blocks, model: model, dragging: $dragging, target: $dropTarget)
+                                    .id(blocks[index].uid)
                             }
                         }
                         .frame(width: columnWidth)
@@ -80,6 +93,16 @@ struct GalleryView: View {
             model.focusTagField = true
             return .handled
         }
+        // Arrow keys move the selection: up and down in a column, left and right across (S-032).
+        .onKeyPress(.upArrow) { step(.up) }
+        .onKeyPress(.downArrow) { step(.down) }
+        .onKeyPress(.leftArrow) { step(.left) }
+        .onKeyPress(.rightArrow) { step(.right) }
+        .onKeyPress(.space) {
+            guard model.selection != nil else { return .ignored }
+            model.quickLook(model.block(model.selection))
+            return .handled
+        }
         .onKeyPress(.escape) {
             guard model.selection != nil else { return .ignored }
             model.selection = nil
@@ -88,10 +111,27 @@ struct GalleryView: View {
     }
 }
 
+extension GalleryView {
+    private func step(_ direction: GridNavigation.Direction) -> KeyPress.Result {
+        guard !blocks.isEmpty else { return .ignored }
+        guard let current = blocks.firstIndex(where: { $0.uid == model.selection }) else {
+            model.selection = blocks[0].uid
+            return .handled
+        }
+        if let next = GridNavigation.next(from: current, direction, columns: layout.columns, heights: layout.heights,
+                                          gap: Double(Metric.cardGap)) {
+            model.selection = blocks[next].uid
+        }
+        return .handled
+    }
+}
+
 /// One card in the Gallery.
 struct BlockCard: View {
     let block: Block
     let width: CGFloat
+    /// A card being dragged is over this one: it shows where it will land.
+    var isDropTarget = false
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
 
@@ -102,7 +142,7 @@ struct BlockCard: View {
         } label: {
             BlockCardView(content: CardLayout.content(for: block, width: width, highlightQuery: model.isSearching ? model.searchQuery : ""))
         }
-        .buttonStyle(BlockCardStyle(tint: block.tint, isSelected: isSelected))
+        .buttonStyle(BlockCardStyle(tint: block.tint, isSelected: isSelected || isDropTarget))
         .simultaneousGesture(TapGesture(count: 2).onEnded { model.open(block) })
         .contextMenu { BlockMenu(block: block) }
         .help(block.url?.absoluteString ?? block.title)
@@ -118,6 +158,8 @@ struct BlockMenu: View {
     var body: some View {
         if block.url != nil {
             Button("Open") { model.open(block) }
+            Button("Quick Look") { model.quickLook(block) }
+                .keyboardShortcut("y")
             Button("Copy Link") { model.copy(block) }
                 .keyboardShortcut("c")
             Divider()

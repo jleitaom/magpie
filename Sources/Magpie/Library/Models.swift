@@ -83,6 +83,8 @@ final class Block {
     var lastShownAt: Date?
     /// Text read from its image with Vision, for search (S-031).
     var ocrText: String?
+    /// Your own order, when a place is sorted by Manual (S-066).
+    var sortIndex: Double = 0
     /// Tags (S-014). Many-to-many, optional on both sides for CloudKit.
     @Relationship(deleteRule: .nullify, inverse: \Tag.blocks) var tags: [Tag]? = []
 

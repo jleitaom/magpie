@@ -406,6 +406,36 @@ enum SelfTest {
                 model.tags.filter { ["fast", "later"].contains($0.name) }.forEach(model.deleteTag)
             }
 
+            // S-066 Manual order and S-032 Quick Look.
+            if let five = model.collections.first(where: { $0.name == "Five" }) {
+                let row = (0..<4).map { index -> Block in
+                    let block = model.save(url: URL(string: "https://example.com/manual-\(index)")!)
+                    model.move(block, to: five, undo: nil)
+                    block.createdAt = Date.now.addingTimeInterval(Double(-index) * 60)
+                    return block
+                }
+                let place = Scope.collection(five.uid)
+                let seen = model.ordered(model.blocks(in: place, from: blocks()), in: place)
+                let lastSeen = seen.last!, firstSeen = seen.first!
+                model.reorder(lastSeen.uid, onto: firstSeen.uid, shown: seen, in: place)
+                let after = model.ordered(model.blocks(in: place, from: blocks()), in: place).map(\.uid)
+                var expected = seen.map(\.uid)
+                expected.removeLast()
+                expected.insert(lastSeen.uid, at: 0)
+                check("dragging while sorted by Newest switches to Manual and keeps what you see", model.order(for: place) == .manual && after == expected)
+                let others = seen.filter { $0.uid != lastSeen.uid }.map(\.sortIndex)
+                check("a drop takes a new index, and the others keep theirs (no renumbering)",
+                      others == [1, 2, 3] && lastSeen.sortIndex == 0)
+                let picture = model.saveImage(Data(), name: "Empty")
+                let dot = NSImage(size: NSSize(width: 8, height: 8), flipped: false) { rect in NSColor.systemTeal.setFill(); rect.fill(); return true }
+                picture.thumbnail = dot.tiffRepresentation
+                model.quickLook(picture)
+                check("Quick Look shows a block's picture", model.quickLookURL?.isFileURL == true)
+                model.quickLook(picture)
+                check("…and Space again closes it", model.quickLookURL == nil)
+                (row + [picture]).forEach { model.delete([$0.uid], undo: nil) }
+            }
+
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.
             let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))
