@@ -34,6 +34,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
+- Dropping onto the Dock icon now works: Magpie is offered as a place to open links, pictures and files, without ever becoming the default app for them
+
 - The demo and test libraries no longer change how your real library is sorted
 
 - YouTube videos show the video's title, not the channel's name, and Vimeo videos their real title too
