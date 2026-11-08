@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-08
+
 ### Security
 
 - A web page that forwards to another address is only followed to another web page, never to a file on your Mac
