@@ -1,3 +1,4 @@
+import MagpieKit
 import AppKit
 import SwiftUI
 
@@ -30,6 +31,8 @@ struct CardContent: Identifiable {
     var thumbHeight: CGFloat = 180
     /// "expires in 2 d", shown after the site in the note color (S-021).
     var warning: String?
+    /// Search terms to highlight in the title (S-031).
+    var highlight: [String] = []
 
     var isNote: Bool { if case .note = body { true } else { false } }
 }
@@ -84,6 +87,22 @@ struct BlockCardStyle: ButtonStyle {
     }
 }
 
+// MARK: - Search highlight
+
+/// Marks the words a search matched: accent text on the suggest fill.
+enum Highlight {
+    static func text(_ text: String, terms: [String]) -> AttributedString {
+        var out = AttributedString(text)
+        for range in Search.ranges(in: text, terms: terms) {
+            guard let lower = AttributedString.Index(range.lowerBound, within: out),
+                  let upper = AttributedString.Index(range.upperBound, within: out) else { continue }
+            out[lower..<upper].backgroundColor = Ink.suggest
+            out[lower..<upper].foregroundColor = Ink.accentText
+        }
+        return out
+    }
+}
+
 // MARK: - Card content
 
 struct BlockCardView: View {
@@ -103,7 +122,7 @@ struct BlockCardView: View {
                 Text(content.kindLabel.uppercased())
                     .kitType(.kind)
                     .foregroundStyle(content.isNote ? Ink.noteLabel : Ink.secondary)
-                Text(content.title)
+                Text(Highlight.text(content.title, terms: content.highlight))
                     .kitType(.cardTitle)
                     .foregroundStyle(Ink.text)
                     .lineLimit(3)

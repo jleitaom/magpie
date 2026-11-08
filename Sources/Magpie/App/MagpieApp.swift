@@ -70,6 +70,8 @@ struct MagpieCommands: Commands {
         }
         CommandGroup(after: .pasteboard) {
             Divider()
+            Button("Find…") { model.startSearch() }
+                .keyboardShortcut("f")
             Button("Paste as New Block") { model.paste() }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
         }

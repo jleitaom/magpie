@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- **Search everything** (⌘F, or the magnifier in the top bar): titles, notes, links, sites, tags, collection names and the text in your images (read on your Mac with Apple's Vision). Ignores case and accents, matches the start of words, and includes the Archive. Matching words are highlighted
+- **Video time and wishlist totals.** A collection with videos shows how much there is to watch ("1 h 5 min of video saved") and an **I have 20 minutes** filter; one with products shows the total, per currency ("€442 + $60")
 - **Rediscover** (View → Rediscover, ⌃⌘5, or from the Inbox zero screen): five old saves a day, ones you haven't opened in two weeks, one big card at a time. **K** keeps it, **A** archives it, **→** skips it (it comes up less often), **Return** opens it. After five: "That's today's five. Come back tomorrow."
 - **Archive.** Archive a block (⇧⌘A, the details panel, or right-click) to take it out of your collections without deleting it. Find it under Archive in the Collections panel (⌃⌘0), and **Unarchive** puts it back where it was
 - **Collections that expire their blocks.** Right-click a collection → Expire Blocks After 7, 14, 30 or 90 days. Blocks added from then on show "expires in 2 d" when it's close, and expired ones move to **Expired** (archived, never deleted). **Keep** stops a block from expiring

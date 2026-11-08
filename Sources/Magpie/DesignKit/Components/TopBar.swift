@@ -124,6 +124,45 @@ func kitFocusAndSelectAll(_ focus: () -> Bool) async {
     NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
 }
 
+// MARK: - Search field (top bar)
+
+/// The search field that takes the tabs' place while you search (S-031): a magnifier, the field,
+/// the number of results, and a close button. Escape closes it.
+struct KitSearchField: View {
+    @Binding var text: String
+    let results: Int
+    let onClose: () -> Void
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: Space.sm) {
+            KitIconView(icon: .search, size: 14).foregroundStyle(Ink.secondary)
+            TextField("Search titles, notes, links, tags and text in images", text: $text)
+                .textFieldStyle(.plain)
+                .kitType(.label)
+                .foregroundStyle(Ink.text)
+                .focused($focused)
+                .onExitCommand(perform: onClose)
+            if !text.isEmpty {
+                Text(results == 1 ? "1 result" : "\(results) results").kitType(.meta).foregroundStyle(Ink.secondary).fixedSize()
+            }
+            Button(action: onClose) { KitIconView(icon: .close, size: 10) }
+                .buttonStyle(.kit(.ghost))
+                .help("Close search (Esc)")
+                .accessibilityLabel("Close search")
+        }
+        .padding(.leading, Space.lg)
+        .padding(.trailing, Metric.pillInset)
+        .frame(width: Metric.searchWidth, height: Metric.control + Metric.pillInset * 2)
+        .background(Capsule().fill(Ink.surface))
+        .overlay(Capsule().strokeBorder(focused ? Ink.accentText : Ink.hairline, lineWidth: focused ? 1.5 : 1))
+        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+        .onAppear { focused = true }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Search")
+    }
+}
+
 // MARK: - Segment (view switcher)
 
 /// The track around segments.

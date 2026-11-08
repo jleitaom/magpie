@@ -100,6 +100,10 @@ enum SeedData {
         done.createdAt = now.addingTimeInterval(-200 * 86_400)
         context.insert(done)
 
+        // Text read from an image, so search finds it (S-031).
+        ((try? context.fetch(FetchDescriptor<Block>())) ?? []).first { $0.title == "Japandi shelf styling" }?.ocrText =
+            "Oak shelf, linen, ceramic vases, one trailing plant"
+
         // Tags across collections (S-014).
         let tagged: [String: [String]] = [
             "jazz": ["Kind of Blue", "Blue Train", "A Love Supreme", "Gift idea for Ana"],

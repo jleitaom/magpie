@@ -201,14 +201,17 @@ struct KitRoundButtonStyle: ButtonStyle {
 
 struct KitChipStyle: ButtonStyle {
     var isSelected = false
+    /// False inside the Gallery, which holds keyboard focus for its whole area (see KitButtonStyle).
+    var showsFocus = true
 
     func makeBody(configuration: Configuration) -> some View {
-        Part(configuration: configuration, isSelected: isSelected)
+        Part(configuration: configuration, isSelected: isSelected, showsFocus: showsFocus)
     }
 
     private struct Part: View {
         let configuration: Configuration
         let isSelected: Bool
+        let showsFocus: Bool
         @Environment(\.forcedPartState) private var forced
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
@@ -216,7 +219,7 @@ struct KitChipStyle: ButtonStyle {
 
         var body: some View {
             let state = PartState.resolve(forced: forced, enabled: isEnabled, selected: isSelected,
-                                          pressed: configuration.isPressed, hovering: hovering, focused: isFocused)
+                                          pressed: configuration.isPressed, hovering: hovering, focused: isFocused && showsFocus)
             let on = state == .selected
             configuration.label
                 .kitType(on ? .labelStrong : .label)

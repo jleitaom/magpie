@@ -322,6 +322,59 @@ enum SelfTest {
                 (olds + [recent, before, fresh, old]).forEach { model.delete([$0.uid], undo: nil) }
             }
 
+            // S-031 search, S-073/074 totals.
+            let essay2 = model.save(url: URL(string: "https://example.com/cafe")!)
+            essay2.title = "Café Santiago in Porto"
+            let archivedNote = model.save(url: URL(string: "https://example.com/lisbon-guide")!)
+            archivedNote.title = "Lisbon guide"
+            model.addTags("travel", to: archivedNote)
+            model.archive(archivedNote)
+            model.startSearch()
+            check("search ignores case and accents", model.searchResults("CAFE porto", in: blocks()).map(\.uid) == [essay2.uid])
+            check("search finds archived blocks and tags", model.searchResults("trav", in: blocks()).contains { $0.uid == archivedNote.uid })
+            check("search matches the start of words only", model.searchResults("antiago", in: blocks()).isEmpty)
+            model.endSearch()
+            // Text in an image: render a picture with words and read them back with Vision.
+            let picture = NSImage(size: NSSize(width: 600, height: 200), flipped: false) { rect in
+                NSColor.white.setFill(); rect.fill()
+                ("MAGPIE KEEPS VINYL" as NSString).draw(at: NSPoint(x: 30, y: 80),
+                    withAttributes: [.font: NSFont.boldSystemFont(ofSize: 48), .foregroundColor: NSColor.black])
+                return true
+            }
+            if let tiff = picture.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                let text = await Ingest.recognizeText(png)
+                check("text in images is read with Vision", text?.uppercased().contains("VINYL") == true, "read \(text ?? "nothing")")
+            }
+            // 5,000 blocks: results within 100 ms.
+            let many = (0..<5000).map { index in
+                let block = Block(kind: .link, title: "Sample block \(index) about records and coffee")
+                block.siteName = "site\(index % 40).com"
+                context.insert(block)
+                return block
+            }
+            let all5000 = blocks()
+            _ = model.searchResults("warm", in: all5000)   // the first search builds the cache, like the first letter typed
+            let started = Date.now
+            let found = model.searchResults("coff site3", in: all5000)
+            let elapsed = Date.now.timeIntervalSince(started)
+            check("search over 5,000 blocks takes under 100 ms", found.count >= 125 && elapsed < 0.1, "\(Int(elapsed * 1000)) ms, \(found.count) found")
+            many.forEach(context.delete)
+            [essay2, archivedNote].forEach { model.delete([$0.uid], undo: nil) }
+
+            let film3 = model.save(url: URL(string: "https://vimeo.com/totals")!)
+            film3.minutes = 130
+            let film4 = model.save(url: URL(string: "https://vimeo.com/totals2")!)
+            film4.minutes = 60
+            let lamp = model.save(url: URL(string: "https://shop.example.com/totals")!)
+            lamp.price = 189
+            lamp.currency = "EUR"
+            let mug = model.save(url: URL(string: "https://shop.example.com/totals2")!)
+            mug.price = 60
+            mug.currency = "USD"
+            check("a collection's video total sums known lengths", model.videoTotal([film3, film4, lamp]) == "3 h 10 min")
+            check("the wishlist total is kept per currency", model.priceTotal([lamp, mug])?.contains("+") == true)
+            [film3, film4, lamp, mug].forEach { model.delete([$0.uid], undo: nil) }
+
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.
             let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))

@@ -17,7 +17,7 @@ struct JournalView: View {
                 VStack(spacing: 0) {
                     HStack(alignment: .firstTextBaseline) {
                         let dot = Text(".").foregroundStyle(Ink.accentText)
-                        Text("\(model.placeName(model.scope))\(dot)")
+                        Text("\(model.isSearching && !model.searchTerms.isEmpty ? "Search" : model.placeName(model.scope))\(dot)")
                             .kitType(.display).foregroundStyle(Ink.text)
                         Spacer()
                         Text("\(blocks.count) \(blocks.count == 1 ? "BLOCK" : "BLOCKS") · SORTED BY \(order.label.uppercased())")
@@ -124,7 +124,8 @@ private struct JournalRow: View {
         JournalColumns(widths: JournalColumns.widths, gap: Space.lg) {
             Text(String(format: "%02d", number)).kitType(.mono).foregroundStyle(quiet)
             Circle().fill(block.tint.map(Ink.swatch) ?? Ink.tertiary).frame(width: Metric.tagDot, height: Metric.tagDot)
-            Text(block.title.isEmpty ? "Untitled" : block.title).kitType(.label).foregroundStyle(ink).lineLimit(1)
+            Text(Highlight.text(block.title.isEmpty ? "Untitled" : block.title, terms: model.searchTerms))
+                .kitType(.label).foregroundStyle(ink).lineLimit(1)
             Text(block.badge?.uppercased() ?? "—").kitType(.mono).foregroundStyle(quiet).lineLimit(1)
             Text(block.collection?.name ?? (block.status == .inbox ? "Inbox" : "—")).kitType(.meta).foregroundStyle(quiet).lineLimit(1)
             Text(block.createdAt.formatted(.dateTime.day().month(.abbreviated))).kitType(.mono).foregroundStyle(quiet)

@@ -109,6 +109,7 @@ enum Metric {
     static let keyCap: CGFloat = 24
     static let streakPill: CGFloat = 28
     static let tagChip: CGFloat = 24
+    static let searchWidth: CGFloat = 560
     static let journalRow: CGFloat = 48
     static let journalHeader: CGFloat = 36
     static let journalNumber: CGFloat = 40
@@ -136,7 +137,7 @@ enum Metric {
     static let barShadowRadius: CGFloat = 15
     static let pressScale: CGFloat = 0.97
     static let windowDefault = CGSize(width: 1200, height: 800)
-    static let windowMinimum = CGSize(width: 880, height: 560)
+    static let windowMinimum = CGSize(width: 1040, height: 560)
     /// Traffic lights: center of the close button, and the distance between buttons.
     static let trafficLights = CGPoint(x: 28, y: 28)
     static let trafficLightSpacing: CGFloat = 20

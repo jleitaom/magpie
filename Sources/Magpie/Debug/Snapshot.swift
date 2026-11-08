@@ -115,12 +115,13 @@ enum SnapshotPage: String, CaseIterable {
     /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
     @MainActor static var startedOriginal: (UUID, BlockStatus)?
 
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive
+    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping
 
     /// Pages that open a popover. Their snapshot is the popover alone.
     var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename || self == .sortMenu }
 
     func show(in model: AppModel) {
+        model.endSearch()
         model.viewMode = .gallery
         // Lucky Dip pages leave no pick or started block behind for the next page.
         model.todayIfAny?.pickUID = nil
@@ -158,6 +159,12 @@ enum SnapshotPage: String, CaseIterable {
             model.startRediscover()
         case .archive:
             model.scope = .archive
+        case .search:
+            model.scope = .all
+            model.startSearch()
+            model.searchQuery = "lisbon"
+        case .shopping:
+            model.scope = model.collections.first { $0.name == "Shopping" }.map { .collection($0.uid) } ?? .all
         case .tag:
             model.scope = model.tags.first { $0.name == "jazz" }.map { .tag($0.uid) } ?? .all
         case .luckyDip:

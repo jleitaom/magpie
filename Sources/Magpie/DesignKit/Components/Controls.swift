@@ -124,6 +124,39 @@ struct KitBanner: View {
     }
 }
 
+// MARK: - Totals strip (a collection's video time and prices)
+
+/// "3 h 10 min of video saved" with an "I have 20 minutes" chip, and "Wishlist total €442 + $60"
+/// (S-073, S-074). Shown above the cards of a collection that has lengths or prices.
+struct KitTotalsStrip: View {
+    let videoTotal: String?
+    let priceTotal: String?
+    @Binding var fitsTwenty: Bool
+
+    var body: some View {
+        HStack(spacing: Space.lg) {
+            if let videoTotal {
+                let total = Text(videoTotal).foregroundStyle(Ink.text).bold()
+                Text("\(total) of video saved").kitType(.body).foregroundStyle(Ink.secondary)
+            }
+            if let priceTotal {
+                let total = Text(priceTotal).foregroundStyle(Ink.text).bold()
+                Text("Wishlist total \(total)").kitType(.body).foregroundStyle(Ink.secondary)
+            }
+            Spacer(minLength: 0)
+            if videoTotal != nil {
+                Button("I have 20 minutes") { fitsTwenty.toggle() }
+                    .buttonStyle(KitChipStyle(isSelected: fitsTwenty, showsFocus: false))
+                    .help("Only show what fits in 20 minutes")
+            } else if priceTotal != nil {
+                Text("Prices read when you saved each page").kitType(.meta).foregroundStyle(Ink.secondary)
+            }
+        }
+        .frame(minHeight: Metric.control)
+        .accessibilityElement(children: .contain)
+    }
+}
+
 // MARK: - Streak pill (top bar, next to the traffic lights)
 
 /// "6-day streak" with a ring that fills over a week. A button: it opens Sort Inbox.

@@ -3,6 +3,7 @@ import ImageIO
 import LinkPresentation
 import MagpieKit
 import UniformTypeIdentifiers
+import Vision
 
 /// What a page's preview gave us, in plain values that can cross threads.
 nonisolated struct PagePreview: Sendable {
@@ -88,6 +89,20 @@ enum Ingest {
             request.setValue("SOCS=CAI", forHTTPHeaderField: "Cookie")
         }
         return request
+    }
+
+    /// The text in an image, read with Vision (accurate mode, with language correction). Off the main actor.
+    @concurrent
+    nonisolated static func recognizeText(_ data: Data) async -> String? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
+        try? VNImageRequestHandler(cgImage: image).perform([request])
+        let lines = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+        let text = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
     }
 
     /// Downsamples image data to a JPEG thumbnail and finds its main color. CPU work, off the main actor.

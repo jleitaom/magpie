@@ -95,14 +95,23 @@ final class AppModel {
     var context: ModelContext { container.mainContext }
 
     var scope: Scope = .all {
-        // Each place opens in the view it was last seen in (Gallery or Journal).
-        didSet { if scope != oldValue, viewMode == .gallery || viewMode == .journal { viewMode = rememberedView(for: scope) } }
+        didSet {
+            guard scope != oldValue else { return }
+            fitsTwentyMinutes = false
+            // Each place opens in the view it was last seen in (Gallery or Journal).
+            if viewMode == .gallery || viewMode == .journal { viewMode = rememberedView(for: scope) }
+        }
     }
     var viewMode: ViewMode = .gallery
     var selection: UUID? { didSet { MenuState.shared.update(selection) } }
     var showsCollections = false
     var showsNewMenu = false
     var showsSortMenu = false
+    /// Search (S-031): open while the field shows; the words typed.
+    var isSearching = false
+    var searchQuery = ""
+    /// "I have 20 minutes" in a collection's strip (S-073): only blocks that fit.
+    var fitsTwentyMinutes = false
     /// Asks the details panel to put the cursor in its tag field (T, ⌘T).
     var focusTagField = false
     /// The tag waiting for the rename or delete prompt (S-015).
@@ -276,9 +285,12 @@ final class AppModel {
         place(block)
         let uid = block.uid
         Task {
+            async let text = Ingest.recognizeText(data)
             let processed = await Ingest.process(data)
+            let ocr = await text
             guard let block = self.block(uid) else { return }
             self.apply(processed, to: block)
+            block.ocrText = ocr
             block.enrich = processed == nil ? .failed : .done
             self.save()
         }
@@ -1112,9 +1124,65 @@ final class AppModel {
         viewMode == .rediscover && rediscoverBlock != nil && !showsCollections && !showsNewMenu && renamingCollection == nil
     }
 
+    // MARK: Search (S-031)
+
+    /// Opens the search field (⌘F). Search looks everywhere, the Archive included.
+    func startSearch() {
+        isSearching = true
+        if viewMode != .gallery && viewMode != .journal { viewMode = rememberedView(for: scope) }
+        selection = nil
+    }
+
+    func endSearch() {
+        isSearching = false
+        searchQuery = ""
+    }
+
+    var searchTerms: [String] { isSearching ? Search.terms(searchQuery) : [] }
+
+    /// Blocks matching the search: title matches first, then newest.
+    func searchResults(_ query: String, in all: [Block]) -> [Block] {
+        let terms = Search.terms(query)
+        guard !terms.isEmpty else { return [] }
+        let hits = all.filter { Search.matches(index: indexFor($0), terms: terms) }
+        let titleIndex = Dictionary(hits.map { ($0.uid, Search.matches(index: Search.index([$0.title]), terms: terms)) },
+                                    uniquingKeysWith: { first, _ in first })
+        return hits.sorted { a, b in
+            let (ta, tb) = (titleIndex[a.uid] ?? false, titleIndex[b.uid] ?? false)
+            return ta == tb ? a.createdAt > b.createdAt : ta
+        }
+    }
+
+    /// Each block's folded search text, built once and dropped whenever anything is saved
+    /// (an edit, a tag, a fetched preview), so typing in the search field stays fast.
+    @ObservationIgnored private var searchCache: [UUID: String] = [:]
+
+    private func indexFor(_ block: Block) -> String {
+        if let cached = searchCache[block.uid] { return cached }
+        let index = block.searchIndex
+        searchCache[block.uid] = index
+        return index
+    }
+
+    // MARK: Totals (S-073, S-074)
+
+    /// "3 h 10 min of video saved", when a place holds videos with known lengths.
+    func videoTotal(_ blocks: [Block]) -> String? {
+        let minutes = blocks.filter { $0.kind == .video }.map(\.minutes)
+        let total = LuckyDip.totalTime(minutes)
+        return total.isEmpty ? nil : total
+    }
+
+    /// "€442 + $60", when a place holds products with prices.
+    func priceTotal(_ blocks: [Block]) -> String? {
+        let prices = blocks.compactMap { block in block.price.map { (amount: $0, currency: block.currency) } }
+        return prices.isEmpty ? nil : Totals.money(prices, fallback: Locale.current.currency?.identifier ?? "EUR")
+    }
+
     // MARK: Helpers
 
     func save() {
+        searchCache.removeAll()
         do { try context.save() } catch { flash("Couldn’t save: \(error.localizedDescription)") }
     }
 

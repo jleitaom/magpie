@@ -8,6 +8,9 @@ struct GalleryView: View {
     let blocks: [Block]
     /// The Inbox shows "N blocks waiting to be sorted" with a Start sorting button above its cards.
     var sortPrompt: Int = 0
+    /// The collection's totals strip (S-073, S-074), when it has lengths or prices.
+    var videoTotal: String?
+    var priceTotal: String?
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @FocusState private var hasFocus: Bool
@@ -25,6 +28,10 @@ struct GalleryView: View {
 
             ScrollView {
                 VStack(spacing: Space.lg) {
+                if videoTotal != nil || priceTotal != nil {
+                    @Bindable var model = model
+                    KitTotalsStrip(videoTotal: videoTotal, priceTotal: priceTotal, fitsTwenty: $model.fitsTwentyMinutes)
+                }
                 if sortPrompt > 0 {
                     KitBanner(title: "\(sortPrompt) \(sortPrompt == 1 ? "block" : "blocks") waiting to be sorted",
                               detail: "Sort them one at a time, from the keyboard. About a minute.",
@@ -93,7 +100,7 @@ struct BlockCard: View {
         Button {
             model.selection = isSelected ? nil : block.uid
         } label: {
-            BlockCardView(content: CardLayout.content(for: block, width: width))
+            BlockCardView(content: CardLayout.content(for: block, width: width, highlightQuery: model.isSearching ? model.searchQuery : ""))
         }
         .buttonStyle(BlockCardStyle(tint: block.tint, isSelected: isSelected))
         .simultaneousGesture(TapGesture(count: 2).onEnded { model.open(block) })
@@ -148,7 +155,7 @@ enum CardLayout {
         return min(max(width / aspect, width * 0.55), width * 1.35)
     }
 
-    static func content(for block: Block, width: CGFloat) -> CardContent {
+    static func content(for block: Block, width: CGFloat, highlightQuery: String = "") -> CardContent {
         let body: CardContent.Body
         var height = thumbHeight(block, width: width)
         switch block.kind {
@@ -171,7 +178,7 @@ enum CardLayout {
         }
         return CardContent(body: body, kindLabel: block.kind.label, title: block.title.isEmpty ? "Untitled" : block.title,
                            site: block.siteName, badge: block.badge, tint: block.tint, thumbHeight: height,
-                           warning: Expiry.label(block.expiresAt, now: .now))
+                           warning: Expiry.label(block.expiresAt, now: .now), highlight: Search.terms(highlightQuery))
     }
 
     /// A close guess of the card's height, so columns come out even before cards render.

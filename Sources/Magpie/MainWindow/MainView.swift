@@ -12,8 +12,12 @@ struct MainView: View {
 
     var body: some View {
         @Bindable var model = model
-        let shown = model.blocks(in: model.scope, from: blocks)
+        let searching = model.isSearching && !model.searchTerms.isEmpty
+        let place = searching ? model.searchResults(model.searchQuery, in: blocks) : model.blocks(in: model.scope, from: blocks)
+        // "I have 20 minutes": only what fits (S-073).
+        let shown = model.fitsTwentyMinutes && !searching ? place.filter { ($0.minutes ?? .max) <= 20 } : place
         let selected = blocks.first { $0.uid == model.selection }
+        let isCollection = if case .collection = model.scope { true } else { false }
 
         ZStack(alignment: .top) {
             Ink.window
@@ -23,17 +27,27 @@ struct MainView: View {
                 LuckyDipView()
             } else if model.viewMode == .rediscover {
                 RediscoverView()
-            } else if shown.isEmpty {
+            } else if searching && shown.isEmpty {
+                VStack(spacing: Space.sm) {
+                    Text("Nothing matches “\(model.searchQuery)”.").kitType(.display).foregroundStyle(Ink.text)
+                    Text("Search looks in titles, notes, links, sites, tags and the text in images, the Archive included.")
+                        .kitType(.body).foregroundStyle(Ink.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if shown.isEmpty && !model.fitsTwentyMinutes {
                 EmptyGallery(isLibraryEmpty: blocks.isEmpty, scopeName: scopeName)
             } else {
-                let ordered = model.ordered(shown, in: model.scope)
+                // Search results keep their own order: title matches first, then newest.
+                let ordered = searching ? shown : model.ordered(shown, in: model.scope)
+                let totals = isCollection && !searching
                 if model.viewMode == .journal {
                     JournalView(blocks: ordered)
                 } else {
-                    GalleryView(blocks: ordered, sortPrompt: model.scope == .inbox ? shown.count : 0)
+                    GalleryView(blocks: ordered, sortPrompt: model.scope == .inbox && !searching ? shown.count : 0,
+                                videoTotal: totals ? model.videoTotal(place) : nil, priceTotal: totals ? model.priceTotal(place) : nil)
                 }
             }
-            TopBar(collections: collections, inboxCount: model.blocks(in: .inbox, from: blocks).count)
+            TopBar(collections: collections, inboxCount: model.blocks(in: .inbox, from: blocks).count, allBlocks: blocks)
         }
         .overlay(alignment: .trailing) {
             if let selected, model.viewMode == .gallery || model.viewMode == .journal {
@@ -88,9 +102,10 @@ struct MainView: View {
 struct TopBar: View {
     let collections: [BlockCollection]
     let inboxCount: Int
+    var allBlocks: [Block] = []
     @Environment(AppModel.self) private var model
     /// The right-hand controls' width, mirrored on the left so the pill stays centered.
-    private let sideWidth: CGFloat = 316
+    private let sideWidth: CGFloat = 360
 
     var body: some View {
         @Bindable var model = model
@@ -105,11 +120,18 @@ struct TopBar: View {
             .padding(.leading, Metric.streakInset - Space.lg)
             .frame(width: sideWidth)
             Spacer(minLength: 0)
-            ViewThatFits(in: .horizontal) {
-                pill(maxPins: 5)
-                pill(maxPins: 3)
-                pill(maxPins: 1)
-                pill(maxPins: 0)
+            Group {
+                if model.isSearching {
+                    let count = model.searchTerms.isEmpty ? 0 : model.searchResults(model.searchQuery, in: allBlocks).count
+                    KitSearchField(text: $model.searchQuery, results: count) { model.endSearch() }
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        pill(maxPins: 5)
+                        pill(maxPins: 3)
+                        pill(maxPins: 1)
+                        pill(maxPins: 0)
+                    }
+                }
             }
             .popover(isPresented: $model.showsCollections, arrowEdge: .bottom) {
                 CollectionsPopover()
@@ -172,7 +194,8 @@ struct TopBar: View {
     private func tab(_ title: String, scope: Scope, count: Int? = nil) -> some View {
         Button(title) {
             model.scope = scope
-            if model.viewMode != .gallery { model.show(.gallery) }
+            model.endSearch()
+            if model.viewMode != .gallery && model.viewMode != .journal { model.show(.gallery) }
             model.selection = nil
         }
         .buttonStyle(KitTabStyle(isSelected: model.scope == scope, count: count))
@@ -185,7 +208,13 @@ private struct RightControls: View {
     var body: some View {
         @Bindable var model = model
         HStack(spacing: Space.sm) {
-            if model.viewMode == .gallery || model.viewMode == .journal {
+            if !model.isSearching {
+                Button { model.startSearch() } label: { KitIconView(icon: .search, size: 14) }
+                    .buttonStyle(.kit(.secondary))
+                    .help("Search everything (⌘F)")
+                    .accessibilityLabel("Search")
+            }
+            if (model.viewMode == .gallery || model.viewMode == .journal) && !model.isSearching {
                 let order = model.order(for: model.scope)
                 Button { model.showsSortMenu.toggle() } label: {
                     HStack(spacing: Metric.inlineGap) {

@@ -81,6 +81,8 @@ final class Block {
     var expiredAt: Date?
     /// Rediscover (S-020): when it last came up there.
     var lastShownAt: Date?
+    /// Text read from its image with Vision, for search (S-031).
+    var ocrText: String?
     /// Tags (S-014). Many-to-many, optional on both sides for CloudKit.
     @Relationship(deleteRule: .nullify, inverse: \Tag.blocks) var tags: [Tag]? = []
 
@@ -120,6 +122,12 @@ final class Block {
 
     /// The Lucky Dip pile it's on, or nil (notes, products, images…).
     var pile: Pile? { Pile.of(kind: kindRaw, site: siteName, isRecipe: isRecipe, override: pileOverride) }
+
+    /// Everything search looks in, folded once: title, note, text, link, site, tags, text in the image.
+    var searchIndex: String {
+        Search.index([title, note, bodyText, urlString, siteName, ocrText, collection?.name]
+                     + (tags ?? []).map(\.name) + checklist.map(\.text))
+    }
 
     /// The card's badge: the price for a product, else the watch or read time.
     var badge: String? {
