@@ -58,9 +58,11 @@ brew install --cask jleitaom/tap/magpie
 ```
 
 Or download `Magpie-x.y.z.dmg` from the [latest release](https://github.com/jleitaom/magpie/releases/latest)
-and drag **Magpie** into **Applications**. The first time you open it, macOS will say it can't verify
-the app. Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. You only
-need to do this once.
+and drag **Magpie** into **Applications**.
+
+Either way, the first time you open it macOS will say it can't verify the app. Click **Done**, then
+open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. You only need
+to do this once; updates don't ask again.
 
 Magpie checks for updates through GitHub, after asking you first. Updates keep the access you gave
 Quick Save (Safari) and screenshots (Screen Recording): every release is signed with the same
