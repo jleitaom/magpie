@@ -36,8 +36,8 @@ struct MainView: View {
                         .kitType(.body).foregroundStyle(Ink.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if shown.isEmpty && !model.fitsTwentyMinutes {
-                EmptyGallery(isLibraryEmpty: blocks.isEmpty, scopeName: scopeName)
+            } else if shown.isEmpty || model.snapshotEmptyLibrary {
+                EmptyGallery(isLibraryEmpty: blocks.isEmpty || model.snapshotEmptyLibrary, scopeName: scopeName)
             } else {
                 // Search results keep their own order: title matches first, then newest.
                 let ordered = searching ? shown : model.ordered(shown, in: model.scope)
@@ -347,28 +347,71 @@ private struct BottomHint: View {
     }
 }
 
+/// What an empty place says, and what to do next (S-052). Display title, secondary text, and buttons.
 private struct EmptyGallery: View {
     let isLibraryEmpty: Bool
     let scopeName: String
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        let state = message
         VStack(spacing: Space.md) {
-            Text(isLibraryEmpty ? "Drop anything here." : "Nothing in \(scopeName) yet.")
-                .kitType(.display).foregroundStyle(Ink.text)
-            Text(isLibraryEmpty
-                 ? "Links, images, files or text — drag them into this window, or copy a link and press ⇧⌘V."
-                 : "Drop something here, or move blocks in from the details panel.")
+            Text(state.title).kitType(.display).foregroundStyle(Ink.text).multilineTextAlignment(.center)
+            Text(state.detail)
                 .kitType(.body).foregroundStyle(Ink.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 420)
+                .frame(maxWidth: Metric.celebrationWidth)
             HStack(spacing: Space.sm) {
-                Button("Paste from clipboard") { model.paste() }.buttonStyle(.kit())
-                Button("New note") { model.addNote() }.buttonStyle(.kit(.secondary))
+                ForEach(Array(state.actions.enumerated()), id: \.offset) { index, action in
+                    Button(action.0, action: action.1).buttonStyle(.kit(index == 0 ? .primary : .secondary))
+                }
             }
             .padding(.top, Space.sm)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var quickSave: String {
+        model.quickSaveShortcut == .off ? "" : ", or press \(model.quickSaveShortcut.label) anywhere to save"
+    }
+
+    private var message: (title: String, detail: String, actions: [(String, () -> Void)]) {
+        if isLibraryEmpty {
+            return ("Drop anything here\(quickSave).",
+                    "Links, pictures, files and text: drag them into this window, onto the Dock icon, or copy one and press ⇧⌘V. Already have bookmarks? Bring them in.",
+                    [("Paste from clipboard", { model.paste() }), ("Import bookmarks…", { model.chooseBookmarksFile() }),
+                     ("New note", { model.addNote() })])
+        }
+        if model.fitsTwentyMinutes {
+            return ("Nothing fits in 20 minutes.", "Everything here takes longer, or its length isn’t known.",
+                    [("Show everything", { model.fitsTwentyMinutes = false })])
+        }
+        switch model.scope {
+        case .inbox:
+            return ("Inbox zero.", "Everything you’ve saved has a place. New saves land here first.",
+                    [("Rediscover old saves", { model.show(.rediscover) }), ("Back to All", { model.scope = .all })])
+        case .collection(let uid):
+            let name = model.collection(uid)?.name ?? "this collection"
+            let expiry = model.collection(uid)?.defaultExpiryDays.map { " Blocks added here expire after \($0) days." } ?? ""
+            return ("Nothing in \(name) yet.",
+                    "Paste or drop something while it’s open, choose Move to in a card’s menu, or pick it in Quick Save.\(expiry)",
+                    [("Paste from clipboard", { model.paste() }), ("New note", { model.addNote() })])
+        case .tag(let uid):
+            return ("Nothing tagged #\(model.tag(uid)?.name ?? "").",
+                    "Tag a block from its details panel, or select a card and press T.",
+                    [("Back to All", { model.scope = .all })])
+        case .archive:
+            return ("Nothing archived.",
+                    "Archive blocks you’re done with (⇧⌘A). They leave your collections, and search still finds them.",
+                    [("Back to All", { model.scope = .all })])
+        case .expired:
+            return ("Nothing has expired.",
+                    "A collection can expire its blocks after a few days (right-click it). Expired ones wait here, never deleted.",
+                    [("Back to All", { model.scope = .all })])
+        case .all:
+            return ("Nothing in \(scopeName) yet.", "Drop something here\(quickSave).",
+                    [("Paste from clipboard", { model.paste() })])
+        }
     }
 }
 

@@ -586,6 +586,27 @@ enum SelfTest {
                 }
             }
 
+            // S-053 Settings: default expiry for new collections, Rediscover's Dock badge.
+            // Both live in your real preferences, so the test puts your values back.
+            let keepExpiry = model.defaultExpiryDays, keepBadge = model.rediscoverDockBadge
+            model.defaultExpiryDays = 14
+            let fresh14 = model.createCollection(named: "Settings expiry test", pin: false)
+            check("new collections get the default expiry from Settings", fresh14?.defaultExpiryDays == 14)
+            model.previewBookmarks("<DL><p><DT><H3>Settings import test</H3><DL><p><DT><A HREF=\"https://settings.invalid/a\">A</A></DL><p></DL><p>", file: "t.html")
+            if let plan = model.bookmarkImport { model.importBookmarks(plan) }
+            let importedFolder = model.collections.first { $0.name == "Settings import test" }
+            check("imported bookmark folders don't get it", importedFolder != nil && importedFolder?.defaultExpiryDays == nil)
+            model.rediscoverDockBadge = true
+            check("the Dock badge shows what Rediscover has waiting", NSApp.dockTile.badgeLabel == (model.rediscoverWaiting > 0 ? "\(model.rediscoverWaiting)" : nil))
+            model.rediscoverDockBadge = false
+            check("…and goes away when turned off", NSApp.dockTile.badgeLabel == nil)
+            for item in [fresh14, importedFolder].compactMap({ $0 }) {
+                (item.blocks ?? []).forEach { model.delete([$0.uid], undo: nil) }
+                model.deleteCollection(item)
+            }
+            model.defaultExpiryDays = keepExpiry
+            model.rediscoverDockBadge = keepBadge
+
             // S-054 export everything, and read it back with no loss.
             do {
                 let picture = model.save(url: URL(string: "https://example.com/export-picture")!)

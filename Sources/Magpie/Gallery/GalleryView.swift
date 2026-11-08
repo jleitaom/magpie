@@ -160,26 +160,55 @@ struct BlockMenu: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
 
+    /// The right-click menu for a block, the same wherever it shows: Gallery, Journal, Sort Inbox,
+    /// Lucky Dip, Rediscover (S-051). Shortcuts match the menu bar's Block menu.
     var body: some View {
+        if block.isGone { EmptyView() } else { items }
+    }
+
+    @ViewBuilder private var items: some View {
         if block.url != nil {
             Button("Open") { model.open(block) }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+        }
+        if block.url != nil || block.thumbnail != nil {
             Button("Quick Look") { model.quickLook(block) }
                 .keyboardShortcut("y")
-            Button("Copy Link") { model.copy(block) }
-                .keyboardShortcut("c")
-            Divider()
-        } else {
-            Button("Copy") { model.copy(block) }
-                .keyboardShortcut("c")
-            Divider()
         }
+        Button(block.url != nil ? "Copy Link" : "Copy") { model.copy(block) }
+            .keyboardShortcut("c")
+        Button("Show Details") { model.selection = block.uid; if model.viewMode != .journal { model.show(.gallery) } }
+        Divider()
         Menu("Move to") {
             Button("Inbox") { model.move(block, to: nil, undo: undoManager) }
-                .disabled(block.collection == nil)
+                .disabled(block.collection == nil && block.status == .inbox)
             Divider()
-            ForEach(model.collections) { target in
-                Button(target.name) { model.move(block, to: target, undo: undoManager) }
-                    .disabled(block.collection?.uid == target.uid)
+            ForEach(model.collectionTree, id: \.collection.uid) { row in
+                Button(String(repeating: "    ", count: row.depth) + row.collection.name) {
+                    model.move(block, to: row.collection, undo: undoManager)
+                }
+                .disabled(block.collection?.uid == row.collection.uid)
+            }
+        }
+        Menu("Tags") {
+            ForEach(model.tags, id: \.uid) { tag in
+                Toggle(tag.name, isOn: Binding(
+                    get: { (block.tags ?? []).contains { $0.uid == tag.uid } },
+                    set: { on in if on { model.addTags(tag.name, to: block) } else { model.removeTag(tag, from: block) } }
+                ))
+            }
+            if !model.tags.isEmpty { Divider() }
+            Button("New Tag…") {
+                model.selection = block.uid
+                model.focusTagField = true
+            }
+            .keyboardShortcut("t")
+        }
+        Menu("Pile") {
+            Toggle("Automatic", isOn: Binding(get: { block.pileOverride == nil }, set: { if $0 { model.setPile(block, to: nil) } }))
+            Divider()
+            ForEach(Pile.allCases) { pile in
+                Toggle(pile.title, isOn: Binding(get: { block.pileOverride == pile }, set: { if $0 { model.setPile(block, to: pile) } }))
             }
         }
         Divider()
@@ -188,10 +217,13 @@ struct BlockMenu: View {
         }
         if block.status == .archived {
             Button("Unarchive") { model.unarchive(block) }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
         } else {
             Button("Archive") { model.archive(block, undo: undoManager) }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
         }
         Button("Delete", role: .destructive) { model.delete([block.uid], undo: undoManager) }
+            .keyboardShortcut(.delete, modifiers: [])
     }
 }
 

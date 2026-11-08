@@ -111,6 +111,8 @@ final class AppModel {
     var showsCollections = false
     var showsNewMenu = false
     var showsSortMenu = false
+    /// Snapshot mode only: show the first-launch screen without emptying the sample library.
+    var snapshotEmptyLibrary = false
     /// Search (S-031): open while the field shows; the words typed.
     var isSearching = false
     var searchQuery = ""
@@ -175,6 +177,7 @@ final class AppModel {
         refreshStreak()
         refreshDipStats()
         expireDue()
+        refreshDockBadge()
         registerQuickSave()
         registerScreenshot()
         // Things dropped on the Dock icon before the library was ready.
@@ -493,12 +496,13 @@ final class AppModel {
     // MARK: Collections
 
     @discardableResult
-    func createCollection(named name: String, colorHex: Int? = nil, pin: Bool = true) -> BlockCollection? {
+    func createCollection(named name: String, colorHex: Int? = nil, pin: Bool = true, useDefaults: Bool = true) -> BlockCollection? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let existing = collections
         let color = colorHex ?? CollectionColors.all[existing.count % CollectionColors.all.count]
         let new = BlockCollection(name: trimmed, colorHex: color, sortIndex: (existing.last?.sortIndex ?? 0) + 1)
+        if useDefaults { new.defaultExpiryDays = defaultExpiryDays }
         let pinned = existing.filter(\.isPinned).count
         if pin, Pins.canPin(currentlyPinned: pinned) {
             new.isPinned = true
@@ -1162,6 +1166,7 @@ final class AppModel {
     private func nextRediscover() {
         today.rediscoverDone += 1
         save()
+        refreshDockBadge()
     }
 
     /// True when K, A and → act on a Rediscover card (and no field or panel is open).
@@ -1369,7 +1374,7 @@ final class AppModel {
             let parentID = parent?.uid
             let name = path.last!
             let existing = collections.first { $0.parent?.uid == parentID && Tags.key($0.name) == Tags.key(name) }
-            let made = existing ?? createCollection(named: name, pin: false)
+            let made = existing ?? createCollection(named: name, pin: false, useDefaults: false)
             if existing == nil, let made, let parent { place(made, .inside(parent.uid)) }
             folders[key] = made
             return made
@@ -1535,6 +1540,39 @@ final class AppModel {
         lastOpenedURL = url
         guard !SelfTest.requested else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    // MARK: Settings (S-053)
+
+    /// New collections expire their blocks after this many days. Nil: never.
+    var defaultExpiryDays: Int? = (UserDefaults.standard.object(forKey: "defaultExpiryDays") as? Int) {
+        didSet { UserDefaults.standard.set(defaultExpiryDays, forKey: "defaultExpiryDays") }
+    }
+
+    /// Rediscover's count for today on the Dock icon.
+    var rediscoverDockBadge: Bool = UserDefaults.standard.bool(forKey: "rediscoverDockBadge") {
+        didSet {
+            UserDefaults.standard.set(rediscoverDockBadge, forKey: "rediscoverDockBadge")
+            refreshDockBadge()
+        }
+    }
+
+    /// Old saves still waiting in today's Rediscover: what's left of today's five, or, before
+    /// Rediscover opened today, how many it would pick.
+    var rediscoverWaiting: Int {
+        if todayIfAny?.rediscoverRaw != nil {
+            return max(rediscoverIDs.count - (todayIfAny?.rediscoverDone ?? 0), 0)
+        }
+        let all = (try? context.fetch(FetchDescriptor<Block>())) ?? []
+        let eligible = all.filter { ($0.status == .kept || $0.status == .inbox) && Rediscover.isEligible(
+            RediscoverCandidate(id: $0.uid, createdAt: $0.createdAt, openedAt: $0.openedAt, lastShownAt: $0.lastShownAt,
+                                timesSkipped: $0.timesSkipped), now: .now) }
+        return min(eligible.count, Rediscover.perDay)
+    }
+
+    func refreshDockBadge() {
+        let count = rediscoverDockBadge ? rediscoverWaiting : 0
+        NSApp.dockTile.badgeLabel = count > 0 ? "\(count)" : nil
     }
 
     // MARK: Helpers

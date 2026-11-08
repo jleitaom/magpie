@@ -128,11 +128,18 @@ private struct Idle: View {
             Text("Can’t decide? Let Magpie pick.").kitType(.display).foregroundStyle(Ink.text)
                 .multilineTextAlignment(.center)
             let limit = model.dipMaxMinutes.map { " that fits in \(Badges.minutes($0))" } ?? ""
-            Text("One random thing from your \(model.dipPile.title) pile\(limit). You get 2 re-spins a day. After that, you commit.")
+            let pile = model.pileBlocks(model.dipPile)
+            let fitting = LuckyDip.fitting(pile.map { DipCandidate(id: $0.uid, minutes: $0.minutes, timesSkipped: $0.timesSkipped) },
+                                           maxMinutes: model.dipMaxMinutes)
+            Text(pile.isEmpty ? emptyPile : fitting.isEmpty
+                 ? "Nothing on your \(model.dipPile.title) pile\(limit). Try more time, or another pile."
+                 : "One random thing from your \(model.dipPile.title) pile\(limit). You get 2 re-spins a day. After that, you commit.")
                 .kitType(.body).foregroundStyle(Ink.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: Metric.celebrationWidth)
-            if model.canSpin {
+            if fitting.isEmpty {
+                EmptyView()
+            } else if model.canSpin {
                 Button(model.spinsToday == 0 ? "Randomize" : "Spin again · \(model.respinsLeft) left today") {
                     model.spin(reduceMotion: reduceMotion)
                 }
@@ -143,6 +150,20 @@ private struct Idle: View {
                 Text("No spins left today. Come back tomorrow.").kitType(.labelStrong).foregroundStyle(Ink.secondary)
             }
         }
+    }
+}
+
+extension Idle {
+    /// What goes on an empty pile, so you know how to fill it.
+    fileprivate var emptyPile: String {
+        let what = switch model.dipPile {
+        case .read: "articles and essays"
+        case .watch: "videos"
+        case .listen: "music links (Discogs, Bandcamp, Spotify, Apple Music)"
+        case .cook: "recipes"
+        case .visit: "places from Apple Maps or Google Maps"
+        }
+        return "The \(model.dipPile.title) pile is empty. Save some \(what), or pick a pile for a block in its details."
     }
 }
 
@@ -222,12 +243,7 @@ private struct PickCard: View {
         .clipShape(shape)
         .overlay(shape.strokeBorder(Ink.hairline))
         .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
-        .contextMenu {
-            if block.url != nil {
-                Button("Open") { model.open(block) }
-                Button("Copy Link") { model.copy(block) }
-            }
-        }
+        .contextMenu { BlockMenu(block: block) }
         .transition(.scale(scale: 0.96).combined(with: .opacity))
     }
 

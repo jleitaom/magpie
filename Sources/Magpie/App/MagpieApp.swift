@@ -98,6 +98,9 @@ struct MagpieCommands: Commands {
                 .disabled(selection == nil)
             Button("Show Details") { model.selection = selection }
                 .disabled(selection == nil)
+            Button("Quick Look") { model.quickLook(model.block(selection)) }
+                .keyboardShortcut("y")
+                .disabled(selection == nil)
             Button(model.block(selection)?.status == .archived ? "Unarchive" : "Archive") {
                 guard let block = model.block(selection) else { return }
                 if block.status == .archived { model.unarchive(block) } else { model.archive(block, undo: NSApp.keyWindow?.undoManager) }
@@ -111,6 +114,7 @@ struct MagpieCommands: Commands {
             .keyboardShortcut("t")
             .disabled(selection == nil)
             Divider()
+            // ⌫ deletes in the Gallery and Journal themselves; a menu key here would catch ⌫ in text fields.
             Button("Delete") {
                 if let selection { model.delete([selection], undo: NSApp.keyWindow?.undoManager) }
             }
@@ -264,7 +268,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// When Magpie last came to the front, to tell a quick drop from waiting on the icon.
     private var activeSince: Date?
 
-    func applicationDidBecomeActive(_ notification: Notification) { activeSince = .now; Self.trace("becomeActive") }
+    func applicationDidBecomeActive(_ notification: Notification) {
+        activeSince = .now
+        Self.trace("becomeActive")
+        AppModel.current?.refreshDockBadge()   // a new day may have started
+    }
     func applicationDidResignActive(_ notification: Notification) { activeSince = nil; Self.trace("resignActive") }
 
     /// APP_TRACE=<file>: logs activation and Dock drops with timestamps, for checking the quick-drop timing.

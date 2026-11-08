@@ -7,6 +7,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- **One right-click menu for every block,** wherever it shows (Gallery, Journal, Sort Inbox, Lucky Dip, Rediscover): Open, Quick Look, Copy Link, Show Details, Move to (nested collections), Tags (tick or untick, or a new one), Pile, Archive and Delete, each with its shortcut
+- **Helpful empty pages.** The first launch, an empty collection, tag, Archive, Expired, a search with no results, the "I have 20 minutes" filter and an empty Lucky Dip pile each say what's going on and what to do next
+- **Settings in two tabs.** General: appearance, how long new collections keep their blocks, Rediscover's count on the Dock icon, and where your library lives (with Show in Finder and Export). Shortcuts: Quick Save and screenshot shortcuts, and a card of the keys used inside Magpie
 - **Export everything** (File → Export Library…, ⇧⌘E): a folder with `library.json` (every block, field, collection, tag and day), your pictures as plain files, and `bookmarks.html` that Safari, Chrome and Firefox can import, collections as folders. **File → Import Magpie Export…** (⌥⌘I) reads it back with nothing lost; what you already have is left alone
 - **Rename while sorting the Inbox:** click the card's title, or press **R**. Return saves, Escape cancels; the sorting keys wait while you type
 - **Drop onto the Dock icon:** links, pictures, files and Safari link files (.webloc) dropped on Magpie's Dock icon go to the Inbox, even when Magpie isn't open. A quick drop leaves you where you were, with "Saved to Inbox" shown above the Dock; hold the item on the icon until Magpie comes forward to open it instead

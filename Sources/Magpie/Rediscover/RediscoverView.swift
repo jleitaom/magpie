@@ -108,12 +108,7 @@ private struct RediscoverCard: View {
                 }
             }
         }
-        .contextMenu {
-            if block.url != nil {
-                Button("Open") { model.open(block) }
-                Button("Copy Link") { model.copy(block) }
-            }
-        }
+        .contextMenu { BlockMenu(block: block) }
         .id(block.uid)
         .transition(.opacity)
     }

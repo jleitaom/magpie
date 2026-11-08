@@ -1,3 +1,4 @@
+import MagpieKit
 import SwiftUI
 
 /// The Settings window (Command-Comma). One tab per topic, at most about
@@ -23,6 +24,7 @@ struct SettingsView: View {
         Form {
             switch tab {
             case .general: GeneralSettings()
+            case .shortcuts: ShortcutSettings()
             }
         }
         .formStyle(.grouped)
@@ -33,23 +35,26 @@ struct SettingsView: View {
 
 /// The Settings tabs. Snapshot mode walks through every case.
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case general
+    case general, shortcuts
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .general: "General"
+        case .shortcuts: "Shortcuts"
         }
     }
 
     var symbol: String {
         switch self {
         case .general: "gearshape"
+        case .shortcuts: "command"
         }
     }
 }
 
+/// Appearance, new collections, Rediscover and the library (S-053).
 struct GeneralSettings: View {
     @Environment(AppModel.self) private var model
 
@@ -63,22 +68,62 @@ struct GeneralSettings: View {
             Text("Magpie is designed dark. Switch any time with View → Appearance, or ⌃⌘T.")
                 .font(.caption).foregroundStyle(.secondary)
         }
-        Section("Quick Save") {
-            Picker("Shortcut", selection: $model.quickSaveShortcut) {
-                ForEach(QuickSaveShortcut.allCases) { Text($0.label).tag($0) }
+        Section("New collections") {
+            Picker("Expire blocks after", selection: $model.defaultExpiryDays) {
+                Text("Never").tag(Int?.none)
+                ForEach(Expiry.choices, id: \.self) { Text("\($0) days").tag(Int?.some($0)) }
             }
-            Text(model.quickSaveShortcutWorks
-                 ? "Press it anywhere to save Safari’s front tab, or the clipboard."
-                 : "Another app is using this shortcut. Pick a different one.")
-                .font(.caption).foregroundStyle(model.quickSaveShortcutWorks ? .secondary : Color.orange)
+            Text("Each collection can change this from its right-click menu. Expired blocks are archived, never deleted.")
+                .font(.caption).foregroundStyle(.secondary)
         }
-        Section("Screenshots") {
-            Toggle("⌃⌥S saves part of the screen to the Inbox", isOn: $model.screenshotShortcutOn)
-            Text("Its text is read on your Mac so search finds it. macOS asks for Screen Recording permission the first time.")
+        Section("Rediscover") {
+            Toggle("Show today’s count on the Dock icon", isOn: $model.rediscoverDockBadge)
+            Text("A small number on Magpie’s icon: old saves waiting in today’s Rediscover.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         Section("Library") {
-            LabeledContent("Saved at", value: Store.url.deletingLastPathComponent().path)
+            LabeledContent("Saved at") {
+                HStack {
+                    Text(Store.url.deletingLastPathComponent().path).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([Store.url]) }
+                }
+            }
+            LabeledContent("Back up") {
+                Button("Export Library…") { model.chooseExportFolder() }
+            }
+        }
+    }
+}
+
+/// The global shortcuts, and a card of the keys used inside Magpie (S-053).
+struct ShortcutSettings: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        Section("Anywhere on your Mac") {
+            Picker("Quick Save", selection: $model.quickSaveShortcut) {
+                ForEach(QuickSaveShortcut.allCases) { Text($0.label).tag($0) }
+            }
+            Toggle("⌃⌥S saves a screenshot to the Inbox", isOn: $model.screenshotShortcutOn)
+            Text(model.quickSaveShortcutWorks
+                 ? "Quick Save saves Safari’s front tab, or the clipboard. Screenshots ask macOS for Screen Recording the first time."
+                 : "Another app is using the Quick Save shortcut. Pick a different one.")
+                .font(.caption).foregroundStyle(model.quickSaveShortcutWorks ? .secondary : Color.orange)
+        }
+        Section("Keys inside Magpie") {
+            keys("Sort Inbox", "M move · D done · → skip · ⌫ delete · R rename")
+            keys("Rediscover", "K keep · A archive · → skip · ↩ open")
+            keys("Gallery, Journal", "arrows move · Space Quick Look · ↩ open · ⌫ delete · T tag")
+            keys("Lucky Dip", "⌘R spin · ⌘↩ start or finish · ⌥⌘⌫ not today")
+            keys("Anywhere in the window", "⌘F search · ⌘1–⌘7 places · ⌘K collections · ⇧⌘V paste")
+        }
+    }
+
+    private func keys(_ place: String, _ list: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(place)
+            Text(list).font(.callout).foregroundStyle(.secondary)
         }
     }
 }
