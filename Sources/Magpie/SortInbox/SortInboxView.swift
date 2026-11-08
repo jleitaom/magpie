@@ -135,8 +135,7 @@ private struct SortCardStack: View {
                 }
                 VStack(alignment: .leading, spacing: Space.md) {
                     Text(meta).kitType(.meta).foregroundStyle(Ink.secondary)
-                    Text(content.title).kitType(.title).foregroundStyle(Ink.text)
-                        .lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                    SortTitle(block: block, title: content.title)
                     switch content.body {
                     case .note(let text):
                         Text(text).kitType(.body).foregroundStyle(Ink.text.opacity(0.85)).lineLimit(5)
@@ -190,6 +189,53 @@ private struct SortCardStack: View {
     private var meta: String {
         let saved = block.createdAt.formatted(.relative(presentation: .named))
         return [block.kind.label, block.siteName, "saved \(saved)"].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
+/// The card's title. Click it (or press R) to rename: the whole title is selected, Return saves,
+/// Escape cancels. The sorting keys wait while you type.
+private struct SortTitle: View {
+    let block: Block
+    let title: String
+    @Environment(AppModel.self) private var model
+    @State private var draft = ""
+    @FocusState private var editing: Bool
+
+    var body: some View {
+        if model.isRenamingSortBlock {
+            TextField("Title", text: $draft, axis: .vertical)
+                .textFieldStyle(.plain)
+                .kitType(.title)
+                .foregroundStyle(Ink.text)
+                .lineLimit(1...3)
+                .focused($editing)
+                .padding(.horizontal, Space.sm)
+                .padding(.vertical, Space.xs)
+                .background(RoundedRectangle(cornerRadius: Metric.radiusField).fill(Ink.control))
+                .overlay(RoundedRectangle(cornerRadius: Metric.radiusField).strokeBorder(Ink.accentText, lineWidth: Metric.focusRing))
+                .onSubmit(commit)
+                .onExitCommand { model.isRenamingSortBlock = false }
+                .task {
+                    draft = block.title
+                    await kitFocusAndSelectAll { editing = true; return editing }
+                }
+                .onChange(of: editing) { _, focused in
+                    if !focused, model.isRenamingSortBlock { commit() }
+                }
+        } else {
+            Text(title).kitType(.title).foregroundStyle(Ink.text)
+                .lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                .contentShape(.rect)
+                .onTapGesture { model.isRenamingSortBlock = true }
+                .help("Click to rename (R)")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("Rename")
+        }
+    }
+
+    private func commit() {
+        model.rename(block, to: draft)
+        model.isRenamingSortBlock = false
     }
 }
 

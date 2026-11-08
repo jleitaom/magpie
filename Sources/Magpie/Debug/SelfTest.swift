@@ -138,6 +138,17 @@ enum SelfTest {
             let film = model.save(url: URL(string: "https://www.youtube.com/watch?v=sort-test")!)
             let watch = model.createCollection(named: "Watch later")
             check("a YouTube link is suggested for Watch later", model.suggestion(for: film)?.uid == watch?.uid)
+            model.startSorting()
+            if let card = model.sortingBlock {
+                model.isRenamingSortBlock = true
+                check("while renaming a card, the sorting keys are off", !model.canSortNow)
+                model.rename(card, to: "  A better   name ")
+                model.isRenamingSortBlock = false
+                check("renaming in Sort Inbox saves the tidied title and keeps the card", card.title == "A better name"
+                      && model.sortingBlock?.uid == card.uid && model.canSortNow)
+                model.rename(card, to: "   ")
+                check("an empty title is ignored", card.title == "A better name")
+            }
             // S-061 Inbox zero: sorting the last block marks today and starts the streak.
             model.startSorting()
             check("today hasn't reached Inbox zero while blocks wait", !model.today.reachedInboxZero && !model.inboxUIDs.isEmpty)

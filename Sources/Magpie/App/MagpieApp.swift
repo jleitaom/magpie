@@ -120,6 +120,9 @@ struct MagpieCommands: Commands {
             Button("Move to Suggested") { model.sortMove(to: model.sortingBlock.flatMap(model.suggestion(for:)), undo: NSApp.keyWindow?.undoManager) }
                 .keyboardShortcut("m", modifiers: [])
                 .disabled(!canSort)
+            Button("Rename") { model.isRenamingSortBlock = true }
+                .keyboardShortcut("r", modifiers: [])
+                .disabled(!canSort)
             Button("Mark Done") { model.sortDone() }
                 .keyboardShortcut("d", modifiers: [])
                 .disabled(!canSort)

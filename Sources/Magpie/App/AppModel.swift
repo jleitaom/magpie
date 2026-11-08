@@ -619,6 +619,7 @@ final class AppModel {
 
     /// Opens Sort Inbox with a fresh run over everything in the Inbox.
     func startSorting() {
+        isRenamingSortBlock = false
         sortSession = SortSession(inbox: inboxUIDs)
         selection = nil
         showsCollections = false
@@ -639,6 +640,18 @@ final class AppModel {
     /// True when M, D, → and ⌫ should sort: Sort Inbox shows a block, and no field or panel is open.
     var canSortNow: Bool {
         viewMode == .sortInbox && sortSession.current != nil && !showsCollections && !showsNewMenu && renamingCollection == nil
+            && !isRenamingSortBlock
+    }
+
+    /// Sort Inbox's card title is being edited (click it, or R); the sorting keys wait meanwhile.
+    var isRenamingSortBlock = false
+
+    /// Renames a block. An empty name is ignored.
+    func rename(_ block: Block, to title: String) {
+        let cleaned = Titles.clean(title)
+        guard !cleaned.isEmpty, cleaned != block.title else { return }
+        block.title = cleaned
+        save()
     }
 
     /// Keeps the run in step when the Inbox changes outside it (a save, an Undo).
