@@ -375,6 +375,37 @@ enum SelfTest {
             check("the wishlist total is kept per currency", model.priceTotal([lamp, mug])?.contains("+") == true)
             [film3, film4, lamp, mug].forEach { model.delete([$0.uid], undo: nil) }
 
+            // S-030 Quick Save: the panel saves to the chosen collection, Escape cancels.
+            if let second = model.collections.first(where: { $0.name == "Second" }) {
+                let board2 = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest.quick"))
+                board2.clearContents()
+                board2.setString("https://example.com/quick-save", forType: .string)
+                let draft = QuickSaveSource.clipboard(board2)
+                check("Quick Save reads a link from the clipboard", draft.content == .web(URL(string: "https://example.com/quick-save")!)
+                      && draft.source == "From the clipboard")
+                board2.clearContents()
+                check("an empty clipboard says so", QuickSaveSource.clipboard(board2).content == .nothing)
+                board2.releaseGlobally()
+
+                let panel = model.quickSavePanel
+                panel.show(draft)
+                check("the Quick Save panel opens", panel.isVisible)
+                panel.close()
+                check("Escape (Cancel) closes it without saving", !panel.isVisible
+                      && !blocks().contains { $0.urlString == "https://example.com/quick-save" })
+                panel.show(draft)
+                panel.save(QuickSavePanel.Edited(draft: draft, title: "Quick one", collection: second.uid, tags: "fast, later", note: "From the panel"))
+                let quick = blocks().first { $0.urlString == "https://example.com/quick-save" }
+                check("Return (Save) saves to the chosen collection with its tags and note, and closes",
+                      !panel.isVisible && quick?.collection?.uid == second.uid && quick?.title == "Quick one"
+                      && (quick?.tags ?? []).count == 2 && quick?.note == "From the panel")
+                let text = model.quickSave(QuickSavePanel.Edited(draft: QuickSaveDraft(content: .text("Buy film for the trip"), title: "Buy film", source: ""),
+                                                                 title: "Buy film", collection: nil, tags: "", note: ""))
+                check("text from the clipboard becomes a note in the Inbox", text?.kind == .note && text?.status == .inbox)
+                [quick, text].compactMap { $0 }.forEach { model.delete([$0.uid], undo: nil) }
+                model.tags.filter { ["fast", "later"].contains($0.name) }.forEach(model.deleteTag)
+            }
+
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.
             let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))

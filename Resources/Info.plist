@@ -13,5 +13,6 @@
 <key>LSMinimumSystemVersion</key><string>26.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
 <key>NSHighResolutionCapable</key><true/>
+<key>NSAppleEventsUsageDescription</key><string>Quick Save reads the address and title of Safari’s front tab when you press its shortcut. Nothing else.</string>
 <key>NSPrincipalClass</key><string>NSApplication</string>
 </dict></plist>

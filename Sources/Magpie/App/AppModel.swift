@@ -171,6 +171,7 @@ final class AppModel {
         refreshStreak()
         refreshDipStats()
         expireDue()
+        registerQuickSave()
         let pending = EnrichState.pending.rawValue
         let stuck = (try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.enrichRaw == pending }))) ?? []
         for block in stuck { enrich(block) }
@@ -207,7 +208,7 @@ final class AppModel {
     // MARK: Saving
 
     /// Where new blocks go: into the open collection, or the Inbox.
-    private func place(_ block: Block) {
+    func place(_ block: Block) {
         if case .collection(let uid) = scope, let target = collection(uid) {
             block.collection = target
             block.status = .kept
@@ -278,7 +279,8 @@ final class AppModel {
         }
     }
 
-    func saveImage(_ data: Data, name: String?) {
+    @discardableResult
+    func saveImage(_ data: Data, name: String?) -> Block {
         let block = Block(kind: .image, title: name ?? "Image")
         block.siteName = "Image"
         block.enrich = .pending
@@ -294,6 +296,7 @@ final class AppModel {
             block.enrich = processed == nil ? .failed : .done
             self.save()
         }
+        return block
     }
 
     func addNote() {
@@ -1177,6 +1180,69 @@ final class AppModel {
     func priceTotal(_ blocks: [Block]) -> String? {
         let prices = blocks.compactMap { block in block.price.map { (amount: $0, currency: block.currency) } }
         return prices.isEmpty ? nil : Totals.money(prices, fallback: Locale.current.currency?.identifier ?? "EUR")
+    }
+
+    // MARK: Quick Save (S-030)
+
+    @ObservationIgnored private(set) lazy var quickSavePanel = QuickSavePanel(model: self)
+    @ObservationIgnored private var quickSaveHotKey: HotKey?
+
+    /// The global shortcut, from Settings. Stored, so Settings redraws when it changes.
+    var quickSaveShortcut: QuickSaveShortcut = QuickSaveShortcut(rawValue: UserDefaults.standard.string(forKey: "quickSaveShortcut") ?? "")
+        ?? .controlOptionSpace {
+        didSet {
+            UserDefaults.standard.set(quickSaveShortcut.rawValue, forKey: "quickSaveShortcut")
+            registerQuickSave()
+        }
+    }
+
+    /// Whether the shortcut is registered (another app may hold it).
+    private(set) var quickSaveShortcutWorks = true
+
+    func registerQuickSave() {
+        quickSaveHotKey = nil
+        // Test runs never take the shortcut from the Magpie you use.
+        guard !SelfTest.requested, ProcessInfo.processInfo.environment["APP_SNAPSHOT"] == nil else { return }
+        guard let keys = quickSaveShortcut.carbon else { quickSaveShortcutWorks = true; return }
+        quickSaveHotKey = HotKey(id: 1, keyCode: keys.keyCode, modifiers: keys.modifiers) { [weak self] in
+            self?.quickSavePanel.open()
+        }
+        quickSaveShortcutWorks = quickSaveHotKey != nil
+    }
+
+    /// Saves what Quick Save shows, with the title, collection, tags and note from the panel.
+    /// It goes to the chosen collection (the Inbox by default), whatever the window shows.
+    @discardableResult
+    func quickSave(_ edited: QuickSavePanel.Edited) -> Block? {
+        let block: Block?
+        switch edited.draft.content {
+        case .web(let url):
+            block = url.isFileURL ? saveFile(url) : save(url: url)
+        case .text(let text):
+            let note = Block(kind: .note, title: Titles.firstLine(text))
+            note.bodyText = text
+            note.siteName = "Note"
+            place(note)
+            block = note
+        case .image(let data):
+            block = saveImage(data, name: nil)
+        case .nothing:
+            block = nil
+        }
+        guard let block else { return nil }
+        let title = Titles.clean(edited.title)
+        if !title.isEmpty { block.title = title }
+        if !edited.note.isEmpty { block.note = edited.note }
+        move(block, to: collection(edited.collection), undo: nil)
+        if !edited.tags.isEmpty { addTags(edited.tags, to: block) }
+        save()
+        flash("Saved to \(block.collection?.name ?? "the Inbox")")
+        return block
+    }
+
+    private func saveFile(_ url: URL) -> Block? {
+        save(.file(url))
+        return (try? context.fetch(FetchDescriptor<Block>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])))?.first
     }
 
     // MARK: Helpers

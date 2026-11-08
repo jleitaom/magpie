@@ -63,6 +63,15 @@ struct GeneralSettings: View {
             Text("Magpie is designed dark. Switch any time with View → Appearance, or ⌃⌘T.")
                 .font(.caption).foregroundStyle(.secondary)
         }
+        Section("Quick Save") {
+            Picker("Shortcut", selection: $model.quickSaveShortcut) {
+                ForEach(QuickSaveShortcut.allCases) { Text($0.label).tag($0) }
+            }
+            Text(model.quickSaveShortcutWorks
+                 ? "Press it anywhere to save Safari’s front tab, or the clipboard."
+                 : "Another app is using this shortcut. Pick a different one.")
+                .font(.caption).foregroundStyle(model.quickSaveShortcutWorks ? .secondary : Color.orange)
+        }
         Section("Library") {
             LabeledContent("Saved at", value: Store.url.deletingLastPathComponent().path)
         }

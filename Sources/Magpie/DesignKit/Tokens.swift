@@ -110,6 +110,7 @@ enum Metric {
     static let streakPill: CGFloat = 28
     static let tagChip: CGFloat = 24
     static let searchWidth: CGFloat = 560
+    static let quickSaveWidth: CGFloat = 440
     static let journalRow: CGFloat = 48
     static let journalHeader: CGFloat = 36
     static let journalNumber: CGFloat = 40

@@ -33,13 +33,19 @@ enum Snapshot {
                 NSApp.appearance = NSAppearance(named: mode == "light" ? .aqua : .darkAqua)
                 for page in SnapshotPage.allCases where only?.contains(page.rawValue) ?? true {
                     page.show(in: model)
-                    if page.hasPopover {
+                    if page == .quickSave {
+                        if let panel = model.quickSavePanel.window { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: panel) }
+                        model.quickSavePanel.close()
+                    } else if page.hasPopover {
                         // Let the previous popover finish closing, or the new one won't open.
                         try? await Task.sleep(for: .seconds(0.8))
                         page.openPopover(in: model)
                     }
                     try? await Task.sleep(for: .seconds(1.2))
-                    if page.hasPopover {
+                    if page == .quickSave {
+                        if let panel = model.quickSavePanel.window { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: panel) }
+                        model.quickSavePanel.close()
+                    } else if page.hasPopover {
                         // A popover is a window of its own: capture just that window.
                         let popover = NSApp.windows.first { $0.isVisible && String(describing: type(of: $0)).contains("Popover") }
                         if let popover { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: popover) }
@@ -115,7 +121,7 @@ enum SnapshotPage: String, CaseIterable {
     /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
     @MainActor static var startedOriginal: (UUID, BlockStatus)?
 
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping
+    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave
 
     /// Pages that open a popover. Their snapshot is the popover alone.
     var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename || self == .sortMenu }
@@ -163,6 +169,10 @@ enum SnapshotPage: String, CaseIterable {
             model.scope = .all
             model.startSearch()
             model.searchQuery = "lisbon"
+        case .quickSave:
+            model.scope = .all
+            model.quickSavePanel.show(QuickSaveDraft(content: .web(URL(string: "https://www.dezeen.com/lisbon-guide")!),
+                                                     title: "An architect’s guide to Lisbon", source: "From Safari"))
         case .shopping:
             model.scope = model.collections.first { $0.name == "Shopping" }.map { .collection($0.uid) } ?? .all
         case .tag:

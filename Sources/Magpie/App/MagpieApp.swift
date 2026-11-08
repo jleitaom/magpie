@@ -68,6 +68,11 @@ struct MagpieCommands: Commands {
             Button("Add Image or File…") { chooseFiles() }
                 .keyboardShortcut("o")
         }
+        CommandGroup(after: .newItem) {
+            Divider()
+            Button("Quick Save…") { model.quickSavePanel.open() }
+                .keyboardShortcut(.space, modifiers: [.control, .option])
+        }
         CommandGroup(after: .pasteboard) {
             Divider()
             Button("Find…") { model.startSearch() }

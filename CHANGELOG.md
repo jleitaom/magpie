@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- **Quick Save** (⌃⌥Space, anywhere): a small panel saves Safari's front tab, or the clipboard when Safari isn't in front. Change the title, pick a collection (Inbox by default), add tags and a note, and press Return; Escape cancels. You stay in Safari. The first time, macOS asks whether Magpie may read Safari; if not, Quick Save uses the clipboard and says so. Choose another shortcut, or turn it off, in Settings → General
 - **Search everything** (⌘F, or the magnifier in the top bar): titles, notes, links, sites, tags, collection names and the text in your images (read on your Mac with Apple's Vision). Ignores case and accents, matches the start of words, and includes the Archive. Matching words are highlighted
 - **Video time and wishlist totals.** A collection with videos shows how much there is to watch ("1 h 5 min of video saved") and an **I have 20 minutes** filter; one with products shows the total, per currency ("€442 + $60")
 - **Rediscover** (View → Rediscover, ⌃⌘5, or from the Inbox zero screen): five old saves a day, ones you haven't opened in two weeks, one big card at a time. **K** keeps it, **A** archives it, **→** skips it (it comes up less often), **Return** opens it. After five: "That's today's five. Come back tomorrow."

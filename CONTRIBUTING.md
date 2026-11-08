@@ -23,6 +23,8 @@ Thanks for helping out!
     weighted pick, re-spins and the dip streak are in `MagpieKit/LuckyDip.swift`
   - `Rediscover/`: five old saves a day to keep or archive (`RediscoverView.swift`). The pick and
     the expiry rules are in `MagpieKit/Rediscover.swift`
+  - `QuickSave/`: the global shortcut (`HotKey.swift`, Carbon, no permission needed) and the floating
+    panel that saves Safari's front tab or the clipboard (`QuickSave.swift`)
   - `Tags/`: the tag editor in the details panel, the tag list in the Collections panel, and the
     tag menu and prompts (`TagViews.swift`). Name rules are in `MagpieKit/Tags.swift`
   - `Details/`: the panel that slides in for a selected Block (`DetailsPanel.swift`)

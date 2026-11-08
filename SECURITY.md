@@ -2,8 +2,10 @@
 
 ## What the app can access
 
-- **No special permissions.** Magpie doesn't ask for Accessibility, screen recording, contacts or
-  anything else. It reads only what you paste or drop into its window.
+- **One optional permission.** Quick Save asks once to control Safari (Automation), only to read the
+  address and title of Safari's front tab when you press its shortcut. Say no and Quick Save uses the
+  clipboard instead. Magpie doesn't ask for Accessibility, screen recording, contacts or anything else.
+  The Quick Save shortcut uses the system's hot key service, which needs no permission.
 - **Network: link previews only.** When you save a link, Magpie asks Apple's LinkPresentation
   framework to fetch that page's title, picture and site name, which is the same thing Messages
   does for a link. It also downloads the page once to read a video's length, a product's price or
