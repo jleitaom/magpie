@@ -45,6 +45,8 @@ struct CollectionsPopover: View {
                 .frame(maxHeight: Metric.collectionsMaxHeight)
                 .fixedSize(horizontal: false, vertical: true)
             }
+            TagCloud()
+                .padding(.top, Space.xs)
             HStack(spacing: Space.sm) {
                 TextField("New collection", text: $newName).kitField().onSubmit(create)
                 Button("Add", action: create).buttonStyle(.kit()).disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -53,6 +55,7 @@ struct CollectionsPopover: View {
         .padding(Space.md)
         .frame(width: Metric.collectionsWidth)
         .collectionDeleteAlert(when: true)
+        .tagPrompts(when: true)
     }
 
     private var isSearching: Bool { !search.trimmingCharacters(in: .whitespaces).isEmpty }

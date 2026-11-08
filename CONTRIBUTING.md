@@ -19,6 +19,8 @@ Thanks for helping out!
     collection suggestion are in `MagpieKit/Sorting.swift`
   - `LuckyDip/`: Lucky Dip, one random pick from a pile (`LuckyDipView.swift`). Piles, the
     weighted pick, re-spins and the dip streak are in `MagpieKit/LuckyDip.swift`
+  - `Tags/`: the tag editor in the details panel, the tag list in the Collections panel, and the
+    tag menu and prompts (`TagViews.swift`). Name rules are in `MagpieKit/Tags.swift`
   - `Details/`: the panel that slides in for a selected Block (`DetailsPanel.swift`)
   - `Collections/`: the "N more" panel to find, pin and create collections (`CollectionsPopover.swift`)
   - `Settings/`: the Settings window (⌘,)

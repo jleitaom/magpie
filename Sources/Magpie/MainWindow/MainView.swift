@@ -54,6 +54,7 @@ struct MainView: View {
         }
         .ignoresSafeArea()
         .collectionDeleteAlert(when: !model.showsCollections)
+        .tagPrompts(when: !model.showsCollections)
         .task {
             model.start()
             SeedData.insertIfRequested(into: model)
@@ -67,6 +68,7 @@ struct MainView: View {
         case .all: "Magpie"
         case .inbox: "your Inbox"
         case .collection(let uid): collections.first { $0.uid == uid }?.name ?? "this collection"
+        case .tag(let uid): model.tag(uid).map { "#\($0.name)" } ?? "this tag"
         }
     }
 }
@@ -126,6 +128,10 @@ struct TopBar: View {
             tab("Inbox", scope: .inbox, count: inboxCount)
             ForEach(pinned) { collectionTab($0) }
             if let extra { collectionTab(extra) }
+            if let tag = model.openTag {
+                tab("# \(tag.name)", scope: .tag(tag.uid))
+                    .contextMenu { TagMenu(tag: tag) }
+            }
             KitBarDivider()
             Button { model.showsCollections.toggle() } label: {
                 HStack(spacing: Metric.inlineGap) {

@@ -8,6 +8,8 @@ import UniformTypeIdentifiers
 enum Scope: Hashable {
     case all, inbox
     case collection(UUID)
+    /// Every block with this tag (S-014).
+    case tag(UUID)
 }
 
 /// The view switcher's modes. Gallery and Sort Inbox exist so far (notes/PLAN.md).
@@ -89,6 +91,11 @@ final class AppModel {
     var selection: UUID? { didSet { MenuState.shared.update(selection) } }
     var showsCollections = false
     var showsNewMenu = false
+    /// Asks the details panel to put the cursor in its tag field (T, ⌘T).
+    var focusTagField = false
+    /// The tag waiting for the rename or delete prompt (S-015).
+    var tagToRename: UUID?
+    var tagToDelete: UUID?
     /// Lucky Dip (S-069–S-072): the chosen pile and time limit, and whether the shuffle is running.
     var dipPile: Pile = .read
     var dipMaxMinutes: Int?
@@ -169,6 +176,7 @@ final class AppModel {
         case .all: all.filter { $0.status != .archived }
         case .inbox: all.filter { $0.status == .inbox }
         case .collection(let uid): all.filter { $0.collection?.uid == uid && $0.status != .archived }
+        case .tag(let uid): all.filter { block in block.status != .archived && (block.tags ?? []).contains { $0.uid == uid } }
         }
     }
 
@@ -784,6 +792,81 @@ final class AppModel {
         let iso = weekday == 1 ? 7 : weekday - 1
         let start = LuckyDip.weekStart(today: todayNumber, weekday: iso)
         finishedThisWeek = records.filter { $0.day >= start && $0.day <= todayNumber }.map(\.finished).reduce(0, +)
+    }
+
+    // MARK: Tags (S-014, S-015)
+
+    var tags: [Tag] {
+        ((try? context.fetch(FetchDescriptor<Tag>())) ?? []).sorted { Tags.key($0.name) < Tags.key($1.name) }
+    }
+
+    func tag(_ uid: UUID?) -> Tag? {
+        guard let uid else { return nil }
+        return try? context.fetch(FetchDescriptor<Tag>(predicate: #Predicate { $0.uid == uid })).first
+    }
+
+    /// The tag with this name (any case), made if it doesn't exist yet.
+    func tag(named name: String) -> Tag? {
+        let cleaned = Tags.clean(name)
+        guard !cleaned.isEmpty else { return nil }
+        let all = tags
+        if let found = all.first(where: { Tags.key($0.name) == Tags.key(cleaned) }) { return found }
+        let new = Tag(name: cleaned, colorHex: CollectionColors.all[all.count % CollectionColors.all.count])
+        context.insert(new)
+        return new
+    }
+
+    /// Adds one or more tags ("jazz, vinyl") to a block. A tag it already has isn't added twice.
+    func addTags(_ text: String, to block: Block) {
+        for name in Tags.parse(text) {
+            guard let tag = tag(named: name), !(block.tags ?? []).contains(where: { $0.uid == tag.uid }) else { continue }
+            block.tags = (block.tags ?? []) + [tag]
+        }
+        save()
+    }
+
+    func removeTag(_ tag: Tag, from block: Block) {
+        block.tags = (block.tags ?? []).filter { $0.uid != tag.uid }
+        save()
+    }
+
+    /// Renames a tag. Renaming to another tag's name (any case) merges the two into that one.
+    @discardableResult
+    func renameTag(_ tag: Tag, to name: String) -> Bool {
+        let cleaned = Tags.clean(name)
+        tagToRename = nil
+        guard !cleaned.isEmpty else { return false }
+        if let other = tags.first(where: { $0.uid != tag.uid && Tags.key($0.name) == Tags.key(cleaned) }) {
+            for block in tag.blocks ?? [] where !(block.tags ?? []).contains(where: { $0.uid == other.uid }) {
+                block.tags = (block.tags ?? []) + [other]
+            }
+            if scope == .tag(tag.uid) { scope = .tag(other.uid) }
+            context.delete(tag)
+            save()
+            flash("Merged into \(other.name)")
+            return true
+        }
+        tag.name = cleaned
+        save()
+        return false
+    }
+
+    func recolor(_ tag: Tag, to hex: Int) {
+        tag.colorHex = hex
+        save()
+    }
+
+    /// Deletes the tag only: it comes off its blocks, and the blocks stay.
+    func deleteTag(_ tag: Tag) {
+        if scope == .tag(tag.uid) { scope = .all }
+        tagToDelete = nil
+        flash("Deleted tag \(tag.name)")
+        context.delete(tag)
+        save()
+    }
+
+    var openTag: Tag? {
+        if case .tag(let uid) = scope { tag(uid) } else { nil }
     }
 
     // MARK: Helpers

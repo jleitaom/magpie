@@ -236,6 +236,50 @@ struct KitChipStyle: ButtonStyle {
     }
 }
 
+// MARK: - Tag chip
+
+/// A tag: a color dot and its name, in a small capsule. Selected (the Gallery shows that tag):
+/// teal ring. Used in the details panel and the Collections panel.
+struct KitTagChipStyle: ButtonStyle {
+    let color: UInt32
+    var isSelected = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        Part(configuration: configuration, color: color, isSelected: isSelected)
+    }
+
+    private struct Part: View {
+        let configuration: Configuration
+        let color: UInt32
+        let isSelected: Bool
+        @Environment(\.forcedPartState) private var forced
+        @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.isFocused) private var isFocused
+        @State private var hovering = false
+
+        var body: some View {
+            let state = PartState.resolve(forced: forced, enabled: isEnabled, selected: isSelected,
+                                          pressed: configuration.isPressed, hovering: hovering, focused: isFocused)
+            let on = state == .selected
+            HStack(spacing: Metric.inlineGap) {
+                Circle().fill(Ink.swatch(color)).frame(width: Metric.tagDot, height: Metric.tagDot)
+                configuration.label.kitType(.meta).foregroundStyle(on ? Ink.accentText : Ink.text)
+            }
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, Metric.rowInset)
+            .frame(height: Metric.tagChip)
+            .background(Capsule().fill(on ? Ink.suggest : state.isActive ? Ink.hover : Ink.control))
+            .overlay(Capsule().strokeBorder(on ? Ink.accentText : .clear))
+            .kitFocusRing(Capsule(), state: state)
+            .opacity(state == .disabled ? 0.4 : 1)
+            .contentShape(Capsule())
+            .kitPress(state)
+            .onHover { hovering = $0 }
+        }
+    }
+}
+
 // MARK: - Menu row
 
 struct KitMenuRowStyle: ButtonStyle {

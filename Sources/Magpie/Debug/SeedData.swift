@@ -66,6 +66,17 @@ enum SeedData {
             block.createdAt = now.addingTimeInterval(Double(-(samples.count - index)) * 3_000)
             context.insert(block)
         }
+        // Tags across collections (S-014).
+        let tagged: [String: [String]] = [
+            "jazz": ["Kind of Blue", "Blue Train", "A Love Supreme", "Gift idea for Ana"],
+            "lisbon": ["Miradouro", "Lisbon in 4K", "architect", "Lisbon weekend", "Pastéis"],
+            "home": ["Desk lamp", "Wool throw", "Japandi", "Living room", "Ceramic"],
+            "software": ["Local-first", "great work"],
+        ]
+        let all = (try? context.fetch(FetchDescriptor<Block>())) ?? []
+        for (tag, titles) in tagged.sorted(by: { $0.key < $1.key }) {
+            for block in all where titles.contains(where: { block.title.contains($0) }) { model.addTags(tag, to: block) }
+        }
         model.save()
     }
 

@@ -25,6 +25,10 @@ struct DetailsPanel: View {
                             stillWant
                         }
                         content
+                        VStack(alignment: .leading, spacing: Space.sm) {
+                            Text("Tags").kitType(.meta).foregroundStyle(Ink.secondary)
+                            TagEditor(block: block)
+                        }
                         facts
                     }
                     .padding(Space.xl)

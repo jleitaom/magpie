@@ -97,7 +97,7 @@ enum SelfTest {
                 let tops = model.collectionTree.filter { $0.depth == 0 }.map(\.collection)
                 if let last = tops.last { model.place(last, .before(tops[0].uid)) }
                 let expected = model.collectionTree.map(\.collection.name)
-                let reopened = try? ModelContainer(for: Block.self, BlockCollection.self, DayActivity.self, configurations: ModelConfiguration(url: Store.url))
+                let reopened = try? ModelContainer(for: Block.self, BlockCollection.self, DayActivity.self, Tag.self, configurations: ModelConfiguration(url: Store.url))
                 let stored = (try? reopened?.mainContext.fetch(FetchDescriptor<BlockCollection>())) ?? []
                 let reread = CollectionTree.flatten(stored.map(\.node)).compactMap { row in stored.first { $0.uid == row.id }?.name }
                 check("order and nesting are stored in sortIndex and survive a relaunch", reread == expected, "\(reread) vs \(expected)")
@@ -207,6 +207,31 @@ enum SelfTest {
             check("Finish marks it done with a finished date", essayToRead.status == .done && essayToRead.finishedAt != nil && model.inProgressBlock == nil)
             check("a finished pick counts toward the dip streak and this week", model.dipStreak >= 1 && model.finishedThisWeek >= 1 && model.today.finished >= 1)
             model.show(.gallery)
+
+            // S-014 and S-015 tags.
+            let record = model.save(url: URL(string: "https://www.discogs.com/release/tag-test")!)
+            let other = model.save(url: URL(string: "https://bandcamp.com/tag-test")!)
+            model.addTags("Jazz, vinyl", to: record)
+            model.addTags("jazz", to: other)
+            let jazzTags = model.tags.filter { Tags.key($0.name) == "jazz" }
+            check("“Jazz” and “jazz” are one tag", jazzTags.count == 1 && (other.tags ?? []).first?.uid == jazzTags.first?.uid)
+            model.addTags("JAZZ", to: record)
+            check("a tag isn't added twice to one block", (record.tags ?? []).count == 2)
+            if let jazz = jazzTags.first, let vinyl = model.tags.first(where: { $0.name == "vinyl" }) {
+                model.scope = .tag(jazz.uid)
+                let shown = model.blocks(in: model.scope, from: blocks())
+                check("a tag shows every block that has it", Set(shown.map(\.uid)) == [record.uid, other.uid])
+                model.renameTag(vinyl, to: "Records")
+                check("renaming a tag keeps it on its blocks", vinyl.name == "Records" && (record.tags ?? []).contains { $0.uid == vinyl.uid })
+                model.renameTag(vinyl, to: "JAZZ")
+                check("renaming to an existing tag's name merges the two", model.tag(vinyl.uid) == nil
+                      && (record.tags ?? []).map(\.uid) == [jazz.uid] && model.tags.filter { Tags.key($0.name) == "jazz" }.count == 1)
+                model.deleteTag(jazz)
+                check("deleting a tag removes it from blocks and keeps the blocks",
+                      model.tags.isEmpty && (record.tags ?? []).isEmpty && model.block(record.uid) != nil && model.block(other.uid) != nil)
+                check("the Gallery goes back to All when its tag is deleted", model.scope == .all)
+            }
+            model.delete([record.uid, other.uid], undo: nil)
 
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.

@@ -76,6 +76,12 @@ struct MagpieCommands: Commands {
                 .disabled(selection == nil)
             Button("Show Details") { model.selection = selection }
                 .disabled(selection == nil)
+            Button("Add Tag…") {
+                model.selection = selection
+                model.focusTagField = true
+            }
+            .keyboardShortcut("t")
+            .disabled(selection == nil)
             Divider()
             Button("Delete") {
                 if let selection { model.delete([selection], undo: NSApp.keyWindow?.undoManager) }
@@ -210,7 +216,7 @@ enum Store {
 
     static func makeContainer() -> ModelContainer {
         do {
-            return try ModelContainer(for: Block.self, BlockCollection.self, DayActivity.self, configurations: ModelConfiguration(url: url))
+            return try ModelContainer(for: Block.self, BlockCollection.self, DayActivity.self, Tag.self, configurations: ModelConfiguration(url: url))
         } catch {
             fatalError("Could not open the database at \(url.path): \(error)")
         }

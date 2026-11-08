@@ -67,6 +67,12 @@ struct GalleryView: View {
             model.open(block)
             return .handled
         }
+        // T: tag the selected card (the details panel opens with the cursor in its tag field).
+        .onKeyPress("t") {
+            guard model.selection != nil else { return .ignored }
+            model.focusTagField = true
+            return .handled
+        }
         .onKeyPress(.escape) {
             guard model.selection != nil else { return .ignored }
             model.selection = nil

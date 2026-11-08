@@ -115,7 +115,7 @@ enum SnapshotPage: String, CaseIterable {
     /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
     @MainActor static var startedOriginal: (UUID, BlockStatus)?
 
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted
+    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag
 
     /// Pages that open a popover. Their snapshot is the popover alone.
     var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename }
@@ -145,6 +145,8 @@ enum SnapshotPage: String, CaseIterable {
         case .sortInbox:
             model.scope = .all
             model.startSorting()
+        case .tag:
+            model.scope = model.tags.first { $0.name == "jazz" }.map { .tag($0.uid) } ?? .all
         case .luckyDip:
             model.dipPile = .read
             model.viewMode = .luckyDip

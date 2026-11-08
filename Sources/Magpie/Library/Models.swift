@@ -74,6 +74,8 @@ final class Block {
     /// How often Lucky Dip's "Not today" passed on it; it comes up less often (S-071).
     var timesSkipped: Int = 0
     var finishedAt: Date?
+    /// Tags (S-014). Many-to-many, optional on both sides for CloudKit.
+    @Relationship(deleteRule: .nullify, inverse: \Tag.blocks) var tags: [Tag]? = []
 
     init(kind: BlockKind, title: String = "") {
         self.kindRaw = kind.rawValue
@@ -139,6 +141,22 @@ final class BlockCollection {
         self.name = name
         self.colorHex = colorHex
         self.sortIndex = sortIndex
+    }
+}
+
+/// A label on any number of blocks, across collections (S-014). Names are case-insensitive:
+/// "Jazz" and "jazz" are one tag (checked in code, no unique constraint, for CloudKit).
+@Model
+final class Tag {
+    var uid: UUID = UUID()
+    var name: String = ""
+    var colorHex: Int = 0x7FD9D3
+    var createdAt: Date = Date.now
+    var blocks: [Block]? = []
+
+    init(name: String, colorHex: Int) {
+        self.name = name
+        self.colorHex = colorHex
     }
 }
 

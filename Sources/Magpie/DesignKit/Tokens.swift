@@ -108,6 +108,8 @@ enum Metric {
     static let collectionsMaxHeight: CGFloat = 360
     static let keyCap: CGFloat = 24
     static let streakPill: CGFloat = 28
+    static let tagChip: CGFloat = 24
+    static let tagDot: CGFloat = 8
     /// The streak pill's distance from the window's left edge, clear of the traffic lights.
     static let streakInset: CGFloat = 88
     static let celebrationRing: CGFloat = 120
