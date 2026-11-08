@@ -15,6 +15,8 @@ Thanks for helping out!
     runs off the main thread (`Ingest.swift`)
   - `MainWindow/`: the window, its top bar, the drop target and the bottom hint (`MainView.swift`)
   - `Gallery/`: the masonry of cards (`GalleryView.swift`)
+  - `Journal/`: the Journal, a numbered list of the same blocks (`JournalView.swift`). Sort
+    orders are in `MagpieKit/BlockOrder.swift`
   - `SortInbox/`: Sort Inbox, one Inbox block at a time (`SortInboxView.swift`). The queue and the
     collection suggestion are in `MagpieKit/Sorting.swift`
   - `LuckyDip/`: Lucky Dip, one random pick from a pile (`LuckyDipView.swift`). Piles, the

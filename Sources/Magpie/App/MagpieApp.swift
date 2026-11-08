@@ -30,7 +30,8 @@ struct MagpieApp: App {
         .defaultSize(width: Metric.windowDefault.width, height: Metric.windowDefault.height)
         .commands {
             MagpieCommands(model: model, selection: menu.selection, appearance: model.appearance,
-                           viewMode: model.viewMode, canSort: model.canSortNow, dip: model.dipMenuState)
+                           viewMode: model.viewMode, canSort: model.canSortNow, sortOrder: model.order(for: model.scope),
+                           dip: model.dipMenuState)
         }
 
         Settings {
@@ -52,6 +53,7 @@ struct MagpieCommands: Commands {
     /// Also passed in so the menus redraw: the open view, and whether M, D, → and ⌫ sort right now.
     let viewMode: ViewMode
     let canSort: Bool
+    let sortOrder: BlockOrder
     let dip: DipMenuState
     @Environment(\.openWindow) private var openWindow
 
@@ -156,6 +158,14 @@ struct MagpieCommands: Commands {
                 .keyboardShortcut("2")
             Button("Collections…") { model.showsCollections = true }
                 .keyboardShortcut("k")
+            Divider()
+            Menu("Sort By") {
+                ForEach(Array(BlockOrder.allCases.enumerated()), id: \.element) { index, order in
+                    Toggle(order.title, isOn: Binding(get: { sortOrder == order }, set: { if $0 { model.setOrder(order, for: model.scope) } }))
+                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.option, .command])
+                }
+            }
+            .disabled(viewMode != .gallery && viewMode != .journal)
             Divider()
             Menu("Appearance") {
                 ForEach(AppearanceChoice.allCases) { choice in

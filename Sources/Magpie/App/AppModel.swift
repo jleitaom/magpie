@@ -35,7 +35,7 @@ enum ViewMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var isAvailable: Bool { self != .journal }
+    var isAvailable: Bool { true }
 
     /// ⌃⌘1 to ⌃⌘4, in the View menu.
     var shortcut: Character {
@@ -86,11 +86,15 @@ final class AppModel {
     let container: ModelContainer
     var context: ModelContext { container.mainContext }
 
-    var scope: Scope = .all
+    var scope: Scope = .all {
+        // Each place opens in the view it was last seen in (Gallery or Journal).
+        didSet { if scope != oldValue, viewMode == .gallery || viewMode == .journal { viewMode = rememberedView(for: scope) } }
+    }
     var viewMode: ViewMode = .gallery
     var selection: UUID? { didSet { MenuState.shared.update(selection) } }
     var showsCollections = false
     var showsNewMenu = false
+    var showsSortMenu = false
     /// Asks the details panel to put the cursor in its tag field (T, ⌘T).
     var focusTagField = false
     /// The tag waiting for the rename or delete prompt (S-015).
@@ -572,6 +576,7 @@ final class AppModel {
     func show(_ mode: ViewMode) {
         guard mode.isAvailable else { return }
         if mode == .sortInbox, viewMode != .sortInbox { startSorting() } else { viewMode = mode }
+        if mode == .gallery || mode == .journal { remember(view: mode, for: scope) }
     }
 
     var sortingBlock: Block? { block(sortSession.current) }
@@ -867,6 +872,92 @@ final class AppModel {
 
     var openTag: Tag? {
         if case .tag(let uid) = scope { tag(uid) } else { nil }
+    }
+
+    // MARK: Order and view per place (S-065, S-067)
+
+    /// Order and view for All, the Inbox and tags, kept in preferences ("all", "inbox", "tag-…").
+    /// Collections keep theirs in the database, so they sync with the collection.
+    struct PlacePrefs: Codable, Equatable {
+        var order: String?
+        var view: String?
+        var seed: UInt64 = 0
+    }
+
+    private(set) var placePrefs: [String: PlacePrefs] = {
+        guard let data = UserDefaults.standard.data(forKey: "placePrefs") else { return [:] }
+        return (try? JSONDecoder().decode([String: PlacePrefs].self, from: data)) ?? [:]
+    }() {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(placePrefs), forKey: "placePrefs") }
+    }
+
+    private func key(_ scope: Scope) -> String? {
+        switch scope {
+        case .all: "all"
+        case .inbox: "inbox"
+        case .tag(let uid): "tag-\(uid.uuidString)"
+        case .collection: nil
+        }
+    }
+
+    func order(for scope: Scope) -> BlockOrder {
+        if case .collection(let uid) = scope { return collection(uid)?.sortOrderRaw.flatMap(BlockOrder.init) ?? .newest }
+        return key(scope).flatMap { placePrefs[$0]?.order }.flatMap(BlockOrder.init) ?? .newest
+    }
+
+    /// Chooses how a place is sorted. Choosing Shuffle again deals a new order.
+    func setOrder(_ order: BlockOrder, for scope: Scope) {
+        let seed = UInt64.random(in: 1...UInt64.max)
+        if case .collection(let uid) = scope, let target = collection(uid) {
+            target.sortOrderRaw = order.rawValue
+            if order == .shuffle { target.shuffleSeed = Int(truncatingIfNeeded: seed) }
+            save()
+        } else if let key = key(scope) {
+            var prefs = placePrefs[key] ?? PlacePrefs()
+            prefs.order = order.rawValue
+            if order == .shuffle { prefs.seed = seed }
+            placePrefs[key] = prefs
+        }
+    }
+
+    private func seed(for scope: Scope) -> UInt64 {
+        if case .collection(let uid) = scope { return UInt64(bitPattern: Int64(collection(uid)?.shuffleSeed ?? 0)) }
+        return key(scope).flatMap { placePrefs[$0]?.seed } ?? 0
+    }
+
+    func rememberedView(for scope: Scope) -> ViewMode {
+        let raw = if case .collection(let uid) = scope { collection(uid)?.viewModeRaw } else { key(scope).flatMap { placePrefs[$0]?.view } }
+        return raw.flatMap(ViewMode.init) ?? .gallery
+    }
+
+    private func remember(view: ViewMode, for scope: Scope) {
+        if case .collection(let uid) = scope, let target = collection(uid) {
+            guard target.viewModeRaw != view.rawValue else { return }
+            target.viewModeRaw = view.rawValue
+            save()
+        } else if let key = key(scope) {
+            var prefs = placePrefs[key] ?? PlacePrefs()
+            prefs.view = view.rawValue
+            placePrefs[key] = prefs
+        }
+    }
+
+    /// Blocks in the place's chosen order.
+    func ordered(_ blocks: [Block], in scope: Scope) -> [Block] {
+        let items = blocks.map { OrderItem(id: $0.uid, createdAt: $0.createdAt, minutes: $0.minutes, title: $0.title,
+                                           site: $0.siteName, color: $0.tint) }
+        let byID = Dictionary(blocks.map { ($0.uid, $0) }, uniquingKeysWith: { first, _ in first })
+        return order(for: scope).sorted(items, seed: seed(for: scope)).compactMap { byID[$0] }
+    }
+
+    /// The place's name, for the Journal's heading and the Sort menu.
+    func placeName(_ scope: Scope) -> String {
+        switch scope {
+        case .all: "Everything"
+        case .inbox: "Inbox"
+        case .collection(let uid): collection(uid)?.name ?? "Collection"
+        case .tag(let uid): tag(uid).map { "#\($0.name)" } ?? "Tag"
+        }
     }
 
     // MARK: Helpers

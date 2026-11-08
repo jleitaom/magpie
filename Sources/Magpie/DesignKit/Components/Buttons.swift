@@ -280,6 +280,50 @@ struct KitTagChipStyle: ButtonStyle {
     }
 }
 
+// MARK: - Option row (a choice with a hint, in a popover)
+
+/// "Oldest first / Dig up the forgotten ones ✓": a title over a hint, with a check when chosen.
+struct KitOptionRowStyle: ButtonStyle {
+    let hint: String
+    var isSelected = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        Part(configuration: configuration, hint: hint, isSelected: isSelected)
+    }
+
+    private struct Part: View {
+        let configuration: Configuration
+        let hint: String
+        let isSelected: Bool
+        @Environment(\.forcedPartState) private var forced
+        @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.isFocused) private var isFocused
+        @State private var hovering = false
+
+        var body: some View {
+            let state = PartState.resolve(forced: forced, enabled: isEnabled, selected: isSelected,
+                                          pressed: configuration.isPressed, hovering: hovering, focused: isFocused)
+            let shape = RoundedRectangle(cornerRadius: Metric.menuRowRadius, style: .continuous)
+            HStack(spacing: Space.sm) {
+                VStack(alignment: .leading, spacing: 1) {
+                    configuration.label.kitType(.label).foregroundStyle(Ink.text)
+                    Text(hint).kitType(.meta).foregroundStyle(Ink.secondary)
+                }
+                Spacer(minLength: Space.sm)
+                if isSelected { KitIconView(icon: .check, size: 12).foregroundStyle(Ink.accentText) }
+            }
+            .padding(.horizontal, Metric.rowInset)
+            .padding(.vertical, Space.xs + 2)
+            .frame(minHeight: Metric.controlLarge)
+            .background(shape.fill(isSelected || state.isActive ? Ink.hover : .clear))
+            .kitFocusRing(shape, state: state)
+            .contentShape(shape)
+            .onHover { hovering = $0 }
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+        }
+    }
+}
+
 // MARK: - Menu row
 
 struct KitMenuRowStyle: ButtonStyle {

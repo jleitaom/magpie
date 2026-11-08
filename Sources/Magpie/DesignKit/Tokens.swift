@@ -109,6 +109,12 @@ enum Metric {
     static let keyCap: CGFloat = 24
     static let streakPill: CGFloat = 28
     static let tagChip: CGFloat = 24
+    static let journalRow: CGFloat = 48
+    static let journalHeader: CGFloat = 36
+    static let journalNumber: CGFloat = 40
+    static let journalLength: CGFloat = 96
+    static let journalCollection: CGFloat = 128
+    static let journalSaved: CGFloat = 72
     static let tagDot: CGFloat = 8
     /// The streak pill's distance from the window's left edge, clear of the traffic lights.
     static let streakInset: CGFloat = 88

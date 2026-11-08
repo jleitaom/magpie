@@ -135,6 +135,10 @@ final class BlockCollection {
     @Relationship(deleteRule: .nullify, inverse: \Block.collection) var blocks: [Block]? = []
     /// The collection this one is nested in, or nil at the top level.
     var parent: BlockCollection?
+    /// How this collection lists its blocks, and in which view (S-065, S-067). Nil: the defaults.
+    var sortOrderRaw: String?
+    var viewModeRaw: String?
+    var shuffleSeed: Int = 0
     @Relationship(deleteRule: .nullify, inverse: \BlockCollection.parent) var children: [BlockCollection]? = []
 
     init(name: String, colorHex: Int, sortIndex: Double) {

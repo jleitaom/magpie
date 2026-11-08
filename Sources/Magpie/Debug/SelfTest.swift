@@ -233,6 +233,37 @@ enum SelfTest {
             }
             model.delete([record.uid, other.uid], undo: nil)
 
+            // S-065 sort orders and S-067 Journal, remembered per place.
+            if let second = model.collections.first(where: { $0.name == "Second" }), let five = model.collections.first(where: { $0.name == "Five" }) {
+                let quick = model.save(url: URL(string: "https://example.com/order-quick")!)
+                quick.minutes = 3
+                let slow = model.save(url: URL(string: "https://example.com/order-slow")!)
+                slow.minutes = 40
+                let unknown = model.save(url: URL(string: "https://example.com/order-unknown")!)
+                [quick, slow, unknown].forEach { model.move($0, to: second, undo: nil) }
+                model.setOrder(.quickest, for: .collection(second.uid))
+                let shown = model.ordered(model.blocks(in: .collection(second.uid), from: blocks()), in: .collection(second.uid))
+                let position = { (block: Block) in shown.firstIndex { $0.uid == block.uid } ?? -1 }
+                let knownBeforeUnknown = shown.drop { $0.minutes != nil }.allSatisfy { $0.minutes == nil }
+                check("Quickest lists short first and unknown length last",
+                      position(quick) < position(slow) && position(slow) < position(unknown) && knownBeforeUnknown)
+                check("each collection remembers its own order",
+                      model.order(for: .collection(second.uid)) == .quickest && model.order(for: .collection(five.uid)) == .newest)
+                model.setOrder(.shuffle, for: .collection(second.uid))
+                let firstSeed = second.shuffleSeed
+                model.setOrder(.shuffle, for: .collection(second.uid))
+                check("choosing Shuffle again deals a new order", second.shuffleSeed != firstSeed)
+                model.scope = .collection(second.uid)
+                model.show(.journal)
+                model.scope = .collection(five.uid)
+                check("a collection opens in Gallery until switched", model.viewMode == .gallery)
+                model.scope = .collection(second.uid)
+                check("each collection remembers Journal or Gallery", model.viewMode == .journal && second.viewModeRaw == "journal")
+                model.show(.gallery)
+                model.scope = .all
+                [quick, slow, unknown].forEach { model.delete([$0.uid], undo: nil) }
+            }
+
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.
             let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))

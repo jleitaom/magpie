@@ -1,3 +1,4 @@
+import MagpieKit
 import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
@@ -23,7 +24,12 @@ struct MainView: View {
             } else if shown.isEmpty {
                 EmptyGallery(isLibraryEmpty: blocks.isEmpty, scopeName: scopeName)
             } else {
-                GalleryView(blocks: shown, sortPrompt: model.scope == .inbox ? shown.count : 0)
+                let ordered = model.ordered(shown, in: model.scope)
+                if model.viewMode == .journal {
+                    JournalView(blocks: ordered)
+                } else {
+                    GalleryView(blocks: ordered, sortPrompt: model.scope == .inbox ? shown.count : 0)
+                }
             }
             TopBar(collections: collections, inboxCount: model.blocks(in: .inbox, from: blocks).count)
         }
@@ -80,7 +86,7 @@ struct TopBar: View {
     let inboxCount: Int
     @Environment(AppModel.self) private var model
     /// The right-hand controls' width, mirrored on the left so the pill stays centered.
-    private let sideWidth: CGFloat = 212
+    private let sideWidth: CGFloat = 316
 
     var body: some View {
         @Bindable var model = model
@@ -172,6 +178,21 @@ private struct RightControls: View {
     var body: some View {
         @Bindable var model = model
         HStack(spacing: Space.sm) {
+            if model.viewMode == .gallery || model.viewMode == .journal {
+                let order = model.order(for: model.scope)
+                Button { model.showsSortMenu.toggle() } label: {
+                    HStack(spacing: Metric.inlineGap) {
+                        KitIconView(icon: .sort, size: 12)
+                        Text(order.label)
+                    }
+                }
+                .buttonStyle(.kit(.secondary))
+                .help("Sort \(model.placeName(model.scope)) (View → Sort By)")
+                .accessibilityLabel("Sort: \(order.title)")
+                .popover(isPresented: $model.showsSortMenu, arrowEdge: .bottom) {
+                    SortMenu().environment(model).kitPopover()
+                }
+            }
             KitSegmentTrack {
                 ForEach(ViewMode.allCases) { mode in
                     Button { model.show(mode) } label: { KitIconView(icon: mode.icon) }
@@ -189,6 +210,31 @@ private struct RightControls: View {
                     NewBlockMenu { model.showsNewMenu = false }.environment(model).kitPopover()
                 }
         }
+    }
+}
+
+/// The Sort button's menu: each order with a hint, the current one checked (S-065).
+private struct SortMenu: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let current = model.order(for: model.scope)
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Sort \(model.placeName(model.scope)) by").kitType(.meta).foregroundStyle(Ink.secondary)
+                .padding(.horizontal, Metric.rowInset).padding(.vertical, Space.sm)
+            ForEach(BlockOrder.allCases) { order in
+                Button(order.title) {
+                    model.setOrder(order, for: model.scope)
+                    model.showsSortMenu = false
+                }
+                .buttonStyle(KitOptionRowStyle(hint: order.hint, isSelected: order == current))
+            }
+            Text("Each collection remembers its own order.")
+                .kitType(.meta).foregroundStyle(Ink.secondary)
+                .padding(Metric.rowInset)
+        }
+        .padding(Metric.popoverPadding)
+        .frame(width: Metric.popoverWidth)
     }
 }
 

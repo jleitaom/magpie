@@ -115,10 +115,10 @@ enum SnapshotPage: String, CaseIterable {
     /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
     @MainActor static var startedOriginal: (UUID, BlockStatus)?
 
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag
+    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu
 
     /// Pages that open a popover. Their snapshot is the popover alone.
-    var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename }
+    var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename || self == .sortMenu }
 
     func show(in model: AppModel) {
         model.viewMode = .gallery
@@ -131,6 +131,7 @@ enum SnapshotPage: String, CaseIterable {
         model.renamingCollection = nil
         model.showsCollections = false
         model.showsNewMenu = false
+        model.showsSortMenu = false
         switch self {
         case .all: model.scope = .all
         case .inbox: model.scope = .inbox
@@ -145,6 +146,13 @@ enum SnapshotPage: String, CaseIterable {
         case .sortInbox:
             model.scope = .all
             model.startSorting()
+        case .journal:
+            model.scope = .all
+            model.viewMode = .journal
+            let third = model.ordered(model.blocks(in: .all, from: (try? model.context.fetch(FetchDescriptor<Block>())) ?? []), in: .all).dropFirst(2).first
+            model.selection = third?.uid
+        case .sortMenu:
+            model.scope = .all
         case .tag:
             model.scope = model.tags.first { $0.name == "jazz" }.map { .tag($0.uid) } ?? .all
         case .luckyDip:
@@ -180,5 +188,6 @@ enum SnapshotPage: String, CaseIterable {
         if self == .rename { model.renamingCollection = model.collectionTree.first?.collection.uid }
         model.showsCollections = self == .collections || self == .rename
         model.showsNewMenu = self == .newBlock
+        model.showsSortMenu = self == .sortMenu
     }
 }
