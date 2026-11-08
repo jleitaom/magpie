@@ -53,6 +53,7 @@ Coming next: an iPhone app with iCloud sync, and saving from the Share menu. See
 Magpie needs macOS 26 (Tahoe) or later. With [Homebrew](https://brew.sh):
 
 ```sh
+brew trust jleitaom/tap        # Homebrew asks you to trust taps outside its own, once
 brew install --cask jleitaom/tap/magpie
 ```
 

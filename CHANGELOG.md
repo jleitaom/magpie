@@ -9,7 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
-- **Install with Homebrew** (`brew install --cask jleitaom/tap/magpie`) or from a `.dmg`, and **update checks** through GitHub: Magpie asks before it checks on its own, and Settings → General has *Check for updates automatically* and **Check Now** (also Magpie → Check for Updates…)
+- **Install with Homebrew** (`brew trust jleitaom/tap`, then `brew install --cask jleitaom/tap/magpie`) or from a `.dmg`, and **update checks** through GitHub: Magpie asks before it checks on its own, and Settings → General has *Check for updates automatically* and **Check Now** (also Magpie → Check for Updates…)
 - **One right-click menu for every block,** wherever it shows (Gallery, Journal, Sort Inbox, Lucky Dip, Rediscover): Open, Quick Look, Copy Link, Show Details, Move to (nested collections), Tags (tick or untick, or a new one), Pile, Archive and Delete, each with its shortcut
 - **Helpful empty pages.** The first launch, an empty collection, tag, Archive, Expired, a search with no results, the "I have 20 minutes" filter and an empty Lucky Dip pile each say what's going on and what to do next
 - **Settings in two tabs.** General: appearance, how long new collections keep their blocks, Rediscover's count on the Dock icon, and where your library lives (with Show in Finder and Export). Shortcuts: Quick Save and screenshot shortcuts, and a card of the keys used inside Magpie
