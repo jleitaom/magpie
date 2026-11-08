@@ -131,6 +131,24 @@ struct DetailsPanel: View {
                 .fixedSize()
                 .help("The Lucky Dip pile it’s on. Automatic works it out from the kind.")
             }
+            if let expires = block.expiresAt, block.status != .archived {
+                GridRow {
+                    Text("Expires").kitType(.meta).foregroundStyle(Ink.secondary)
+                    HStack(spacing: Space.sm) {
+                        Text(expires.formatted(.relative(presentation: .named)))
+                            .kitType(.meta).foregroundStyle(Expiry.label(expires, now: .now) == nil ? Ink.text : Ink.noteLabel)
+                        Button("Keep") { model.keep(block) }
+                            .buttonStyle(.kit(.secondary))
+                            .help("Stop this block from expiring")
+                    }
+                }
+            }
+            if let expired = block.expiredAt {
+                GridRow {
+                    Text("Expired").kitType(.meta).foregroundStyle(Ink.secondary)
+                    Text(expired.formatted(.dateTime.day().month().year())).kitType(.meta).foregroundStyle(Ink.text)
+                }
+            }
             GridRow {
                 Text("Saved").kitType(.meta).foregroundStyle(Ink.secondary)
                 Text(block.createdAt.formatted(.dateTime.day().month().hour().minute()))
@@ -175,6 +193,11 @@ struct DetailsPanel: View {
         HStack(spacing: Space.sm) {
             Button("Delete") { model.delete([block.uid], undo: undoManager) }
                 .buttonStyle(.kit(.ghost))
+            if block.status == .archived {
+                Button("Unarchive") { model.unarchive(block) }.buttonStyle(.kit(.secondary))
+            } else {
+                Button("Archive") { model.archive(block, undo: undoManager) }.buttonStyle(.kit(.secondary))
+            }
             Spacer()
             if block.url != nil {
                 Button("Open") { model.open(block) }

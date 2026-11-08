@@ -31,7 +31,7 @@ struct MagpieApp: App {
         .commands {
             MagpieCommands(model: model, selection: menu.selection, appearance: model.appearance,
                            viewMode: model.viewMode, canSort: model.canSortNow, sortOrder: model.order(for: model.scope),
-                           dip: model.dipMenuState)
+                           canRediscover: model.canRediscoverNow, dip: model.dipMenuState)
         }
 
         Settings {
@@ -54,6 +54,7 @@ struct MagpieCommands: Commands {
     let viewMode: ViewMode
     let canSort: Bool
     let sortOrder: BlockOrder
+    let canRediscover: Bool
     let dip: DipMenuState
     @Environment(\.openWindow) private var openWindow
 
@@ -78,6 +79,12 @@ struct MagpieCommands: Commands {
                 .disabled(selection == nil)
             Button("Show Details") { model.selection = selection }
                 .disabled(selection == nil)
+            Button(model.block(selection)?.status == .archived ? "Unarchive" : "Archive") {
+                guard let block = model.block(selection) else { return }
+                if block.status == .archived { model.unarchive(block) } else { model.archive(block, undo: NSApp.keyWindow?.undoManager) }
+            }
+            .keyboardShortcut("a", modifiers: [.command, .shift])
+            .disabled(selection == nil)
             Button("Add Tag…") {
                 model.selection = selection
                 model.focusTagField = true
@@ -102,12 +109,23 @@ struct MagpieCommands: Commands {
             Button("Mark Done") { model.sortDone() }
                 .keyboardShortcut("d", modifiers: [])
                 .disabled(!canSort)
-            Button("Skip") { model.sortSkip() }
+            // One → for both Sort Inbox and Rediscover: two menu items can't share a key.
+            Button("Skip") { if viewMode == .rediscover { model.rediscoverSkip() } else { model.sortSkip() } }
                 .keyboardShortcut(.rightArrow, modifiers: [])
-                .disabled(!canSort)
+                .disabled(!canSort && !canRediscover)
             Button("Delete") { model.sortDelete(undo: NSApp.keyWindow?.undoManager) }
                 .keyboardShortcut(.delete, modifiers: [])
                 .disabled(!canSort)
+        }
+        CommandMenu("Rediscover") {
+            Button("Rediscover Old Saves") { model.show(.rediscover) }
+            Divider()
+            Button("Keep") { model.rediscoverKeep() }
+                .keyboardShortcut("k", modifiers: [])
+                .disabled(!canRediscover)
+            Button("Archive") { model.rediscoverArchive() }
+                .keyboardShortcut("a", modifiers: [])
+                .disabled(!canRediscover)
         }
         CommandMenu("Lucky Dip") {
             Button("Lucky Dip") { model.show(.luckyDip) }
@@ -156,6 +174,8 @@ struct MagpieCommands: Commands {
                 .keyboardShortcut("1")
             Button("Inbox") { model.scope = .inbox }
                 .keyboardShortcut("2")
+            Button("Archive") { model.scope = .archive; model.show(.gallery) }
+                .keyboardShortcut("0", modifiers: [.control, .command])
             Button("Collections…") { model.showsCollections = true }
                 .keyboardShortcut("k")
             Divider()

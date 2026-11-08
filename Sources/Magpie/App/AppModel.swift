@@ -10,11 +10,13 @@ enum Scope: Hashable {
     case collection(UUID)
     /// Every block with this tag (S-014).
     case tag(UUID)
+    /// Archived blocks (S-022), and the ones that expired (S-021).
+    case archive, expired
 }
 
 /// The view switcher's modes. Gallery and Sort Inbox exist so far (notes/PLAN.md).
 enum ViewMode: String, CaseIterable, Identifiable {
-    case gallery, journal, sortInbox, luckyDip
+    case gallery, journal, sortInbox, luckyDip, rediscover
     var id: String { rawValue }
 
     var title: String {
@@ -23,6 +25,7 @@ enum ViewMode: String, CaseIterable, Identifiable {
         case .journal: "Journal"
         case .sortInbox: "Sort Inbox"
         case .luckyDip: "Lucky Dip"
+        case .rediscover: "Rediscover"
         }
     }
 
@@ -32,10 +35,14 @@ enum ViewMode: String, CaseIterable, Identifiable {
         case .journal: .journal
         case .sortInbox: .sortInbox
         case .luckyDip: .luckyDip
+        case .rediscover: .rediscover
         }
     }
 
     var isAvailable: Bool { true }
+
+    /// The view switcher's four; Rediscover opens from the View menu and Inbox zero.
+    static var switcher: [ViewMode] { [.gallery, .journal, .sortInbox, .luckyDip] }
 
     /// ⌃⌘1 to ⌃⌘4, in the View menu.
     var shortcut: Character {
@@ -44,6 +51,7 @@ enum ViewMode: String, CaseIterable, Identifiable {
         case .journal: "2"
         case .sortInbox: "3"
         case .luckyDip: "4"
+        case .rediscover: "5"
         }
     }
 
@@ -153,6 +161,7 @@ final class AppModel {
         applyAppearance()
         refreshStreak()
         refreshDipStats()
+        expireDue()
         let pending = EnrichState.pending.rawValue
         let stuck = (try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.enrichRaw == pending }))) ?? []
         for block in stuck { enrich(block) }
@@ -181,6 +190,8 @@ final class AppModel {
         case .inbox: all.filter { $0.status == .inbox }
         case .collection(let uid): all.filter { $0.collection?.uid == uid && $0.status != .archived }
         case .tag(let uid): all.filter { block in block.status != .archived && (block.tags ?? []).contains { $0.uid == uid } }
+        case .archive: all.filter { $0.status == .archived }
+        case .expired: all.filter { $0.status == .archived && $0.expiredAt != nil }
         }
     }
 
@@ -191,6 +202,7 @@ final class AppModel {
         if case .collection(let uid) = scope, let target = collection(uid) {
             block.collection = target
             block.status = .kept
+            block.expiresAt = Expiry.date(addedAt: .now, days: target.defaultExpiryDays)
         } else {
             block.status = .inbox
         }
@@ -407,6 +419,10 @@ final class AppModel {
         let beforeStatus = block.status
         block.collection = target
         block.status = target == nil ? .inbox : .kept
+        // Moving in starts the collection's expiry; moving out (or out of the archive) ends it.
+        block.expiresAt = Expiry.date(addedAt: .now, days: target?.defaultExpiryDays)
+        block.expiredAt = nil
+        block.statusBeforeArchiveRaw = nil
         noteInboxZero()
         save()
         let uid = block.uid
@@ -575,7 +591,9 @@ final class AppModel {
     /// Switches the window to a view mode. Sort Inbox starts a new run each time it opens.
     func show(_ mode: ViewMode) {
         guard mode.isAvailable else { return }
-        if mode == .sortInbox, viewMode != .sortInbox { startSorting() } else { viewMode = mode }
+        if mode == .sortInbox, viewMode != .sortInbox { startSorting() }
+        else if mode == .rediscover, viewMode != .rediscover { startRediscover() }
+        else { viewMode = mode }
         if mode == .gallery || mode == .journal { remember(view: mode, for: scope) }
     }
 
@@ -896,6 +914,8 @@ final class AppModel {
         case .all: "all"
         case .inbox: "inbox"
         case .tag(let uid): "tag-\(uid.uuidString)"
+        case .archive: "archive"
+        case .expired: "expired"
         case .collection: nil
         }
     }
@@ -957,7 +977,139 @@ final class AppModel {
         case .inbox: "Inbox"
         case .collection(let uid): collection(uid)?.name ?? "Collection"
         case .tag(let uid): tag(uid).map { "#\($0.name)" } ?? "Tag"
+        case .archive: "Archive"
+        case .expired: "Expired"
         }
+    }
+
+    // MARK: Archive (S-022) and expiry (S-021)
+
+    /// Hides a block from collections, All and tags. It stays in the Archive (and, later, search).
+    func archive(_ block: Block, undo: UndoManager? = nil) {
+        guard block.status != .archived else { return }
+        let before = block.status
+        block.statusBeforeArchiveRaw = before.rawValue
+        block.status = .archived
+        if selection == block.uid, scope != .archive { selection = nil }
+        noteInboxZero()
+        save()
+        let uid = block.uid
+        undo?.registerUndo(withTarget: self) { model in if let block = model.block(uid) { model.unarchive(block) } }
+        undo?.setActionName("Archive")
+        flash("Archived")
+    }
+
+    /// Puts an archived (or expired) block back where it was.
+    func unarchive(_ block: Block) {
+        guard block.status == .archived else { return }
+        block.status = block.statusBeforeArchiveRaw.flatMap(BlockStatus.init) ?? (block.collection == nil ? .inbox : .kept)
+        block.statusBeforeArchiveRaw = nil
+        block.expiredAt = nil
+        block.expiresAt = nil
+        save()
+        flash("Back in \(block.collection?.name ?? "the Inbox")")
+    }
+
+    /// Keep: an expiring block stops expiring, and Rediscover won't show it again for a while.
+    func keep(_ block: Block) {
+        block.expiresAt = nil
+        block.lastShownAt = .now
+        save()
+    }
+
+    /// Blocks added to this collection from now on expire after `days`. Existing ones don't change.
+    func setExpiry(_ target: BlockCollection, days: Int?) {
+        target.defaultExpiryDays = days
+        save()
+        flash(days.map { "New blocks in \(target.name) expire after \($0) days" } ?? "Blocks in \(target.name) don't expire")
+    }
+
+    /// Archives every block whose expiry passed. Runs at launch and when the window changes place.
+    func expireDue(now: Date = .now) {
+        let archived = BlockStatus.archived.rawValue
+        let due = ((try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.expiresAt != nil && $0.statusRaw != archived }))) ?? [])
+            .filter { Expiry.isDue($0.expiresAt, now: now) }
+        guard !due.isEmpty else { return }
+        for block in due {
+            block.statusBeforeArchiveRaw = block.status.rawValue
+            block.status = .archived
+            block.expiredAt = now
+        }
+        save()
+        flash(due.count == 1 ? "1 block expired" : "\(due.count) blocks expired")
+    }
+
+    var archiveCount: Int {
+        let archived = BlockStatus.archived.rawValue
+        return (try? context.fetchCount(FetchDescriptor<Block>(predicate: #Predicate { $0.statusRaw == archived }))) ?? 0
+    }
+
+    var expiredCount: Int {
+        let archived = BlockStatus.archived.rawValue
+        return (try? context.fetchCount(FetchDescriptor<Block>(predicate: #Predicate { $0.statusRaw == archived && $0.expiredAt != nil }))) ?? 0
+    }
+
+    // MARK: Rediscover (S-020)
+
+    /// Today's five, picked the first time Rediscover opens today.
+    var rediscoverIDs: [UUID] {
+        (todayIfAny?.rediscoverRaw ?? "").split(separator: ",").compactMap { UUID(uuidString: String($0)) }
+    }
+
+    /// The card showing now, or nil when today's five are done (or there were none).
+    var rediscoverBlock: Block? {
+        let ids = rediscoverIDs
+        let done = todayIfAny?.rediscoverDone ?? 0
+        return ids.indices.contains(done) ? block(ids[done]) : nil
+    }
+
+    /// Opens Rediscover, picking today's five the first time today.
+    func startRediscover() {
+        expireDue()
+        let record = today
+        if record.rediscoverRaw == nil {
+            let all = (try? context.fetch(FetchDescriptor<Block>())) ?? []
+            let candidates = all.filter { $0.status == .kept || $0.status == .inbox }
+                .map { RediscoverCandidate(id: $0.uid, createdAt: $0.createdAt, openedAt: $0.openedAt,
+                                           lastShownAt: $0.lastShownAt, timesSkipped: $0.timesSkipped) }
+            record.rediscoverRaw = Rediscover.pick(from: candidates, now: .now).map(\.uuidString).joined(separator: ",")
+            record.rediscoverDone = 0
+            save()
+        }
+        selection = nil
+        showsCollections = false
+        viewMode = .rediscover
+    }
+
+    /// The card's actions. Each one moves on to the next of today's five.
+    func rediscoverKeep() {
+        guard let block = rediscoverBlock else { return }
+        keep(block)
+        nextRediscover()
+    }
+
+    func rediscoverSkip() {
+        guard let block = rediscoverBlock else { return }
+        block.timesSkipped += 1
+        block.lastShownAt = .now
+        nextRediscover()
+    }
+
+    func rediscoverArchive() {
+        guard let block = rediscoverBlock else { return }
+        block.lastShownAt = .now
+        archive(block)
+        nextRediscover()
+    }
+
+    private func nextRediscover() {
+        today.rediscoverDone += 1
+        save()
+    }
+
+    /// True when K, A and → act on a Rediscover card (and no field or panel is open).
+    var canRediscoverNow: Bool {
+        viewMode == .rediscover && rediscoverBlock != nil && !showsCollections && !showsNewMenu && renamingCollection == nil
     }
 
     // MARK: Helpers

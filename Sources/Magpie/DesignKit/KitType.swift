@@ -42,6 +42,7 @@ extension View {
 enum KitIcon: String, CaseIterable {
     case add, search, sort, gallery, journal, sortInbox, luckyDip, close, pin, chevronDown, check
     case pileRead, pileWatch, pileListen, pileCook, pileVisit
+    case rediscover, archive
 
     var symbol: String {
         switch self {
@@ -61,6 +62,8 @@ enum KitIcon: String, CaseIterable {
         case .pileListen: "music.note"
         case .pileCook: "fork.knife"
         case .pileVisit: "mappin.and.ellipse"
+        case .rediscover: "clock.arrow.circlepath"
+        case .archive: "archivebox"
         }
     }
 

@@ -74,6 +74,13 @@ final class Block {
     /// How often Lucky Dip's "Not today" passed on it; it comes up less often (S-071).
     var timesSkipped: Int = 0
     var finishedAt: Date?
+    /// Archive (S-022): the status before archiving, so Unarchive puts it back.
+    var statusBeforeArchiveRaw: String?
+    /// Expiry (S-021): when it expires, and when it did (an expired block is archived, never deleted).
+    var expiresAt: Date?
+    var expiredAt: Date?
+    /// Rediscover (S-020): when it last came up there.
+    var lastShownAt: Date?
     /// Tags (S-014). Many-to-many, optional on both sides for CloudKit.
     @Relationship(deleteRule: .nullify, inverse: \Tag.blocks) var tags: [Tag]? = []
 
@@ -139,6 +146,8 @@ final class BlockCollection {
     var sortOrderRaw: String?
     var viewModeRaw: String?
     var shuffleSeed: Int = 0
+    /// Blocks added from now on expire after this many days (S-021). Nil: never.
+    var defaultExpiryDays: Int?
     @Relationship(deleteRule: .nullify, inverse: \BlockCollection.parent) var children: [BlockCollection]? = []
 
     init(name: String, colorHex: Int, sortIndex: Double) {
@@ -182,6 +191,9 @@ final class DayActivity {
     var spins: Int = 0
     var finished: Int = 0
     var pickUID: UUID?
+    /// Rediscover's five for the day (ids joined by commas) and how many are done.
+    var rediscoverRaw: String?
+    var rediscoverDone: Int = 0
 
     init(day: Int) {
         self.day = day

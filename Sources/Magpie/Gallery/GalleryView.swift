@@ -129,6 +129,14 @@ struct BlockMenu: View {
             }
         }
         Divider()
+        if Expiry.label(block.expiresAt, now: .now) != nil {
+            Button("Keep (Don’t Expire)") { model.keep(block) }
+        }
+        if block.status == .archived {
+            Button("Unarchive") { model.unarchive(block) }
+        } else {
+            Button("Archive") { model.archive(block, undo: undoManager) }
+        }
         Button("Delete", role: .destructive) { model.delete([block.uid], undo: undoManager) }
     }
 }
@@ -162,7 +170,8 @@ enum CardLayout {
             }
         }
         return CardContent(body: body, kindLabel: block.kind.label, title: block.title.isEmpty ? "Untitled" : block.title,
-                           site: block.siteName, badge: block.badge, tint: block.tint, thumbHeight: height)
+                           site: block.siteName, badge: block.badge, tint: block.tint, thumbHeight: height,
+                           warning: Expiry.label(block.expiresAt, now: .now))
     }
 
     /// A close guess of the card's height, so columns come out even before cards render.

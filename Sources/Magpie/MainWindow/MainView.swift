@@ -21,6 +21,8 @@ struct MainView: View {
                 SortInboxView()
             } else if model.viewMode == .luckyDip {
                 LuckyDipView()
+            } else if model.viewMode == .rediscover {
+                RediscoverView()
             } else if shown.isEmpty {
                 EmptyGallery(isLibraryEmpty: blocks.isEmpty, scopeName: scopeName)
             } else {
@@ -34,7 +36,7 @@ struct MainView: View {
             TopBar(collections: collections, inboxCount: model.blocks(in: .inbox, from: blocks).count)
         }
         .overlay(alignment: .trailing) {
-            if let selected, model.viewMode != .sortInbox {
+            if let selected, model.viewMode == .gallery || model.viewMode == .journal {
                 DetailsPanel(block: selected, collections: collections)
                     .padding(.top, Metric.barHeight)
                     .padding([.trailing, .bottom], Space.lg)
@@ -75,6 +77,8 @@ struct MainView: View {
         case .inbox: "your Inbox"
         case .collection(let uid): collections.first { $0.uid == uid }?.name ?? "this collection"
         case .tag(let uid): model.tag(uid).map { "#\($0.name)" } ?? "this tag"
+        case .archive: "the Archive"
+        case .expired: "Expired"
         }
     }
 }
@@ -134,6 +138,9 @@ struct TopBar: View {
             tab("Inbox", scope: .inbox, count: inboxCount)
             ForEach(pinned) { collectionTab($0) }
             if let extra { collectionTab(extra) }
+            if model.scope == .archive || model.scope == .expired {
+                tab(model.placeName(model.scope), scope: model.scope)
+            }
             if let tag = model.openTag {
                 tab("# \(tag.name)", scope: .tag(tag.uid))
                     .contextMenu { TagMenu(tag: tag) }
@@ -194,7 +201,7 @@ private struct RightControls: View {
                 }
             }
             KitSegmentTrack {
-                ForEach(ViewMode.allCases) { mode in
+                ForEach(ViewMode.switcher) { mode in
                     Button { model.show(mode) } label: { KitIconView(icon: mode.icon) }
                         .buttonStyle(KitSegmentStyle(isSelected: model.viewMode == mode))
                         .disabled(!mode.isAvailable)

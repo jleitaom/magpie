@@ -264,6 +264,64 @@ enum SelfTest {
                 [quick, slow, unknown].forEach { model.delete([$0.uid], undo: nil) }
             }
 
+            // S-022 archive, S-021 expiry, S-020 Rediscover.
+            if let second = model.collections.first(where: { $0.name == "Second" }) {
+                let old = model.save(url: URL(string: "https://example.com/archive-me")!)
+                model.move(old, to: second, undo: nil)
+                model.archive(old)
+                let all = blocks()
+                check("archived blocks leave All and their collection", !model.blocks(in: .all, from: all).contains { $0.uid == old.uid }
+                      && !model.blocks(in: .collection(second.uid), from: all).contains { $0.uid == old.uid })
+                check("…and show in the Archive", model.blocks(in: .archive, from: all).contains { $0.uid == old.uid })
+                model.unarchive(old)
+                check("Unarchive restores the previous status", old.status == .kept && old.collection?.uid == second.uid)
+
+                let before = model.save(url: URL(string: "https://example.com/before-expiry")!)
+                model.move(before, to: second, undo: nil)
+                model.setExpiry(second, days: 30)
+                check("changing the setting doesn't change existing blocks", before.expiresAt == nil)
+                let fresh = model.save(url: URL(string: "https://example.com/after-expiry")!)
+                model.move(fresh, to: second, undo: nil)
+                let days = (fresh.expiresAt?.timeIntervalSinceNow ?? 0) / 86_400
+                check("new blocks expire after the collection's days", days > 29.9 && days <= 30)
+                model.keep(fresh)
+                check("Keep clears an expiry", fresh.expiresAt == nil)
+                fresh.expiresAt = Date.now.addingTimeInterval(-60)
+                model.expireDue()
+                check("an expired block is archived, not deleted, and shows under Expired", fresh.status == .archived
+                      && model.block(fresh.uid) != nil && model.blocks(in: .expired, from: blocks()).contains { $0.uid == fresh.uid })
+                model.setExpiry(second, days: nil)
+
+                // Rediscover: old saves only, five a day, each action moves on.
+                let olds = (0..<7).map { index in
+                    let block = model.save(url: URL(string: "https://example.com/old-\(index)")!)
+                    model.move(block, to: second, undo: nil)
+                    block.createdAt = Date.now.addingTimeInterval(-Double(30 + index) * 86_400)
+                    return block
+                }
+                let recent = model.save(url: URL(string: "https://example.com/recent")!)
+                model.startRediscover()
+                let picks = model.rediscoverIDs
+                check("Rediscover picks 5 old saves, none recent", picks.count == 5 && !picks.contains(recent.uid)
+                      && Set(picks).isSubset(of: Set(olds.map(\.uid) + [before.uid, old.uid] + blocks().filter { $0.createdAt < Date.now.addingTimeInterval(-14 * 86_400) }.map(\.uid))))
+                let first = model.rediscoverBlock
+                model.rediscoverKeep()
+                check("Keep sets when it was last shown and moves on", first?.lastShownAt != nil && model.rediscoverBlock?.uid == picks[1])
+                let second2 = model.rediscoverBlock
+                model.rediscoverSkip()
+                check("Skip counts a skip", (second2?.timesSkipped ?? 0) == 1)
+                let third = model.rediscoverBlock
+                model.rediscoverArchive()
+                check("Archive archives it", third?.status == .archived)
+                model.rediscoverKeep()
+                model.rediscoverKeep()
+                check("after five: today's five are done", model.rediscoverBlock == nil && model.today.rediscoverDone == 5)
+                model.startRediscover()
+                check("opening again today doesn't pick five more", model.rediscoverIDs == picks)
+                model.show(.gallery)
+                (olds + [recent, before, fresh, old]).forEach { model.delete([$0.uid], undo: nil) }
+            }
+
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.
             let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))

@@ -98,10 +98,14 @@ private struct InboxZero: View {
                 KitStatTile(value: run.deleted, label: "deleted")
             }
             .padding(.top, Space.xs)
-            Button("Back to Gallery") { model.show(.gallery) }
-                .buttonStyle(.kit(large: true))
-                .keyboardShortcut(.defaultAction)
-                .padding(.top, Space.sm)
+            HStack(spacing: Space.sm) {
+                Button("Back to Gallery") { model.show(.gallery) }
+                    .buttonStyle(.kit(.secondary, large: true))
+                Button("Rediscover \(Rediscover.perDay) old saves") { model.show(.rediscover) }
+                    .buttonStyle(.kit(large: true))
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.top, Space.sm)
         }
         .frame(width: Metric.celebrationWidth)
         .onAppear { withAnimation(reduceMotion ? nil : Motion.progress) { shown = true } }

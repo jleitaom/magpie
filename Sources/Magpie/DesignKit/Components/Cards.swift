@@ -28,6 +28,8 @@ struct CardContent: Identifiable {
     var tint: UInt32?
     /// Thumbnail height in the Gallery's masonry.
     var thumbHeight: CGFloat = 180
+    /// "expires in 2 d", shown after the site in the note color (S-021).
+    var warning: String?
 
     var isNote: Bool { if case .note = body { true } else { false } }
 }
@@ -121,7 +123,12 @@ struct BlockCardView: View {
                 default:
                     EmptyView()
                 }
-                Text(content.site).kitType(.meta).foregroundStyle(Ink.secondary).lineLimit(1)
+                HStack(spacing: Metric.inlineGap) {
+                    Text(content.site).kitType(.meta).foregroundStyle(Ink.secondary).lineLimit(1)
+                    if let warning = content.warning {
+                        Text("· \(warning)").kitType(.metaStrong).foregroundStyle(Ink.noteLabel).lineLimit(1)
+                    }
+                }
             }
             .padding(Metric.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
