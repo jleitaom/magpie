@@ -38,6 +38,7 @@ and then nudges you to read, watch and use what you saved.
 - **Details panel** for any Block
 - Dark by default, with Light or Match my Mac in Settings
 - Local and private. Everything stays on your Mac, with no account and no server
+- Never locked in: File → Export Library writes everything to plain files (JSON, pictures, and a bookmarks file any browser imports)
 
 Coming next: Sort Inbox, Lucky Dip, Rediscover, search, tags and Quick Save. See the [roadmap](ROADMAP.md).
 

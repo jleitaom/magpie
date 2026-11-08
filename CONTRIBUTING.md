@@ -11,8 +11,10 @@ Thanks for helping out!
 - Source lives in `Sources/Magpie/`, grouped by area:
   - `App/`: startup and the menu bar commands (`MagpieApp.swift`), and every action the app
     can take, such as saving, moving, deleting and pinning (`AppModel.swift`)
-  - `Library/`: the SwiftData models (`Models.swift`) and the link preview fetcher, which
-    runs off the main thread (`Ingest.swift`)
+  - `Library/`: the SwiftData models (`Models.swift`), the link preview fetcher, which
+    runs off the main thread (`Ingest.swift`), and export and import of the whole library
+    (`ExportImport.swift`; the file formats are in `MagpieKit/Export.swift`). A new model field
+    must be added to the export too, or the round-trip check in the self-test fails
   - `MainWindow/`: the window, its top bar, the drop target and the bottom hint (`MainView.swift`)
   - `Gallery/`: the masonry of cards (`GalleryView.swift`)
   - `Journal/`: the Journal, a numbered list of the same blocks (`JournalView.swift`). Sort

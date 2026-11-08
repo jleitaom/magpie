@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- **Export everything** (File → Export Library…, ⇧⌘E): a folder with `library.json` (every block, field, collection, tag and day), your pictures as plain files, and `bookmarks.html` that Safari, Chrome and Firefox can import, collections as folders. **File → Import Magpie Export…** (⌥⌘I) reads it back with nothing lost; what you already have is left alone
 - **Rename while sorting the Inbox:** click the card's title, or press **R**. Return saves, Escape cancels; the sorting keys wait while you type
 - **Drop onto the Dock icon:** links, pictures, files and Safari link files (.webloc) dropped on Magpie's Dock icon go to the Inbox, even when Magpie isn't open. A quick drop leaves you where you were, with "Saved to Inbox" shown above the Dock; hold the item on the icon until Magpie comes forward to open it instead
 - **Save a screenshot** (⌃⌥S, anywhere, or File → Save Screenshot…): select part of the screen and it's saved to the Inbox as a picture whose text you can search. The first time, Magpie explains why macOS asks for Screen Recording. Turn the shortcut off in Settings → General
@@ -34,6 +35,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - **View → Appearance** switches between Dark, Light and Match my Mac without opening Settings, and **⌃⌘T** flips between Dark and Light
 
 ### Fixed
+
+- Magpie's own checks no longer open pages in your browser
 
 - Deleting a card no longer makes the other cards overlap while the Gallery rearranges
 

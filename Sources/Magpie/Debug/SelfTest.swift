@@ -586,6 +586,57 @@ enum SelfTest {
                 }
             }
 
+            // S-054 export everything, and read it back with no loss.
+            do {
+                let picture = model.save(url: URL(string: "https://example.com/export-picture")!)
+                let dot = NSImage(size: NSSize(width: 8, height: 8), flipped: false) { rect in NSColor.systemOrange.setFill(); rect.fill(); return true }
+                picture.thumbnail = dot.tiffRepresentation
+                model.addTags("export, Jazz", to: picture)
+                picture.note = "Why: “quotes” & ampersands"
+                let base = FileManager.default.temporaryDirectory.appending(path: "magpie-selftest-export")
+                try? FileManager.default.removeItem(at: base)
+                try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+                let first = try model.export(into: base)
+                let before = try LibraryExport.read(Data(contentsOf: first.appending(path: "library.json")))
+                let webLinks = before.blocks.filter { $0.url?.hasPrefix("http") == true }.count
+                let html = try String(contentsOf: first.appending(path: "bookmarks.html"), encoding: .utf8)
+                check("the bookmarks file holds every web link, in the format browsers import",
+                      html.hasPrefix("<!DOCTYPE NETSCAPE-Bookmark-file-1>") && BookmarkFile.parse(html).total == webLinks,
+                      "\(BookmarkFile.parse(html).total) of \(webLinks)")
+                check("pictures are written as files next to library.json",
+                      before.blocks.compactMap(\.image).allSatisfy { FileManager.default.fileExists(atPath: first.appending(path: $0).path) }
+                      && before.blocks.contains { $0.image != nil })
+
+                // Empty the library, read the export back, export again, and compare.
+                for block in blocks() { context.delete(block) }
+                for item in (try? context.fetch(FetchDescriptor<BlockCollection>())) ?? [] { context.delete(item) }
+                for item in (try? context.fetch(FetchDescriptor<Tag>())) ?? [] { context.delete(item) }
+                for item in (try? context.fetch(FetchDescriptor<DayActivity>())) ?? [] { context.delete(item) }
+                model.save()
+                check("(the library is empty before reading the export back)", blocks().isEmpty && model.collections.isEmpty)
+                let added = try model.importExport(first.appending(path: "library.json"))
+                let second = try model.export(into: base)
+                let after = try LibraryExport.read(Data(contentsOf: second.appending(path: "library.json")))
+                func normal(_ library: LibraryExport) -> LibraryExport {
+                    var copy = library
+                    copy.exportedAt = .distantPast
+                    copy.blocks.sort { $0.uid.uuidString < $1.uid.uuidString }
+                    copy.collections.sort { $0.uid.uuidString < $1.uid.uuidString }
+                    copy.tags.sort { $0.uid.uuidString < $1.uid.uuidString }
+                    for index in copy.blocks.indices { copy.blocks[index].tags.sort { $0.uuidString < $1.uuidString } }
+                    return copy
+                }
+                check("reading an export back loses nothing: every block, field, collection, tag and day",
+                      added == before.blocks.count && normal(before) == normal(after), "\(added) of \(before.blocks.count) blocks")
+                let pictureBefore = try Data(contentsOf: first.appending(path: "images/\(picture.uid.uuidString).jpg"))
+                let pictureAfter = model.block(picture.uid)?.thumbnail
+                check("…pictures included", pictureAfter == pictureBefore)
+                check("reading the same export twice adds nothing", try model.importExport(first.appending(path: "library.json")) == 0)
+                try? FileManager.default.removeItem(at: base)
+            } catch {
+                check("export and import run without errors", false, "\(error)")
+            }
+
             print(failures == 0 ? "SELFTEST PASS \(count) checks" : "SELFTEST FAIL \(failures) of \(count) checks")
             finish(code: failures == 0 ? 0 : 1)
         }

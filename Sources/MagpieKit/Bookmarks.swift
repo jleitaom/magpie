@@ -6,6 +6,12 @@ public struct BookmarkFolder: Equatable, Sendable, Identifiable {
         public let url: URL
         public let title: String
         public let added: Date?
+
+        public init(url: URL, title: String, added: Date?) {
+            self.url = url
+            self.title = title
+            self.added = added
+        }
     }
 
     /// The folder's path from the top ("Bookmarks Bar/Recipes"), unique within one file.
@@ -13,6 +19,13 @@ public struct BookmarkFolder: Equatable, Sendable, Identifiable {
     public let name: String
     public var links: [Link] = []
     public var folders: [BookmarkFolder] = []
+
+    public init(id: String, name: String, links: [Link] = [], folders: [BookmarkFolder] = []) {
+        self.id = id
+        self.name = name
+        self.links = links
+        self.folders = folders
+    }
 
     /// Links here and in every folder inside.
     public var total: Int { links.count + folders.map(\.total).reduce(0, +) }

@@ -79,6 +79,11 @@ struct MagpieCommands: Commands {
                 .keyboardShortcut("s", modifiers: [.control, .option])
             Button("Import Bookmarks…") { model.chooseBookmarksFile() }
                 .keyboardShortcut("i", modifiers: [.command, .shift])
+            Divider()
+            Button("Export Library…") { model.chooseExportFolder() }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+            Button("Import Magpie Export…") { model.chooseExportToImport() }
+                .keyboardShortcut("i", modifiers: [.command, .option])
         }
         CommandGroup(after: .pasteboard) {
             Divider()
