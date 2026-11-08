@@ -128,8 +128,11 @@ public enum PageReader {
     /// The address in `<meta http-equiv="refresh" content="0; url=…">`, resolved against the page.
     public static func metaRefresh(_ html: String, base: URL) -> URL? {
         guard let tag = firstMatch(#"(?is)(<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>)"#, in: html),
-              let target = firstMatch(#"(?i)url\s*=\s*['"]?([^'">\s]+)"#, in: tag) else { return nil }
-        return URL(string: decodeEntities(target), relativeTo: base)?.absoluteURL
+              let target = firstMatch(#"(?i)url\s*=\s*['"]?([^'">\s]+)"#, in: tag),
+              let url = URL(string: decodeEntities(target), relativeTo: base)?.absoluteURL,
+              // Only to another web page: a page must never make Magpie read a local file.
+              let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return nil }
+        return url
     }
 
     /// Words of readable text: inside <article> when the page has one, else <body>,

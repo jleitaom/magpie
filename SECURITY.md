@@ -12,13 +12,17 @@
 - **Network: link previews and update checks.** When you save a link, Magpie asks Apple's LinkPresentation
   framework to fetch that page's title, picture and site name, which is the same thing Messages
   does for a link. It also downloads the page once to read a video's length, a product's price or
-  an article's length. For Vimeo links it asks Vimeo's public oEmbed address instead. These
+  an article's length. For YouTube and Vimeo links it also asks that site's public oEmbed address for the video's real title. These
   requests go to the site you saved and nowhere else. Magpie has no server and no analytics.
 - **Update checks.** Magpie also connects to GitHub to see whether there's a newer release (the
   `appcast.xml` attached to the latest release), using [Sparkle](https://sparkle-project.org).
   Sparkle asks before it checks on its own, it checks at most once a day, and you can turn it off
   in Settings → General → *Check for updates automatically*. The request carries Magpie's and
   Sparkle's version numbers and nothing else: no system profile, no identifiers.
+- **Only web links and files open.** A page that forwards to another address is only followed to
+  another web page, never to a file on your Mac. Opening a block only opens web links (in your
+  browser) and files you saved (in their app); any other kind of address, for example one in an
+  edited export, is refused.
 - **Dock drops.** So that links and files can be dropped on its Dock icon, Magpie tells macOS it can
   open web links, pictures and files, at the lowest rank. It never becomes the default app or browser
   for any of them.

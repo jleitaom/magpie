@@ -75,4 +75,14 @@ struct MasonryTests {
         #expect(Pins.canPin(currentlyPinned: 4))
         #expect(!Pins.canPin(currentlyPinned: 5))
     }
+
+    @Test("Blocks only open web links and files")
+    func openable() {
+        #expect(Links.isOpenable(URL(string: "https://a.com/x")!))
+        #expect(Links.isOpenable(URL(string: "HTTP://a.com")!))
+        #expect(Links.isOpenable(URL(fileURLWithPath: "/tmp/a.pdf")))
+        for text in ["javascript:alert(1)", "x-apple-reminderkit://r", "smb://server/share", "ssh://a.com", "mailto:a@b.c"] {
+            #expect(!Links.isOpenable(URL(string: text)!))
+        }
+    }
 }

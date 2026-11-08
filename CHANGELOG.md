@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Security
+
+- A web page that forwards to another address is only followed to another web page, never to a file on your Mac
+- Blocks only open web links and files. Any other kind of address (for example from an edited export or a link file) is refused
+
 ## [1.0.0] - 2026-11-08
 
 ### Added

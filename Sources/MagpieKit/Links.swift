@@ -24,6 +24,12 @@ public enum Links {
         return url
     }
 
+    /// Web links and files, the only addresses a block opens.
+    public static func isOpenable(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased() else { return false }
+        return scheme == "http" || scheme == "https" || scheme == "file"
+    }
+
     /// The same string for links that point to the same page: lowercased host without "www.",
     /// no tracking parameters, no fragment, no trailing slash, and http treated as https.
     public static func normalize(_ url: URL) -> String {

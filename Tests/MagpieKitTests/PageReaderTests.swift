@@ -123,6 +123,11 @@ struct RedirectAndTitleTests {
         let target = PageReader.metaRefresh(html, base: URL(string: "https://www.inkandswitch.com/local-first/")!)
         #expect(target?.absoluteString == "https://www.inkandswitch.com/essay/local-first")
         #expect(PageReader.metaRefresh("<meta charset='utf-8'>", base: URL(string: "https://a.com")!) == nil)
+        // A page can't send Magpie to a local file or another app.
+        for target in ["file:///etc/hosts", "javascript:alert(1)", "ftp://a.com/x", "x-apple-reminderkit://r"] {
+            let html = "<meta http-equiv=\"refresh\" content=\"0; url=\(target)\">"
+            #expect(PageReader.metaRefresh(html, base: URL(string: "https://a.com")!) == nil)
+        }
     }
 
     @Test("oEmbed gives the real title and the author")

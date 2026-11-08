@@ -1465,6 +1465,10 @@ final class AppModel {
 
     /// The address in a .webloc (Safari) or .url (Windows) link file.
     static func link(inShortcut file: URL) -> URL? {
+        webLink(inShortcut: file).flatMap { Links.parse($0.absoluteString) }
+    }
+
+    private static func webLink(inShortcut file: URL) -> URL? {
         if file.pathExtension.lowercased() == "webloc",
            let data = try? Data(contentsOf: file),
            let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
@@ -1536,7 +1540,13 @@ final class AppModel {
     @ObservationIgnored private(set) var lastOpenedURL: URL?
 
     /// Opens a page in your default browser, except during the self-test.
+    /// Opens web links in the browser and saved files in their app. Any other kind of address
+    /// (one planted in an imported export, say) is refused, so opening a block never starts another app's action.
     func openInBrowser(_ url: URL) {
+        guard Links.isOpenable(url) else {
+            flash("Magpie only opens web links and files")
+            return
+        }
         lastOpenedURL = url
         guard !SelfTest.requested else { return }
         NSWorkspace.shared.open(url)

@@ -511,6 +511,21 @@ enum SelfTest {
             DropHUD.show("Saved to Inbox")
             check("…and shows “Saved to Inbox” by the Dock instead", DropHUD.isVisible)
             quiet.forEach { model.delete([$0.uid], undo: nil) }
+            // A link file can hold any kind of address; only web links become links, and a block
+            // with another kind (from an edited export, say) is never opened.
+            let sneaky = folder.appending(path: "Sneaky.webloc")
+            try? PropertyListSerialization.data(fromPropertyList: ["URL": "x-apple-reminderkit://r"], format: .xml, options: 0).write(to: sneaky)
+            let kept = model.receive([sneaky], quietly: true)
+            check("a link file with a non-web address is kept as a file, not as that address",
+                  kept.count == 1 && kept[0].kind == .file && kept[0].url?.isFileURL == true, "\(kept.map(\.urlString))")
+            kept.forEach { model.delete([$0.uid], undo: nil) }
+            let planted = Block(kind: .link, title: "Planted")
+            planted.urlString = "x-apple-reminderkit://r"
+            model.context.insert(planted)
+            let openedBefore = model.lastOpenedURL
+            model.open(planted)
+            check("opening a block with a non-web address does nothing", model.lastOpenedURL == openedBefore)
+            model.delete([planted.uid], undo: nil)
             model.scope = .all
             let screenshot = model.saveScreenshot(png)
             for _ in 0..<40 where screenshot.bodyText.isEmpty { try? await Task.sleep(for: .milliseconds(100)) }
