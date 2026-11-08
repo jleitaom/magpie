@@ -357,6 +357,7 @@ enum SelfTest {
             let started = Date.now
             let found = model.searchResults("coff site3", in: all5000)
             let elapsed = Date.now.timeIntervalSince(started)
+            print("SELFTEST note: search over 5,000 blocks took \(Int(elapsed * 1000)) ms")
             check("search over 5,000 blocks takes under 100 ms", found.count >= 125 && elapsed < 0.1, "\(Int(elapsed * 1000)) ms, \(found.count) found")
             many.forEach(context.delete)
             [essay2, archivedNote].forEach { model.delete([$0.uid], undo: nil) }

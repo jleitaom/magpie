@@ -1147,22 +1147,23 @@ final class AppModel {
     func searchResults(_ query: String, in all: [Block]) -> [Block] {
         let terms = Search.terms(query)
         guard !terms.isEmpty else { return [] }
-        let hits = all.filter { Search.matches(index: indexFor($0), terms: terms) }
-        let titleIndex = Dictionary(hits.map { ($0.uid, Search.matches(index: Search.index([$0.title]), terms: terms)) },
-                                    uniquingKeysWith: { first, _ in first })
-        return hits.sorted { a, b in
-            let (ta, tb) = (titleIndex[a.uid] ?? false, titleIndex[b.uid] ?? false)
-            return ta == tb ? a.createdAt > b.createdAt : ta
+        // Folded text is cached per block, so each keystroke only compares strings.
+        var titleHits: [(block: Block, title: Bool, date: Date)] = []
+        for block in all {
+            let index = indexFor(block)
+            guard Search.matches(index: index.all, terms: terms) else { continue }
+            titleHits.append((block, Search.matches(index: index.title, terms: terms), block.createdAt))
         }
+        return titleHits.sorted { $0.title == $1.title ? $0.date > $1.date : $0.title }.map(\.block)
     }
 
     /// Each block's folded search text, built once and dropped whenever anything is saved
     /// (an edit, a tag, a fetched preview), so typing in the search field stays fast.
-    @ObservationIgnored private var searchCache: [UUID: String] = [:]
+    @ObservationIgnored private var searchCache: [UUID: (all: String, title: String)] = [:]
 
-    private func indexFor(_ block: Block) -> String {
+    private func indexFor(_ block: Block) -> (all: String, title: String) {
         if let cached = searchCache[block.uid] { return cached }
-        let index = block.searchIndex
+        let index = (all: block.searchIndex, title: Search.index([block.title]))
         searchCache[block.uid] = index
         return index
     }
