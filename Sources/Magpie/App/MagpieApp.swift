@@ -75,6 +75,8 @@ struct MagpieCommands: Commands {
             Divider()
             Button("Quick Save…") { model.quickSavePanel.open() }
                 .keyboardShortcut(.space, modifiers: [.control, .option])
+            Button("Save Screenshot…") { model.takeScreenshot() }
+                .keyboardShortcut("s", modifiers: [.control, .option])
             Button("Import Bookmarks…") { model.chooseBookmarksFile() }
                 .keyboardShortcut("i", modifiers: [.command, .shift])
         }
@@ -237,6 +239,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    /// Dropped on the Dock icon before the model was ready (Magpie was launched by the drop).
+    static var pendingURLs: [URL] = []
+
+    /// Links, images and files dropped on the Dock icon (S-041).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        if let model = AppModel.current { model.receive(urls) } else { Self.pendingURLs += urls }
+    }
 
     /// The self-test's result becomes the exit code, after a normal quit.
     func applicationWillTerminate(_ notification: Notification) {

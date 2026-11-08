@@ -6,6 +6,9 @@
   address and title of Safari's front tab when you press its shortcut. Say no and Quick Save uses the
   clipboard instead. Magpie doesn't ask for Accessibility, screen recording, contacts or anything else.
   The Quick Save shortcut uses the system's hot key service, which needs no permission.
+- **Screen Recording, only for screenshots.** ⌃⌥S runs macOS's own screenshot tool to save the area
+  you select. macOS asks for Screen Recording permission the first time. The picture stays in your
+  library, and its text is read on your Mac with Apple's Vision. Turn the shortcut off in Settings.
 - **Network: link previews only.** When you save a link, Magpie asks Apple's LinkPresentation
   framework to fetch that page's title, picture and site name, which is the same thing Messages
   does for a link. It also downloads the page once to read a video's length, a product's price or

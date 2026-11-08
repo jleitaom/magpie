@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import MagpieKit
 import SwiftData
 import SwiftUI
@@ -91,6 +92,9 @@ enum Incoming: Sendable {
 /// App-wide state and every action. Views read it and call it; they never change the data directly.
 @Observable
 final class AppModel {
+    /// The running app's model, for the app delegate (Dock drops).
+    @ObservationIgnored static weak var current: AppModel?
+
     let container: ModelContainer
     var context: ModelContext { container.mainContext }
 
@@ -172,6 +176,13 @@ final class AppModel {
         refreshDipStats()
         expireDue()
         registerQuickSave()
+        registerScreenshot()
+        // Things dropped on the Dock icon before the library was ready.
+        if !AppDelegate.pendingURLs.isEmpty {
+            receive(AppDelegate.pendingURLs)
+            AppDelegate.pendingURLs = []
+        }
+        AppModel.current = self
         let pending = EnrichState.pending.rawValue
         let stuck = (try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.enrichRaw == pending }))) ?? []
         for block in stuck { enrich(block) }
@@ -280,9 +291,9 @@ final class AppModel {
     }
 
     @discardableResult
-    func saveImage(_ data: Data, name: String?) -> Block {
+    func saveImage(_ data: Data, name: String?, isScreenshot: Bool = false) -> Block {
         let block = Block(kind: .image, title: name ?? "Image")
-        block.siteName = "Image"
+        block.siteName = isScreenshot ? "Screenshot" : "Image"
         block.enrich = .pending
         place(block)
         let uid = block.uid
@@ -293,6 +304,8 @@ final class AppModel {
             guard let block = self.block(uid) else { return }
             self.apply(processed, to: block)
             block.ocrText = ocr
+            // A screenshot's text is its body text too (S-075).
+            if isScreenshot, let ocr { block.bodyText = ocr }
             block.enrich = processed == nil ? .failed : .done
             self.save()
         }
@@ -1397,6 +1410,101 @@ final class AppModel {
     }
 
     private func importFinished() { importInFlight -= 1 }
+
+    // MARK: Dock drop (S-041) and screenshots (S-075)
+
+    /// Links, images and files dropped on the Dock icon (or opened with Magpie) go to the Inbox.
+    @discardableResult
+    func receive(_ urls: [URL]) -> [Block] {
+        var saved: [Block] = []
+        for url in urls {
+            var block: Block?
+            if url.isFileURL, ["webloc", "url"].contains(url.pathExtension.lowercased()), let link = Self.link(inShortcut: url) {
+                block = save(url: link)
+            } else if url.isFileURL {
+                if let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image), let data = try? Data(contentsOf: url) {
+                    block = saveImage(data, name: url.deletingPathExtension().lastPathComponent)
+                } else {
+                    block = saveFile(url)
+                }
+            } else if let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" {
+                block = save(url: url)
+            }
+            if let block {
+                if block.collection != nil || block.status != .inbox { move(block, to: nil, undo: nil) }
+                saved.append(block)
+            }
+        }
+        if !saved.isEmpty { flash(saved.count == 1 ? "Saved to the Inbox" : "Saved \(saved.count) to the Inbox") }
+        return saved
+    }
+
+    /// The address in a .webloc (Safari) or .url (Windows) link file.
+    static func link(inShortcut file: URL) -> URL? {
+        if file.pathExtension.lowercased() == "webloc",
+           let data = try? Data(contentsOf: file),
+           let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+           let text = plist["URL"] as? String {
+            return URL(string: text)
+        }
+        let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+        return text.split(whereSeparator: \.isNewline).first { $0.hasPrefix("URL=") }.flatMap { URL(string: String($0.dropFirst(4))) }
+    }
+
+    @ObservationIgnored private var screenshotHotKey: HotKey?
+
+    /// ⌃⌥S saves a screenshot (Settings → General).
+    var screenshotShortcutOn: Bool = UserDefaults.standard.object(forKey: "screenshotShortcutOn") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(screenshotShortcutOn, forKey: "screenshotShortcutOn")
+            registerScreenshot()
+        }
+    }
+
+    func registerScreenshot() {
+        screenshotHotKey = nil
+        guard screenshotShortcutOn, !SelfTest.requested, ProcessInfo.processInfo.environment["APP_SNAPSHOT"] == nil else { return }
+        screenshotHotKey = HotKey(id: 2, keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(controlKey | optionKey)) { [weak self] in
+            self?.takeScreenshot()
+        }
+    }
+
+    /// Select part of the screen with macOS's own tool; the picture goes to the Inbox and its
+    /// text is read so search finds it. The first time, it says why it needs Screen Recording.
+    func takeScreenshot() {
+        if !CGPreflightScreenCaptureAccess(), !UserDefaults.standard.bool(forKey: "explainedScreenRecording") {
+            UserDefaults.standard.set(true, forKey: "explainedScreenRecording")
+            let alert = NSAlert()
+            alert.messageText = "Magpie needs to see your screen to save a screenshot"
+            alert.informativeText = "macOS will ask for Screen Recording permission. Magpie only keeps the area you select, as a block in your Inbox, and reads its text so you can search it. Nothing leaves your Mac."
+            alert.addButton(withTitle: "Continue")
+            alert.addButton(withTitle: "Cancel")
+            NSApp.activate()
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            CGRequestScreenCaptureAccess()
+        }
+        let file = FileManager.default.temporaryDirectory.appending(path: "Magpie-screenshot-\(UUID().uuidString).png")
+        let capture = Process()
+        capture.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        capture.arguments = ["-i", "-x", file.path]   // -i: select an area or window; -x: no sound
+        capture.terminationHandler = { _ in
+            Task { @MainActor in
+                guard let data = try? Data(contentsOf: file) else { return }   // Escape: nothing saved
+                try? FileManager.default.removeItem(at: file)
+                self.saveScreenshot(data)
+            }
+        }
+        try? capture.run()
+    }
+
+    @discardableResult
+    func saveScreenshot(_ data: Data) -> Block {
+        let name = "Screenshot " + Date.now.formatted(.dateTime.day().month().hour().minute())
+        let block = saveImage(data, name: name, isScreenshot: true)
+        if block.collection != nil { move(block, to: nil, undo: nil) }
+        flash("Screenshot saved to the Inbox")
+        return block
+    }
 
     // MARK: Helpers
 

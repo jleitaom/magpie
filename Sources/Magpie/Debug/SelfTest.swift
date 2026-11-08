@@ -474,6 +474,35 @@ enum SelfTest {
             }
             model.delete([already.uid], undo: nil)
 
+            // S-041 Dock drop and S-075 screenshot.
+            let folder = FileManager.default.temporaryDirectory.appending(path: "magpie-selftest-dock")
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let webloc = folder.appending(path: "Dock link.webloc")
+            try? PropertyListSerialization.data(fromPropertyList: ["URL": "https://example.com/from-dock"], format: .xml, options: 0).write(to: webloc)
+            let shot = NSImage(size: NSSize(width: 640, height: 200), flipped: false) { rect in
+                NSColor.white.setFill(); rect.fill()
+                ("RECEIPT TOTAL 42 EUROS" as NSString).draw(at: NSPoint(x: 30, y: 80),
+                    withAttributes: [.font: NSFont.boldSystemFont(ofSize: 40), .foregroundColor: NSColor.black])
+                return true
+            }
+            let png = shot.tiffRepresentation.flatMap { NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) } ?? Data()
+            let imageFile = folder.appending(path: "Dock picture.png")
+            try? png.write(to: imageFile)
+            if let five = model.collections.first(where: { $0.name == "Five" }) { model.scope = .collection(five.uid) }
+            let dropped = model.receive([URL(string: "https://example.com/dock-link")!, webloc, imageFile])
+            check("links, .webloc files and images dropped on the Dock are saved",
+                  dropped.count == 3 && dropped.contains { $0.urlString == "https://example.com/from-dock" } && dropped.contains { $0.kind == .image })
+            check("…to the Inbox, whatever the window shows", dropped.allSatisfy { $0.status == .inbox && $0.collection == nil })
+            model.scope = .all
+            let screenshot = model.saveScreenshot(png)
+            for _ in 0..<40 where screenshot.bodyText.isEmpty { try? await Task.sleep(for: .milliseconds(100)) }
+            check("a screenshot is an image block in the Inbox with its text as body text",
+                  screenshot.kind == .image && screenshot.status == .inbox && screenshot.bodyText.uppercased().contains("RECEIPT"),
+                  "text: \(screenshot.bodyText)")
+            check("…and search finds it by that text", model.searchResults("receipt", in: blocks()).contains { $0.uid == screenshot.uid })
+            (dropped + [screenshot]).forEach { model.delete([$0.uid], undo: nil) }
+            try? FileManager.default.removeItem(at: folder)
+
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.
             let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))

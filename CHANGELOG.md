@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- **Drop onto the Dock icon:** links, pictures, files and Safari link files (.webloc) dropped on Magpie's Dock icon go to the Inbox, even when Magpie isn't open
+- **Save a screenshot** (⌃⌥S, anywhere, or File → Save Screenshot…): select part of the screen and it's saved to the Inbox as a picture whose text you can search. The first time, Magpie explains why macOS asks for Screen Recording. Turn the shortcut off in Settings → General
 - **Import bookmarks** (File → Import Bookmarks…, ⇧⌘I): choose the file Safari (File ▸ Export ▸ Bookmarks), Chrome or Firefox exports. A preview shows the folder tree with counts; tick the folders you want. Folders become nested collections, links outside folders go to the Inbox, ones you already have are skipped and counted, and each keeps the date you bookmarked it. Previews load in the background, a few at a time
 - **Your own order.** Drag a card (or a Journal row) onto another to put it there. The Sort menu gains **Manual**; dragging while sorted any other way switches to Manual and keeps what you see
 - **Keyboard.** Arrow keys move between cards (up and down a column, left and right across), **Space** (or ⌘Y) opens Quick Look on a block's picture or file, and **⌘3–⌘7** open your pinned collections (⌘1 All, ⌘2 Inbox)

@@ -72,6 +72,11 @@ struct GeneralSettings: View {
                  : "Another app is using this shortcut. Pick a different one.")
                 .font(.caption).foregroundStyle(model.quickSaveShortcutWorks ? .secondary : Color.orange)
         }
+        Section("Screenshots") {
+            Toggle("⌃⌥S saves part of the screen to the Inbox", isOn: $model.screenshotShortcutOn)
+            Text("Its text is read on your Mac so search finds it. macOS asks for Screen Recording permission the first time.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
         Section("Library") {
             LabeledContent("Saved at", value: Store.url.deletingLastPathComponent().path)
         }
