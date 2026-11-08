@@ -38,6 +38,13 @@ enum Snapshot {
                         try? await Task.sleep(for: .seconds(0.8))
                         page.openPopover(in: model)
                     }
+                    if page == .afterDelete, let doomed = model.selection {
+                        // Delete the selected card, the way ⌫ does, then capture the Gallery right after.
+                        try? await Task.sleep(for: .seconds(0.8))
+                        model.delete([doomed], undo: nil)
+                        try? await Task.sleep(for: .milliseconds(150))
+                        capture(to: "\(dir)/\(page.rawValue)-mid-\(mode).png")
+                    }
                     try? await Task.sleep(for: .seconds(1.2))
                     if page == .dropHUD {
                         if let hud = DropHUD.window { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: hud) }
@@ -126,7 +133,7 @@ enum SnapshotPage: String, CaseIterable {
     /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
     @MainActor static var startedOriginal: (UUID, BlockStatus)?
 
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet, dropHUD, sortRename
+    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet, dropHUD, sortRename, afterDelete
 
     /// Pages that open a popover. Their snapshot is the popover alone.
     var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename || self == .sortMenu }
@@ -175,6 +182,10 @@ enum SnapshotPage: String, CaseIterable {
             model.scope = .all
             model.startSearch()
             model.searchQuery = "lisbon"
+        case .afterDelete:
+            model.scope = .all
+            let shown = model.ordered(model.blocks(in: .all, from: (try? model.context.fetch(FetchDescriptor<Block>())) ?? []), in: .all)
+            model.selection = shown.dropFirst(1).first?.uid
         case .dropHUD:
             model.scope = .all
             DropHUD.show("Saved to Inbox")

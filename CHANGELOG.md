@@ -35,6 +35,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
+- Deleting a card no longer makes the other cards overlap while the Gallery rearranges
+
 - Dropping onto the Dock icon now works for pictures, files, Safari link files and website links dragged from Chrome or Safari. Magpie never becomes your default app or browser for any of them
 
 - The demo and test libraries no longer change how your real library is sorted

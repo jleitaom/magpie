@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 struct MainView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \Block.createdAt, order: .reverse) private var blocks: [Block]
     @Query(sort: \BlockCollection.sortIndex) private var collections: [BlockCollection]
 
@@ -51,12 +52,17 @@ struct MainView: View {
             TopBar(collections: collections, inboxCount: model.blocks(in: .inbox, from: blocks).count, allBlocks: blocks)
         }
         .overlay(alignment: .trailing) {
-            if let selected, model.viewMode == .gallery || model.viewMode == .journal {
-                DetailsPanel(block: selected, collections: collections)
-                    .padding(.top, Metric.barHeight)
-                    .padding([.trailing, .bottom], Space.lg)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            // Only the panel slides; animating the whole window made a delete re-flow the
+            // masonry with cards sliding through each other.
+            ZStack {
+                if let selected, model.viewMode == .gallery || model.viewMode == .journal {
+                    DetailsPanel(block: selected, collections: collections)
+                        .padding(.top, Metric.barHeight)
+                        .padding([.trailing, .bottom], Space.lg)
+                        .transition(reduceMotion ? .identity : .move(edge: .trailing).combined(with: .opacity))
+                }
             }
+            .animation(reduceMotion ? nil : Motion.panel, value: model.selection == nil)
         }
         .overlay(alignment: .bottom) {
             if model.viewMode == .gallery { BottomHint(showsHint: selected == nil) }
@@ -70,7 +76,6 @@ struct MainView: View {
                     .allowsHitTesting(false)
             }
         }
-        .animation(Motion.panel, value: model.selection)
         .onDrop(of: DropReader.types, isTargeted: $model.isDropTargeted) { providers in
             DropReader.read(providers, into: model)
             return true

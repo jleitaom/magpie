@@ -51,10 +51,11 @@ struct GalleryView: View {
                 HStack(alignment: .top, spacing: Metric.cardGap) {
                     ForEach(Array(columns.enumerated()), id: \.offset) { _, indexes in
                         LazyVStack(spacing: Metric.cardGap) {
-                            ForEach(indexes, id: \.self) { index in
-                                BlockCard(block: blocks[index], width: columnWidth, isDropTarget: dropTarget == blocks[index].uid)
-                                    .reorderable(blocks[index], shown: blocks, model: model, dragging: $dragging, target: $dropTarget)
-                                    .id(blocks[index].uid)
+                            // Cards are identified by their block, not their position: after a delete
+                            // every later index shifts, and position-based identity mixed cards up.
+                            ForEach(indexes.map { blocks[$0] }, id: \.uid) { block in
+                                BlockCard(block: block, width: columnWidth, isDropTarget: dropTarget == block.uid)
+                                    .reorderable(block, shown: blocks, model: model, dragging: $dragging, target: $dropTarget)
                             }
                         }
                         .frame(width: columnWidth)
