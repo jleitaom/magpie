@@ -179,8 +179,12 @@ final class AppModel {
         registerScreenshot()
         // Things dropped on the Dock icon before the library was ready.
         if !AppDelegate.pendingURLs.isEmpty {
-            receive(AppDelegate.pendingURLs)
+            let saved = receive(AppDelegate.pendingURLs, quietly: true)
             AppDelegate.pendingURLs = []
+            if !saved.isEmpty {
+                DropHUD.show(saved.count == 1 ? "Saved to Inbox" : "Saved \(saved.count) to Inbox")
+                AppDelegate.stepBack()
+            }
         }
         AppModel.current = self
         let pending = EnrichState.pending.rawValue
@@ -447,7 +451,7 @@ final class AppModel {
         }
     }
 
-    func move(_ block: Block, to target: BlockCollection?, undo: UndoManager?) {
+    func move(_ block: Block, to target: BlockCollection?, undo: UndoManager?, announce: Bool = true) {
         let before = block.collection
         let beforeStatus = block.status
         block.collection = target
@@ -465,7 +469,7 @@ final class AppModel {
             block.status = beforeStatus
         }
         undo?.setActionName("Move")
-        flash(target.map { "Moved to \($0.name)" } ?? "Moved to Inbox")
+        if announce { flash(target.map { "Moved to \($0.name)" } ?? "Moved to Inbox") }
     }
 
     func delete(_ uids: [UUID], undo: UndoManager?) {
@@ -1415,8 +1419,9 @@ final class AppModel {
     // MARK: Dock drop (S-041) and screenshots (S-075)
 
     /// Links, images and files dropped on the Dock icon (or opened with Magpie) go to the Inbox.
+    /// `quietly`: no message in the window (the Dock drop shows its own by the Dock).
     @discardableResult
-    func receive(_ urls: [URL]) -> [Block] {
+    func receive(_ urls: [URL], quietly: Bool = false) -> [Block] {
         var saved: [Block] = []
         for url in urls {
             var block: Block?
@@ -1432,11 +1437,11 @@ final class AppModel {
                 block = save(url: url)
             }
             if let block {
-                if block.collection != nil || block.status != .inbox { move(block, to: nil, undo: nil) }
+                if block.collection != nil || block.status != .inbox { move(block, to: nil, undo: nil, announce: false) }
                 saved.append(block)
             }
         }
-        if !saved.isEmpty { flash(saved.count == 1 ? "Saved to the Inbox" : "Saved \(saved.count) to the Inbox") }
+        if !saved.isEmpty, !quietly { flash(saved.count == 1 ? "Saved to the Inbox" : "Saved \(saved.count) to the Inbox") }
         return saved
     }
 
@@ -1502,7 +1507,7 @@ final class AppModel {
     func saveScreenshot(_ data: Data) -> Block {
         let name = "Screenshot " + Date.now.formatted(.dateTime.day().month().hour().minute())
         let block = saveImage(data, name: name, isScreenshot: true)
-        if block.collection != nil { move(block, to: nil, undo: nil) }
+        if block.collection != nil { move(block, to: nil, undo: nil, announce: false) }
         flash("Screenshot saved to the Inbox")
         return block
     }

@@ -80,3 +80,18 @@ public enum Expiry {
         return days <= 0 ? "expires today" : "expires in \(days) d"
     }
 }
+
+/// Dock drops (S-041): a quick drop saves quietly; holding the item on the icon until the Dock
+/// brings Magpie forward (spring-loading) opens it.
+public enum DockDrop {
+    /// Magpie became active this recently before the drop: the drop itself brought it forward.
+    public static let quickDropWindow: TimeInterval = 1.0
+
+    /// True when Magpie should step back after saving: it was launched by the drop, or the
+    /// drop is what activated it. False when it was already in front (you waited on the icon,
+    /// or were using it).
+    public static func shouldStepBack(activeSince: Date?, wasRunning: Bool, now: Date) -> Bool {
+        guard wasRunning, let activeSince else { return true }
+        return now.timeIntervalSince(activeSince) < quickDropWindow
+    }
+}

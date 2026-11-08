@@ -236,16 +236,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Started from a terminal, the process is not a foreground app yet.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
+        // Remember the app you were in, to give it the focus back after a quick Dock drop.
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification,
+                                                          object: nil, queue: .main) { note in
+            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            MainActor.assumeIsolated {
+                if let app, app.processIdentifier != ProcessInfo.processInfo.processIdentifier { AppDelegate.lastOtherApp = app }
+            }
+        }
     }
+
+    /// The last app other than Magpie that was in front.
+    static var lastOtherApp: NSRunningApplication?
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     /// Dropped on the Dock icon before the model was ready (Magpie was launched by the drop).
     static var pendingURLs: [URL] = []
+    /// When Magpie last came to the front, to tell a quick drop from waiting on the icon.
+    private var activeSince: Date?
 
-    /// Links, images and files dropped on the Dock icon (S-041).
+    func applicationDidBecomeActive(_ notification: Notification) { activeSince = .now; Self.trace("becomeActive") }
+    func applicationDidResignActive(_ notification: Notification) { activeSince = nil; Self.trace("resignActive") }
+
+    /// APP_TRACE=<file>: logs activation and Dock drops with timestamps, for checking the quick-drop timing.
+    static func trace(_ what: String) {
+        guard let path = ProcessInfo.processInfo.environment["APP_TRACE"] else { return }
+        let line = "\(Date.now.timeIntervalSince1970) \(what) lastOther=\(lastOtherApp?.localizedName ?? "-")\n"
+        if let handle = FileHandle(forWritingAtPath: path) { handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close() }
+        else { try? line.write(toFile: path, atomically: true, encoding: .utf8) }
+    }
+
+    /// Links, images and files dropped on the Dock icon (S-041). A quick drop saves to the Inbox,
+    /// shows "Saved to Inbox" by the Dock and leaves you where you were. Holding the item on the
+    /// icon until the Dock brings Magpie forward opens Magpie instead.
     func application(_ application: NSApplication, open urls: [URL]) {
-        if let model = AppModel.current { model.receive(urls) } else { Self.pendingURLs += urls }
+        guard let model = AppModel.current else {
+            Self.pendingURLs += urls   // launched by the drop: saved once the library is ready, then hidden
+            return
+        }
+        let stepBack = !NSApp.isActive || DockDrop.shouldStepBack(activeSince: activeSince, wasRunning: true, now: .now)
+        Self.trace("open isActive=\(NSApp.isActive) activeFor=\(activeSince.map { Date.now.timeIntervalSince($0) } ?? -1) stepBack=\(stepBack)")
+        let saved = model.receive(urls, quietly: stepBack)
+        guard stepBack, !saved.isEmpty else { return }
+        DropHUD.show(saved.count == 1 ? "Saved to Inbox" : "Saved \(saved.count) to Inbox")
+        Self.stepBack()
+    }
+
+    /// Hides Magpie once the Dock's activation has finished, and gives the focus back to the app you were in.
+    static func stepBack() {
+        let previous = lastOtherApp
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            NSApp.hide(nil)
+            previous?.activate()
+        }
     }
 
     /// The self-test's result becomes the exit code, after a normal quit.

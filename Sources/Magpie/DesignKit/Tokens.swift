@@ -112,6 +112,7 @@ enum Metric {
     static let searchWidth: CGFloat = 560
     static let quickSaveWidth: CGFloat = 440
     static let importWidth: CGFloat = 520
+    static let hudLift: CGFloat = 24          // the Dock drop message, above the Dock
     static let importListHeight: CGFloat = 320
     static let journalRow: CGFloat = 48
     static let journalHeader: CGFloat = 36

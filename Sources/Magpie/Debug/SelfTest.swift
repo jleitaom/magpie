@@ -493,6 +493,12 @@ enum SelfTest {
             check("links, .webloc files and images dropped on the Dock are saved",
                   dropped.count == 3 && dropped.contains { $0.urlString == "https://example.com/from-dock" } && dropped.contains { $0.kind == .image })
             check("…to the Inbox, whatever the window shows", dropped.allSatisfy { $0.status == .inbox && $0.collection == nil })
+            model.toast = nil
+            let quiet = model.receive([URL(string: "https://example.com/quiet-drop")!], quietly: true)
+            check("a quick Dock drop saves without a message in the window", quiet.count == 1 && model.toast == nil, "message: \(model.toast ?? "")")
+            DropHUD.show("Saved to Inbox")
+            check("…and shows “Saved to Inbox” by the Dock instead", DropHUD.isVisible)
+            quiet.forEach { model.delete([$0.uid], undo: nil) }
             model.scope = .all
             let screenshot = model.saveScreenshot(png)
             for _ in 0..<40 where screenshot.bodyText.isEmpty { try? await Task.sleep(for: .milliseconds(100)) }

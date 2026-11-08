@@ -67,3 +67,20 @@ struct ExpiryTests {
         #expect(Expiry.label(nil, now: now) == nil)
     }
 }
+
+struct DockDropTests {
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+    @Test("A quick drop steps back; waiting on the icon or using Magpie keeps it in front")
+    func stepBack() {
+        #expect(DockDrop.shouldStepBack(activeSince: now.addingTimeInterval(-0.2), wasRunning: true, now: now))
+        #expect(!DockDrop.shouldStepBack(activeSince: now.addingTimeInterval(-2.5), wasRunning: true, now: now))
+        #expect(!DockDrop.shouldStepBack(activeSince: now.addingTimeInterval(-600), wasRunning: true, now: now))
+        #expect(DockDrop.shouldStepBack(activeSince: nil, wasRunning: true, now: now))
+    }
+
+    @Test("A drop that launches Magpie saves and steps back")
+    func launched() {
+        #expect(DockDrop.shouldStepBack(activeSince: now, wasRunning: false, now: now))
+    }
+}
