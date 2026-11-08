@@ -445,7 +445,7 @@ final class AppModel {
         if let url = block.url {
             block.openedAt = .now
             save()
-            NSWorkspace.shared.open(url)
+            openInBrowser(url)
         } else {
             selection = block.uid
         }
@@ -813,7 +813,7 @@ final class AppModel {
         block.status = .inProgress
         if let url = block.url {
             block.openedAt = .now
-            NSWorkspace.shared.open(url)
+            openInBrowser(url)
         } else {
             block.openedAt = .now
             selection = block.uid
@@ -1523,6 +1523,18 @@ final class AppModel {
         if block.collection != nil { move(block, to: nil, undo: nil, announce: false) }
         flash("Screenshot saved to the Inbox")
         return block
+    }
+
+    // MARK: Opening pages
+
+    /// What the self-test would have opened. Test runs never open your browser.
+    @ObservationIgnored private(set) var lastOpenedURL: URL?
+
+    /// Opens a page in your default browser, except during the self-test.
+    func openInBrowser(_ url: URL) {
+        lastOpenedURL = url
+        guard !SelfTest.requested else { return }
+        NSWorkspace.shared.open(url)
     }
 
     // MARK: Helpers

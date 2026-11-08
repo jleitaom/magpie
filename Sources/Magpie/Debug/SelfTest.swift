@@ -213,6 +213,7 @@ enum SelfTest {
             model.today.pickUID = essayToRead.uid
             model.startPick(essayToRead)
             check("Start marks it In progress and shows it on Lucky Dip", essayToRead.status == .inProgress && model.inProgressBlock?.uid == essayToRead.uid)
+            check("Start opens its page (recorded, not opened, during the self-test)", model.lastOpenedURL == essayToRead.url)
             check("an In progress block is off the pile", !model.pileBlocks(.read).contains { $0.uid == essayToRead.uid })
             model.finishPick(essayToRead)
             check("Finish marks it done with a finished date", essayToRead.status == .done && essayToRead.finishedAt != nil && model.inProgressBlock == nil)
