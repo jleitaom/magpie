@@ -1349,8 +1349,9 @@ final class AppModel {
             let key = path.joined(separator: "/")
             if let found = folders[key] { return found }
             let parent = collection(for: Array(path.dropLast()))
+            let parentID = parent?.uid
             let name = path.last!
-            let existing = collections.first { $0.parent?.uid == parent?.uid && Tags.key($0.name) == Tags.key(name) }
+            let existing = collections.first { $0.parent?.uid == parentID && Tags.key($0.name) == Tags.key(name) }
             let made = existing ?? createCollection(named: name, pin: false)
             if existing == nil, let made, let parent { place(made, .inside(parent.uid)) }
             folders[key] = made
