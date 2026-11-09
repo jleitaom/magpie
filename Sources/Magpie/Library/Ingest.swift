@@ -62,6 +62,42 @@ enum Ingest {
         return facts
     }
 
+    /// The pictures a page offers, downloaded and ready to store, best first (#2). Reads the page
+    /// (following one meta refresh), then fetches its candidate pictures side by side. Pictures
+    /// that fail, aren't images, or are smaller than an icon are left out.
+    @concurrent
+    nonisolated static func fetchPictureChoices(_ url: URL, timeout: TimeInterval = 15) async -> [ProcessedImage] {
+        guard var html = await page(url, timeout: timeout) else { return [] }
+        var base = url
+        if let target = PageReader.metaRefresh(html, base: url), target != url, let next = await page(target, timeout: timeout) {
+            html = next
+            base = target
+        }
+        let addresses = PagePictures.candidates(html: html, base: base)
+        return await withTaskGroup(of: (Int, ProcessedImage?).self) { group in
+            for (index, address) in addresses.enumerated() {
+                group.addTask { (index, await picture(at: address, timeout: timeout)) }
+            }
+            var found: [(Int, ProcessedImage)] = []
+            for await (index, image) in group { if let image { found.append((index, image)) } }
+            // Same picture at two addresses (a page's share image is often also on the page): keep one.
+            var seen = Set<Data>()
+            return found.sorted { $0.0 < $1.0 }.map(\.1).filter { seen.insert($0.jpeg).inserted }
+        }
+    }
+
+    /// One picture from the web, processed like any thumbnail; nil when it isn't a usable picture.
+    nonisolated private static func picture(at url: URL, timeout: TimeInterval) async -> ProcessedImage? {
+        guard let (data, response) = try? await URLSession.shared.data(for: request(url, timeout: timeout)),
+              (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? false,
+              data.count < 20_000_000,
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int, let height = properties[kCGImagePropertyPixelHeight] as? Int,
+              min(width, height) >= PagePictures.minimumSide else { return nil }
+        return await process(data)
+    }
+
     /// A page's HTML, or nil when it isn't an HTML page that loaded.
     nonisolated private static func page(_ url: URL, timeout: TimeInterval) async -> String? {
         guard let (data, response) = try? await URLSession.shared.data(for: request(url, timeout: timeout)),

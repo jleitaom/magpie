@@ -48,11 +48,12 @@ enum Snapshot {
                     try? await Task.sleep(for: .seconds(1.2))
                     if page == .dropHUD {
                         if let hud = DropHUD.window { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: hud) }
-                    } else if page == .importSheet {
+                    } else if page == .importSheet || page == .pictureChooser {
                         let sheet = NSApp.windows.compactMap(\.attachedSheet).first ?? NSApp.windows.first { $0.isSheet && $0.isVisible }
                         if let sheet { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: sheet) }
                         else { print("SNAPSHOT no sheet: \(NSApp.windows.map { "\(type(of: $0)) visible:\($0.isVisible) sheet:\($0.isSheet)" })") }
                         model.bookmarkImport = nil
+                        model.pictureChoice = nil
                         try? await Task.sleep(for: .seconds(0.6))
                     } else if page == .quickSave {
                         if let panel = model.quickSavePanel.window { capture(to: "\(dir)/\(page.rawValue)-\(mode).png", window: panel) }
@@ -133,7 +134,7 @@ enum SnapshotPage: String, CaseIterable {
     /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
     @MainActor static var startedOriginal: (UUID, BlockStatus)?
 
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet, dropHUD, sortRename, afterDelete, firstLaunch, emptyArchive
+    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet, dropHUD, sortRename, afterDelete, firstLaunch, emptyArchive, pictureChooser
 
     /// Pages that open a popover. Their snapshot is the popover alone.
     var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename || self == .sortMenu }
@@ -196,6 +197,15 @@ enum SnapshotPage: String, CaseIterable {
         case .dropHUD:
             model.scope = .all
             DropHUD.show("Saved to Inbox")
+        case .pictureChooser:
+            // A product with the other sample pictures standing in for its page's pictures.
+            model.scope = .all
+            let blocks = model.blocks(in: .all, from: (try? model.context.fetch(FetchDescriptor<Block>())) ?? [])
+            if let lamp = blocks.first(where: { $0.title.hasPrefix("Desk lamp") }) {
+                let others = blocks.filter { $0.uid != lamp.uid && $0.thumbnail != nil }.prefix(7)
+                let choices = others.compactMap { other in other.thumbnail.map { ProcessedImage(jpeg: $0, aspect: other.thumbnailAspect, color: nil) } }
+                model.pictureChoice = PictureChoice(uid: lamp.uid, choices: (lamp.thumbnail.map { [ProcessedImage(jpeg: $0, aspect: 1, color: nil)] } ?? []) + choices)
+            }
         case .importSheet:
             model.scope = .all
             model.previewBookmarks(Snapshot.sampleBookmarks, file: "Safari Bookmarks.html")

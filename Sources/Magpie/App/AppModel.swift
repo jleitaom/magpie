@@ -123,6 +123,8 @@ final class AppModel {
     /// The tag waiting for the rename or delete prompt (S-015).
     var tagToRename: UUID?
     var tagToDelete: UUID?
+    /// The Choose Picture sheet (#2): which block, and the page's pictures once they've loaded.
+    var pictureChoice: PictureChoice?
     /// Lucky Dip (S-069–S-072, #3): the collection it picks from (nil: everything), the time
     /// limit, and whether the shuffle is running.
     var dipCollection: UUID?
@@ -394,7 +396,7 @@ final class AppModel {
                 block.thumbnail = nil
                 block.colorHex = nil
             }
-            apply(processed, to: block)
+            if !block.pictureChosen { apply(processed, to: block) }   // a picture you chose stays
             block.enrich = preview == nil ? .failed : .done
             save()
         }
@@ -423,6 +425,36 @@ final class AppModel {
         block.thumbnail = processed.jpeg
         block.thumbnailAspect = processed.aspect
         block.colorHex = processed.color.map(Int.init)
+    }
+
+    // MARK: Choosing a picture (#2)
+
+    /// Choose Picture…: opens the chooser and loads the pictures the block's page offers.
+    func choosePicture(_ block: Block) {
+        guard canChoosePicture(block), let url = block.url else { return }
+        let uid = block.uid
+        pictureChoice = PictureChoice(uid: uid)
+        guard !SelfTest.requested else { return }   // the self-test never fetches pages
+        Task {
+            let choices = await Ingest.fetchPictureChoices(url)
+            guard pictureChoice?.uid == uid else { return }   // closed or moved on meanwhile
+            pictureChoice?.choices = choices
+        }
+    }
+
+    /// Web links, videos and products: places show their map, and files and notes have no page.
+    func canChoosePicture(_ block: Block) -> Bool {
+        guard let scheme = block.url?.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return false }
+        return block.kind != .place
+    }
+
+    /// Uses a chosen picture: it becomes the card's picture and color, and a refresh keeps it.
+    func setPicture(_ image: ProcessedImage, for block: Block) {
+        apply(image, to: block)
+        block.pictureChosen = true
+        save()
+        pictureChoice = nil
+        flash("Picture changed")
     }
 
     // MARK: Copying
@@ -1622,16 +1654,23 @@ final class AppModel {
     }
 }
 
+/// The Choose Picture sheet's state: nil choices while the page loads.
+struct PictureChoice: Identifiable {
+    let uid: UUID
+    var choices: [ProcessedImage]?
+    var id: UUID { uid }
+}
+
 /// Everything needed to bring a deleted block back with Undo.
 private struct BlockCopy {
     let uid: UUID, kindRaw: String, urlString: String?, normalizedURL: String?, title: String, siteName: String
-    let note: String, bodyText: String, checklistData: Data?, thumbnail: Data?, thumbnailAspect: Double
+    let note: String, bodyText: String, checklistData: Data?, thumbnail: Data?, thumbnailAspect: Double, pictureChosen: Bool
     let colorHex: Int?, statusRaw: String, enrichRaw: String, createdAt: Date, openedAt: Date?, collectionUID: UUID?
 
     init(_ b: Block) {
         uid = b.uid; kindRaw = b.kindRaw; urlString = b.urlString; normalizedURL = b.normalizedURL; title = b.title
         siteName = b.siteName; note = b.note; bodyText = b.bodyText; checklistData = b.checklistData
-        thumbnail = b.thumbnail; thumbnailAspect = b.thumbnailAspect; colorHex = b.colorHex; statusRaw = b.statusRaw
+        thumbnail = b.thumbnail; thumbnailAspect = b.thumbnailAspect; pictureChosen = b.pictureChosen; colorHex = b.colorHex; statusRaw = b.statusRaw
         enrichRaw = b.enrichRaw; createdAt = b.createdAt; openedAt = b.openedAt; collectionUID = b.collection?.uid
     }
 
@@ -1639,6 +1678,7 @@ private struct BlockCopy {
         let b = Block(kind: BlockKind(rawValue: kindRaw) ?? .link, title: title)
         b.uid = uid; b.urlString = urlString; b.normalizedURL = normalizedURL; b.siteName = siteName; b.note = note
         b.bodyText = bodyText; b.checklistData = checklistData; b.thumbnail = thumbnail; b.thumbnailAspect = thumbnailAspect
+        b.pictureChosen = pictureChosen
         b.colorHex = colorHex; b.statusRaw = statusRaw; b.enrichRaw = enrichRaw; b.createdAt = createdAt; b.openedAt = openedAt
         b.collection = model.collection(collectionUID)
         return b

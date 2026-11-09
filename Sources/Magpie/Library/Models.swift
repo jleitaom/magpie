@@ -55,6 +55,8 @@ final class Block {
     @Attribute(.externalStorage) var thumbnail: Data?
     /// Width / height of the thumbnail, for laying out the Gallery before images load.
     var thumbnailAspect: Double = 0
+    /// The picture was chosen by hand (Choose Picture…, #2), so refreshing the link keeps it.
+    var pictureChosen: Bool = false
     /// The thumbnail's main color as 0xRRGGBB (stored as Int for SwiftData).
     var colorHex: Int?
     var statusRaw: String = BlockStatus.inbox.rawValue

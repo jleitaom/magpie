@@ -104,6 +104,9 @@ struct MagpieCommands: Commands {
             Button("Quick Look") { model.quickLook(model.block(selection)) }
                 .keyboardShortcut("y")
                 .disabled(selection == nil)
+            Button("Choose Picture…") { if let block = model.block(selection) { model.choosePicture(block) } }
+                .keyboardShortcut("p", modifiers: [.command, .option])
+                .disabled(model.block(selection).map { !model.canChoosePicture($0) } ?? true)
             Button(model.block(selection)?.status == .archived ? "Unarchive" : "Archive") {
                 guard let block = model.block(selection) else { return }
                 if block.status == .archived { model.unarchive(block) } else { model.archive(block, undo: NSApp.keyWindow?.undoManager) }

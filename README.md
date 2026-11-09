@@ -32,7 +32,7 @@ and then nudges you to read, watch and use what you saved.
 
 ## Features
 
-- **Save anything.** Paste, drop or add links, images, videos, files, notes and checklists. Links get their title, picture and site name on their own, and videos, products and places show their length, price or a map
+- **Save anything.** Paste, drop or add links, images, videos, files, notes and checklists. Links get their title, picture and site name on their own, and videos, products and places show their length, price or a map. Don't like the picture? Choose another from the page
 - **Quick Save** (⌃⌥Space, anywhere) saves your browser's front tab (Safari, Chrome, Arc, Brave, Edge) or the clipboard without leaving what you're doing. You can also drop things onto the Dock icon, or turn a screenshot into a Block (⌃⌥S)
 - **Gallery and Journal.** See image-first cards, each tinted with its picture's color, or a dense list. Sort by newest, quickest, title, site, color, shuffle or your own order
 - **Collections and tags.** Nest collections, pin up to 5 to the top bar, and tag across them

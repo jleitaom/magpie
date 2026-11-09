@@ -384,3 +384,42 @@ struct KitMenuRowStyle: ButtonStyle {
         }
     }
 }
+
+// MARK: - Picture tile (Choose Picture)
+
+/// A picture to choose: the image filling a rounded tile, a hairline at rest, the accent ring on
+/// hover and when selected (the current picture), and the kit's focus ring.
+struct KitPictureTileStyle: ButtonStyle {
+    var isSelected = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        Part(configuration: configuration, isSelected: isSelected)
+    }
+
+    private struct Part: View {
+        let configuration: Configuration
+        let isSelected: Bool
+        @Environment(\.forcedPartState) private var forced
+        @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.isFocused) private var isFocused
+        @State private var hovering = false
+
+        var body: some View {
+            let state = PartState.resolve(forced: forced, enabled: isEnabled, selected: isSelected,
+                                          pressed: configuration.isPressed, hovering: hovering, focused: isFocused)
+            let shape = RoundedRectangle(cornerRadius: Metric.radiusCard - 2, style: .continuous)
+            configuration.label
+                .frame(width: Metric.pictureTile.width, height: Metric.pictureTile.height)
+                .clipShape(shape)
+                .overlay(shape.strokeBorder(state == .selected || state == .hover ? Ink.accentText : Ink.hairline,
+                                            lineWidth: state == .selected ? 2 : state == .hover ? 1.5 : 1))
+                .kitFocusRing(shape, state: state)
+                .opacity(state == .disabled ? 0.4 : 1)
+                .contentShape(shape)
+                .kitPress(state)
+                .onHover { hovering = $0 }
+                .animation(Motion.hover, value: hovering)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+        }
+    }
+}

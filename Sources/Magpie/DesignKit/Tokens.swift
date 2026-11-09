@@ -114,6 +114,9 @@ enum Metric {
     static let importWidth: CGFloat = 520
     static let hudLift: CGFloat = 24          // the Dock drop message, above the Dock
     static let importListHeight: CGFloat = 320
+    /// Choose Picture (#2): one picture tile, and the sheet holding three across.
+    static let pictureTile = CGSize(width: 160, height: 120)
+    static let pictureChooserWidth: CGFloat = 576
     static let journalRow: CGFloat = 48
     static let journalHeader: CGFloat = 36
     static let journalNumber: CGFloat = 40

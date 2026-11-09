@@ -35,7 +35,8 @@ Thanks for helping out!
     `MagpieKit/Bookmarks.swift`
   - `Tags/`: the tag editor in the details panel, the tag list in the Collections panel, and the
     tag menu and prompts (`TagViews.swift`). Name rules are in `MagpieKit/Tags.swift`
-  - `Details/`: the panel that slides in for a selected Block (`DetailsPanel.swift`)
+  - `Details/`: the panel that slides in for a selected Block (`DetailsPanel.swift`), and the
+    Choose Picture sheet (`PictureChooser.swift`; the page's pictures are found by `MagpieKit/PagePictures.swift`)
   - `Collections/`: the "N more" panel to find, pin and create collections (`CollectionsPopover.swift`)
   - `Settings/`: the Settings window (⌘,), with General and Shortcuts tabs (`SettingsView.swift`)
   - `DesignKit/`: Magpie's own look. Tokens, type, icons, parts (buttons, cards, controls, the

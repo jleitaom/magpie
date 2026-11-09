@@ -96,7 +96,7 @@ extension AppModel {
               finishedAt: block.finishedAt, expiresAt: block.expiresAt, expiredAt: block.expiredAt, lastShownAt: block.lastShownAt,
               collection: block.collection?.uid, tags: (block.tags ?? []).map(\.uid), minutes: block.minutes, price: block.price,
               currency: block.currency, isRecipe: block.isRecipe, pile: block.pileRaw, timesSkipped: block.timesSkipped,
-              ocrText: block.ocrText, sortIndex: block.sortIndex)
+              ocrText: block.ocrText, sortIndex: block.sortIndex, pictureChosen: block.pictureChosen)
     }
 
     // MARK: Reading an export back
@@ -179,6 +179,7 @@ extension AppModel {
             block.timesSkipped = item.timesSkipped
             block.ocrText = item.ocrText
             block.sortIndex = item.sortIndex
+            block.pictureChosen = item.pictureChosen ?? false
             block.enrichRaw = EnrichState.done.rawValue
             context.insert(block)
             added += 1

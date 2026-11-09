@@ -177,6 +177,10 @@ struct BlockMenu: View {
         }
         Button(block.url != nil ? "Copy Link" : "Copy") { model.copy(block) }
             .keyboardShortcut("c")
+        if model.canChoosePicture(block) {
+            Button("Choose Picture…") { model.choosePicture(block) }
+                .keyboardShortcut("p", modifiers: [.command, .option])
+        }
         Button("Show Details") { model.selection = block.uid; if model.viewMode != .journal { model.show(.gallery) } }
         Divider()
         Menu("Move to") {

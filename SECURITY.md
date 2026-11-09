@@ -16,6 +16,8 @@
   does for a link. It also downloads the page once to read a video's length, a product's price or
   an article's length. For YouTube and Vimeo links it also asks that site's public oEmbed address for the video's real title. These
   requests go to the site you saved and nowhere else. Magpie has no server and no analytics.
+- **Choose Picture.** Only when you ask for it, Magpie downloads the block's page again and the
+  pictures it lists, so you can pick one. Only web addresses are fetched, never files on your Mac.
 - **Update checks.** Magpie also connects to GitHub to see whether there's a newer release (the
   `appcast.xml` attached to the latest release), using [Sparkle](https://sparkle-project.org).
   Sparkle asks before it checks on its own, it checks at most once a day, and you can turn it off

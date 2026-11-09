@@ -559,6 +559,25 @@ enum SelfTest {
             (dropped + [screenshot]).forEach { model.delete([$0.uid], undo: nil) }
             try? FileManager.default.removeItem(at: folder)
 
+            // #2 Choose Picture: offered for web links, not places or notes; choosing sets the
+            // picture and color and is remembered (a refresh keeps it, and so does an export).
+            let pictured = model.save(url: URL(string: "https://example.com/choose-a-picture")!)
+            let place = model.save(url: URL(string: "https://maps.apple.com/?q=Lisbon&ll=38.7,-9.1")!)
+            model.addNote()
+            let note = model.block(model.selection)
+            check("Choose Picture is offered for links, not places or notes",
+                  model.canChoosePicture(pictured) && !model.canChoosePicture(place) && note.map { !model.canChoosePicture($0) } == true)
+            model.choosePicture(pictured)
+            check("…and opens the chooser for that block", model.pictureChoice?.uid == pictured.uid && model.pictureChoice?.choices == nil)
+            if let chosen = await Ingest.process(png) {
+                model.setPicture(chosen, for: pictured)
+                check("choosing a picture sets it and its color, remembers it was chosen, and closes the chooser",
+                      pictured.thumbnail == chosen.jpeg && pictured.pictureChosen && pictured.colorHex == chosen.color.map(Int.init)
+                      && model.pictureChoice == nil)
+            }
+            [pictured, place].forEach { model.delete([$0.uid], undo: nil) }
+            if let note { model.delete([note.uid], undo: nil) }
+
             // Copying: a link copies as a link and as text, a note as its text. A private pasteboard,
             // so the test never touches your clipboard.
             let board = NSPasteboard(name: NSPasteboard.Name("Magpie.selftest"))
@@ -605,6 +624,9 @@ enum SelfTest {
                     check("  thumbnail and card color stored", block.thumbnail != nil && block.colorHex != nil,
                           "thumbnail \(block.thumbnail?.count ?? 0) bytes")
                 }
+                // #2 real picture choices from a page.
+                let pictures = await Ingest.fetchPictureChoices(URL(string: "https://en.wikipedia.org/wiki/Magpie")!)
+                check("a real page offers several pictures to choose from", pictures.count >= 2, "\(pictures.count) pictures")
                 // S-063 real page facts.
                 let facts = await Ingest.fetchFacts(URL(string: "https://vimeo.com/76979871")!)
                 check("Vimeo's oEmbed gives a video length", (facts?.minutes ?? 0) > 0, "facts \(String(describing: facts))")
@@ -650,6 +672,7 @@ enum SelfTest {
                 let picture = model.save(url: URL(string: "https://example.com/export-picture")!)
                 let dot = NSImage(size: NSSize(width: 8, height: 8), flipped: false) { rect in NSColor.systemOrange.setFill(); rect.fill(); return true }
                 picture.thumbnail = dot.tiffRepresentation
+                picture.pictureChosen = true
                 model.addTags("export, Jazz", to: picture)
                 picture.note = "Why: “quotes” & ampersands"
                 let pictureID = picture.uid   // read before the library is emptied below
@@ -691,6 +714,8 @@ enum SelfTest {
                 let pictureBefore = try Data(contentsOf: first.appending(path: "images/\(pictureID.uuidString).jpg"))
                 let pictureAfter = model.block(pictureID)?.thumbnail
                 check("…pictures included", pictureAfter == pictureBefore)
+                check("…and a picture chosen by hand stays chosen", model.block(pictureID)?.pictureChosen == true
+                      && before.blocks.first { $0.uid == pictureID }?.pictureChosen == true)
                 check("reading the same export twice adds nothing", try model.importExport(first.appending(path: "library.json")) == 0)
                 try? FileManager.default.removeItem(at: base)
             } catch {

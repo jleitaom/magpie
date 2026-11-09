@@ -121,6 +121,15 @@ struct DetailsPanel: View {
                 .buttonStyle(.kit(.secondary))
                 .fixedSize()
             }
+            if model.canChoosePicture(block) {
+                GridRow {
+                    Text("Picture").kitType(.meta).foregroundStyle(Ink.secondary)
+                    Button(block.pictureChosen ? "Chosen · Change…" : "Choose…") { model.choosePicture(block) }
+                        .buttonStyle(.kit(.secondary))
+                        .fixedSize()
+                        .help("Pick another picture from the page (⌥⌘P)")
+                }
+            }
             if let expires = block.expiresAt, block.status != .archived {
                 GridRow {
                     Text("Expires").kitType(.meta).foregroundStyle(Ink.secondary)
