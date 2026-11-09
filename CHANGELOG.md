@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-09
+
 ### Added
 
 - **Choose a link's picture** (#2): right-click a block → **Choose Picture…** (⌥⌘P), or **Picture → Choose…** in its details. Magpie shows the pictures on the page (its share images, its product or article images, and the large pictures on it); click one to use it. The card's color follows, and saving the link again keeps the picture you chose. Exports remember it too
