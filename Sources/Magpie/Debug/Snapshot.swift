@@ -208,12 +208,13 @@ enum SnapshotPage: String, CaseIterable {
         case .tag:
             model.scope = model.tags.first { $0.name == "jazz" }.map { .tag($0.uid) } ?? .all
         case .luckyDip:
-            model.dipPile = .read
+            model.dipCollection = nil
             model.viewMode = .luckyDip
         case .luckyDipPick, .luckyDipStarted:
-            model.dipPile = .watch
+            let watchLater = model.collections.first { $0.name == "Watch later" }
+            model.dipCollection = watchLater?.uid
             model.viewMode = .luckyDip
-            if let pick = model.pileBlocks(.watch).first {
+            if let pick = model.dipBlocks(from: watchLater?.uid).first {
                 if self == .luckyDipStarted {
                     Self.startedOriginal = (pick.uid, pick.status)
                     pick.status = .inProgress

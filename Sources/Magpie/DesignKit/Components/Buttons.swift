@@ -115,21 +115,24 @@ struct KitKeyButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - Pile tile (Lucky Dip)
+// MARK: - Source tile (Lucky Dip)
 
-/// A pile to dip into: icon, name, "8 waiting · 3 h 10 min". Selected: teal ring and fill.
-struct KitPileTileStyle: ButtonStyle {
-    let icon: KitIcon
+/// Where Lucky Dip picks from, as a menu button: an icon or a collection's color, the name,
+/// "8 waiting · 3 h 10 min", and a chevron because it opens a menu.
+struct KitSourceTileStyle: ButtonStyle {
+    enum Mark { case icon(KitIcon), color(UInt32) }
+
+    let mark: Mark
     let detail: String
     var isSelected = false
 
     func makeBody(configuration: Configuration) -> some View {
-        Part(configuration: configuration, icon: icon, detail: detail, isSelected: isSelected)
+        Part(configuration: configuration, mark: mark, detail: detail, isSelected: isSelected)
     }
 
     private struct Part: View {
         let configuration: Configuration
-        let icon: KitIcon
+        let mark: Mark
         let detail: String
         let isSelected: Bool
         @Environment(\.forcedPartState) private var forced
@@ -143,15 +146,22 @@ struct KitPileTileStyle: ButtonStyle {
             let on = state == .selected
             let shape = RoundedRectangle(cornerRadius: Metric.radiusCard - 2, style: .continuous)
             HStack(spacing: Space.md) {
-                KitIconView(icon: icon, size: 16)
-                    .foregroundStyle(on ? Ink.accentText : Ink.secondary)
-                    .frame(width: Metric.control, height: Metric.control)
-                    .background(RoundedRectangle(cornerRadius: Metric.radius, style: .continuous).fill(on ? Ink.surface : Ink.control))
+                Group {
+                    switch mark {
+                    case .icon(let icon):
+                        KitIconView(icon: icon, size: 16).foregroundStyle(on ? Ink.accentText : Ink.secondary)
+                    case .color(let hex):
+                        RoundedRectangle(cornerRadius: Metric.swatchRadius).fill(Ink.swatch(hex)).frame(width: Metric.swatch, height: Metric.swatch)
+                    }
+                }
+                .frame(width: Metric.control, height: Metric.control)
+                .background(RoundedRectangle(cornerRadius: Metric.radius, style: .continuous).fill(on ? Ink.surface : Ink.control))
                 VStack(alignment: .leading, spacing: 2) {
-                    configuration.label.kitType(.labelStrong).foregroundStyle(Ink.text)
+                    configuration.label.kitType(.labelStrong).foregroundStyle(Ink.text).lineLimit(1)
                     Text(detail).kitType(.meta).foregroundStyle(Ink.secondary)
                 }
                 Spacer(minLength: 0)
+                KitIconView(icon: .chevronDown, size: 12).foregroundStyle(Ink.secondary)
             }
             .padding(Space.md)
             .background(shape.fill(on ? Ink.suggest : state.isActive ? Ink.control : Ink.surface))

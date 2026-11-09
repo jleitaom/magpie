@@ -1,50 +1,5 @@
 import Foundation
 
-/// What you'd do with a block. Worked out from its kind, not filed by hand (a block can override it).
-public enum Pile: String, CaseIterable, Identifiable, Sendable {
-    case read, watch, listen, cook, visit
-
-    public var id: String { rawValue }
-
-    public var title: String {
-        switch self {
-        case .read: "Read"
-        case .watch: "Watch"
-        case .listen: "Listen"
-        case .cook: "Cook"
-        case .visit: "Visit"
-        }
-    }
-
-    /// The button that commits to a pick.
-    public var startVerb: String {
-        switch self {
-        case .read: "Start reading"
-        case .watch: "Start watching"
-        case .listen: "Put it on"
-        case .cook: "Cook it"
-        case .visit: "Go there"
-        }
-    }
-
-    /// Which pile a block is on: its override if it has one, else from its kind and site.
-    /// Notes, checklists, products, images and files are on no pile.
-    public static func of(kind: String, site: String, isRecipe: Bool, override: Pile?) -> Pile? {
-        if let override { return override }
-        switch kind {
-        case "note", "checklist", "product", "image", "file": return nil
-        case "place": return .visit
-        default: break
-        }
-        if isRecipe { return .cook }
-        let site = site.lowercased()
-        let music = ["discogs.com", "bandcamp.com", "music.apple.com", "open.spotify.com", "spotify.com", "soundcloud.com"]
-        if music.contains(where: { site == $0 || site.hasSuffix("." + $0) }) { return .listen }
-        if kind == "video" { return .watch }
-        return .read
-    }
-}
-
 /// One block Lucky Dip could pick.
 public struct DipCandidate: Equatable, Sendable {
     public let id: UUID
@@ -61,6 +16,22 @@ public struct DipCandidate: Equatable, Sendable {
 public enum LuckyDip {
     /// Spins a day: the first one, then this many re-spins.
     public static let respinsPerDay = 2
+
+    /// The button that commits to a pick, worked out from what the block is.
+    public static func startVerb(kind: String, site: String, isRecipe: Bool) -> String {
+        switch kind {
+        case "place": return "Go there"
+        case "video": return "Start watching"
+        case "note", "checklist", "image", "file": return "Open it"
+        case "product": return "Have a look"
+        default: break
+        }
+        if isRecipe { return "Cook it" }
+        let site = site.lowercased()
+        let music = ["discogs.com", "bandcamp.com", "music.apple.com", "open.spotify.com", "spotify.com", "soundcloud.com"]
+        if music.contains(where: { site == $0 || site.hasSuffix("." + $0) }) { return "Put it on" }
+        return "Start reading"
+    }
 
     /// The blocks that fit the time you have. With a limit, blocks of unknown length are left out.
     public static func fitting(_ candidates: [DipCandidate], maxMinutes: Int?) -> [DipCandidate] {

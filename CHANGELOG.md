@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- **Lucky Dip picks from your collections.** Choose **Pick from**: Everything, or any collection (with the ones inside it), and how much time you have. Piles (Read, Watch, Listen, Cook, Visit) are gone, along with the Pile menu and the Pile row in the details panel; the start button still says what you'll do ("Start watching", "Cook it", "Go there") (#3)
+
 ## [1.0.2] - 2026-11-09
 
 ### Fixed

@@ -204,13 +204,6 @@ struct BlockMenu: View {
             }
             .keyboardShortcut("t")
         }
-        Menu("Pile") {
-            Toggle("Automatic", isOn: Binding(get: { block.pileOverride == nil }, set: { if $0 { model.setPile(block, to: nil) } }))
-            Divider()
-            ForEach(Pile.allCases) { pile in
-                Toggle(pile.title, isOn: Binding(get: { block.pileOverride == pile }, set: { if $0 { model.setPile(block, to: pile) } }))
-            }
-        }
         Divider()
         if Expiry.label(block.expiresAt, now: .now) != nil {
             Button("Keep (Don’t Expire)") { model.keep(block) }

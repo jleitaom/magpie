@@ -2,7 +2,8 @@ import MagpieKit
 import SwiftData
 import SwiftUI
 
-/// Lucky Dip (S-070–S-072): pick a pile and how much time you have, and Magpie picks one block.
+/// Lucky Dip (S-070–S-072, #3): pick a collection (or everything) and how much time you have,
+/// and Magpie picks one block.
 /// Two re-spins a day, then you commit. Menu bar: Lucky Dip.
 struct LuckyDipView: View {
     @Environment(AppModel.self) private var model
@@ -13,7 +14,7 @@ struct LuckyDipView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: Space.section) {
-            PileColumn()
+            SourceColumn()
                 .frame(width: Metric.dipSidebar)
             VStack(spacing: Space.lg) {
                 stats
@@ -28,10 +29,10 @@ struct LuckyDipView: View {
     }
 
     private var stats: some View {
-        let pile = model.pileBlocks(model.dipPile)
-        let time = LuckyDip.totalTime(pile.map(\.minutes))
+        let pool = model.dipBlocks(from: model.dipCollection)
+        let time = LuckyDip.totalTime(pool.map(\.minutes))
         return HStack(spacing: Space.md) {
-            DipStat(label: "On the \(model.dipPile.title) pile", value: "\(pile.count)", detail: time.isEmpty ? nil : time)
+            DipStat(label: "Waiting in \(model.dipSourceName)", value: "\(pool.count)", detail: time.isEmpty ? nil : time)
             DipStat(label: "Finished this week", value: "\(model.finishedThisWeek)")
             DipStat(label: "Daily dip streak", value: model.dipStreak == 1 ? "1 day" : "\(model.dipStreak) days", accent: true)
         }
@@ -59,21 +60,35 @@ struct LuckyDipView: View {
     }
 }
 
-/// The piles to choose from, and how much time you have.
-private struct PileColumn: View {
+/// Where Lucky Dip picks from (everything, or one collection and the ones inside it), and how
+/// much time you have.
+private struct SourceColumn: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        let pool = model.dipBlocks(from: model.dipCollection)
+        let time = LuckyDip.totalTime(pool.map(\.minutes))
+        let chosen = model.collection(model.dipCollection)
         VStack(alignment: .leading, spacing: Space.sm) {
-            Text("Pick a pile").kitType(.meta).foregroundStyle(Ink.secondary).padding(.horizontal, 2)
-            ForEach(Pile.allCases) { pile in
-                let blocks = model.pileBlocks(pile)
-                let time = LuckyDip.totalTime(blocks.map(\.minutes))
-                Button(pile.title) { model.dipPile = pile }
-                    .buttonStyle(KitPileTileStyle(icon: pile.icon, detail: "\(blocks.count) waiting" + (time.isEmpty ? "" : " · \(time)"),
-                                                  isSelected: model.dipPile == pile))
-                    .disabled(model.isShuffling)
+            Text("Pick from").kitType(.meta).foregroundStyle(Ink.secondary).padding(.horizontal, 2)
+            Menu {
+                Button("Everything · \(model.dipBlocks(from: nil).count)") { model.dipCollection = nil }
+                Divider()
+                ForEach(model.collectionTree, id: \.collection.uid) { row in
+                    let indent = String(repeating: "    ", count: row.depth)
+                    Button("\(indent)\(row.collection.name) · \(model.dipBlocks(from: row.collection.uid).count)") {
+                        model.dipCollection = row.collection.uid
+                    }
+                }
+            } label: {
+                Text(model.dipSourceName)
             }
+            .menuStyle(.button)
+            .menuIndicator(.hidden)
+            .buttonStyle(KitSourceTileStyle(mark: chosen.map { .color(UInt32($0.colorHex)) } ?? .icon(.gallery),
+                                            detail: "\(pool.count) waiting" + (time.isEmpty ? "" : " · \(time)")))
+            .disabled(model.isShuffling)
+            .help("Lucky Dip picks one thing from here. A collection includes the ones inside it.")
             Text("How much time do you have?").kitType(.meta).foregroundStyle(Ink.secondary)
                 .padding(.horizontal, 2).padding(.top, Space.md)
             KitFlow(spacing: Space.sm) {
@@ -128,12 +143,13 @@ private struct Idle: View {
             Text("Can’t decide? Let Magpie pick.").kitType(.display).foregroundStyle(Ink.text)
                 .multilineTextAlignment(.center)
             let limit = model.dipMaxMinutes.map { " that fits in \(Badges.minutes($0))" } ?? ""
-            let pile = model.pileBlocks(model.dipPile)
-            let fitting = LuckyDip.fitting(pile.map { DipCandidate(id: $0.uid, minutes: $0.minutes, timesSkipped: $0.timesSkipped) },
+            let pool = model.dipBlocks(from: model.dipCollection)
+            let fitting = LuckyDip.fitting(pool.map { DipCandidate(id: $0.uid, minutes: $0.minutes, timesSkipped: $0.timesSkipped) },
                                            maxMinutes: model.dipMaxMinutes)
-            Text(pile.isEmpty ? emptyPile : fitting.isEmpty
-                 ? "Nothing on your \(model.dipPile.title) pile\(limit). Try more time, or another pile."
-                 : "One random thing from your \(model.dipPile.title) pile\(limit). You get 2 re-spins a day. After that, you commit.")
+            let place = model.dipCollection == nil ? "everything you saved" : model.dipSourceName
+            Text(pool.isEmpty ? emptySource : fitting.isEmpty
+                 ? "Nothing in \(place)\(limit). Try more time, or another collection."
+                 : "One random thing from \(place)\(limit). You get 2 re-spins a day. After that, you commit.")
                 .kitType(.body).foregroundStyle(Ink.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: Metric.celebrationWidth)
@@ -154,16 +170,11 @@ private struct Idle: View {
 }
 
 extension Idle {
-    /// What goes on an empty pile, so you know how to fill it.
-    fileprivate var emptyPile: String {
-        let what = switch model.dipPile {
-        case .read: "articles and essays"
-        case .watch: "videos"
-        case .listen: "music links (Discogs, Bandcamp, Spotify, Apple Music)"
-        case .cook: "recipes"
-        case .visit: "places from Apple Maps or Google Maps"
-        }
-        return "The \(model.dipPile.title) pile is empty. Save some \(what), or pick a pile for a block in its details."
+    /// Nothing waiting where Lucky Dip picks from, and what to do about it.
+    fileprivate var emptySource: String {
+        model.dipCollection == nil
+            ? "Nothing waiting yet. Save some articles, videos or places, and Lucky Dip will pick one."
+            : "Nothing waiting in \(model.dipSourceName). Pick another collection, or Everything."
     }
 }
 
@@ -199,7 +210,6 @@ private struct PickCard: View {
     @ViewBuilder private var live: some View {
         let shape = RoundedRectangle(cornerRadius: Metric.radiusPanel, style: .continuous)
         let content = CardLayout.content(for: block, width: Metric.dipPickHero)
-        let pile = block.pile ?? model.dipPile
         HStack(spacing: 0) {
             switch content.body {
             case .visual(let thumb): ThumbView(thumb: thumb).frame(width: Metric.dipPickHero).frame(maxHeight: .infinity).clipped()
@@ -222,7 +232,7 @@ private struct PickCard: View {
                             Button("Open again") { model.open(block) }.buttonStyle(.kit(.secondary, large: true))
                         }
                     } else {
-                        Button(pile.startVerb) { model.startPick(block) }
+                        Button(block.startVerb) { model.startPick(block) }
                             .buttonStyle(.kit(large: true))
                             .keyboardShortcut(.defaultAction)
                         Button(model.respinsLeft > 0 ? "Spin again · \(model.respinsLeft) left today" : "No spins left — commit!") {

@@ -24,8 +24,8 @@ Thanks for helping out!
     orders are in `MagpieKit/BlockOrder.swift`
   - `SortInbox/`: Sort Inbox, one Inbox block at a time (`SortInboxView.swift`). The queue and the
     collection suggestion are in `MagpieKit/Sorting.swift`
-  - `LuckyDip/`: Lucky Dip, one random pick from a pile (`LuckyDipView.swift`). Piles, the
-    weighted pick, re-spins and the dip streak are in `MagpieKit/LuckyDip.swift`
+  - `LuckyDip/`: Lucky Dip, one random pick from a collection or everything (`LuckyDipView.swift`).
+    The weighted pick, re-spins, start verbs and the dip streak are in `MagpieKit/LuckyDip.swift`
   - `Rediscover/`: five old saves a day to keep or archive (`RediscoverView.swift`). The pick and
     the expiry rules are in `MagpieKit/Rediscover.swift`
   - `QuickSave/`: the global shortcut (`HotKey.swift`, Carbon, no permission needed) and the floating
@@ -42,7 +42,7 @@ Thanks for helping out!
     top bar) and the window chrome
   - `Debug/`: the self-test, snapshot mode and sample data
 - `Sources/MagpieKit/` holds the rules with no UI (link parsing and normalizing, masonry math,
-  color math, the collection tree, the Sort Inbox queue and suggestions, the Inbox zero streak, piles and Lucky Dip,
+  color math, the collection tree, the Sort Inbox queue and suggestions, the Inbox zero streak, Lucky Dip,
   sort orders, tags, search, Rediscover and expiry, the bookmarks file, the export format, and `PageReader`,
   which reads video length, price, recipes and read time from a page's HTML), so they can be unit tested. Put new logic there, not in the views.
 - The app target builds in Swift 6 mode with the main actor as its default isolation. Mark slow

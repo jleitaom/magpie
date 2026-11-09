@@ -123,8 +123,9 @@ final class AppModel {
     /// The tag waiting for the rename or delete prompt (S-015).
     var tagToRename: UUID?
     var tagToDelete: UUID?
-    /// Lucky Dip (S-069–S-072): the chosen pile and time limit, and whether the shuffle is running.
-    var dipPile: Pile = .read
+    /// Lucky Dip (S-069–S-072, #3): the collection it picks from (nil: everything), the time
+    /// limit, and whether the shuffle is running.
+    var dipCollection: UUID?
     var dipMaxMinutes: Int?
     var isShuffling = false
     /// Titles flicking past during the shuffle.
@@ -535,6 +536,7 @@ final class AppModel {
     /// Deletes the collection only. Its blocks go back to the Inbox, and the collections
     /// inside it move up to its parent. Ask first with `collectionToDelete`.
     func deleteCollection(_ target: BlockCollection) {
+        if dipCollection == target.uid { dipCollection = nil }   // Lucky Dip falls back to Everything
         for block in target.blocks ?? [] {
             block.collection = nil
             block.status = .inbox
@@ -753,10 +755,33 @@ final class AppModel {
 
     // MARK: Lucky Dip (S-069–S-072)
 
-    /// Blocks on a pile that Lucky Dip could pick: not done, archived or already in progress.
-    func pileBlocks(_ pile: Pile) -> [Block] {
+    /// What Lucky Dip could pick from a collection and the collections inside it, or from
+    /// everything (nil): blocks not done, archived or already in progress.
+    func dipBlocks(from collection: UUID?) -> [Block] {
         let all = (try? context.fetch(FetchDescriptor<Block>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)]))) ?? []
-        return all.filter { $0.pile == pile && ($0.status == .inbox || $0.status == .kept) }
+        let open = all.filter { $0.status == .inbox || $0.status == .kept }
+        guard let collection else { return open }
+        let inside = subtree(of: collection)
+        return open.filter { $0.collection.map { inside.contains($0.uid) } ?? false }
+    }
+
+    /// A collection and every collection nested inside it.
+    func subtree(of root: UUID) -> Set<UUID> {
+        let all = collections
+        var found: Set<UUID> = [root]
+        var grew = true
+        while grew {
+            grew = false
+            for child in all where !found.contains(child.uid) {
+                if let parent = child.parent?.uid, found.contains(parent) { found.insert(child.uid); grew = true }
+            }
+        }
+        return found
+    }
+
+    /// The name Lucky Dip shows for where it picks from: "Everything" or the collection's name.
+    var dipSourceName: String {
+        collection(dipCollection)?.name ?? "Everything"
     }
 
     /// The block you started and haven't finished, if any (newest first).
@@ -766,7 +791,7 @@ final class AppModel {
                                                           sortBy: [SortDescriptor(\.openedAt, order: .reverse)])).first
     }
 
-    /// Today's pick, while it's still on its pile.
+    /// Today's pick, while it's still waiting.
     var dipPick: Block? {
         guard let block = block(todayIfAny?.pickUID), block.status == .inbox || block.status == .kept else { return nil }
         return block
@@ -786,10 +811,10 @@ final class AppModel {
     /// The first spin of the day is free, then 2 re-spins.
     func spin(reduceMotion: Bool) {
         guard canSpin else { return }
-        let pool = pileBlocks(dipPile)
+        let pool = dipBlocks(from: dipCollection)
         let candidates = pool.map { DipCandidate(id: $0.uid, minutes: $0.minutes, timesSkipped: $0.timesSkipped) }
         guard let chosen = LuckyDip.pick(from: candidates, maxMinutes: dipMaxMinutes, avoiding: todayIfAny?.pickUID) else {
-            flash(pool.isEmpty ? "The \(dipPile.title) pile is empty" : "Nothing on this pile fits that time")
+            flash(pool.isEmpty ? "Nothing to pick from in \(dipSourceName)" : "Nothing in \(dipSourceName) fits that time")
             return
         }
         let record = today
@@ -826,7 +851,7 @@ final class AppModel {
         save()
     }
 
-    /// Mark as finished: it leaves the pile, and counts toward the dip streak and this week.
+    /// Mark as finished: Lucky Dip won't pick it again, and it counts toward the dip streak and this week.
     func finishPick(_ block: Block) {
         block.status = .done
         block.finishedAt = .now
@@ -834,7 +859,7 @@ final class AppModel {
         if today.pickUID == block.uid { today.pickUID = nil }
         save()
         refreshDipStats()
-        flash("Finished. One less on the pile")
+        flash("Finished. One less to get to")
     }
 
     /// Not today: the pick goes back, and comes up less often from now on.
@@ -847,11 +872,6 @@ final class AppModel {
     /// "Still want this?" answered yes: Lucky Dip treats it as new again.
     func keepWanting(_ block: Block) {
         block.timesSkipped = 0
-        save()
-    }
-
-    func setPile(_ block: Block, to pile: Pile?) {
-        block.pileOverride = pile
         save()
     }
 

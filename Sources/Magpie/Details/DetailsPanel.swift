@@ -121,20 +121,6 @@ struct DetailsPanel: View {
                 .buttonStyle(.kit(.secondary))
                 .fixedSize()
             }
-            GridRow {
-                Text("Pile").kitType(.meta).foregroundStyle(Ink.secondary)
-                Menu(pileLabel) {
-                    Button("Automatic") { model.setPile(block, to: nil) }
-                    Divider()
-                    ForEach(Pile.allCases) { pile in
-                        Button(pile.title) { model.setPile(block, to: pile) }
-                    }
-                }
-                .menuStyle(.button)
-                .buttonStyle(.kit(.secondary))
-                .fixedSize()
-                .help("The Lucky Dip pile it’s on. Automatic works it out from the kind.")
-            }
             if let expires = block.expiresAt, block.status != .archived {
                 GridRow {
                     Text("Expires").kitType(.meta).foregroundStyle(Ink.secondary)
@@ -169,12 +155,6 @@ struct DetailsPanel: View {
                 }
             }
         }
-    }
-
-    /// "Automatic · Read", "Cook" (chosen by hand), or "Automatic · none".
-    private var pileLabel: String {
-        if let chosen = block.pileOverride { return chosen.title }
-        return "Automatic · " + (block.pile?.title ?? "none")
     }
 
     /// After 3 "Not today"s in Lucky Dip.

@@ -125,7 +125,7 @@ enum Metric {
     static let streakInset: CGFloat = 88
     static let celebrationRing: CGFloat = 120
     static let celebrationWidth: CGFloat = 520
-    static let dipSidebar: CGFloat = 332      // Lucky Dip's pile column
+    static let dipSidebar: CGFloat = 332      // Lucky Dip's Pick from column
     static let dipPickMaxWidth: CGFloat = 760
     static let dipPickHero: CGFloat = 280     // the pick's picture, on its left
     static let dipPickMinHeight: CGFloat = 280          // the key in a key button

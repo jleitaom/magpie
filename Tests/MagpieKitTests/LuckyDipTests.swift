@@ -2,30 +2,20 @@ import Foundation
 import Testing
 @testable import MagpieKit
 
-struct PileTests {
-    @Test("Blocks fall into piles from their kind and site", arguments: [
-        ("link", "paulgraham.com", false, Pile.read),
-        ("video", "youtube.com", false, .watch),
-        ("place", "maps.apple.com", false, .visit),
-        ("link", "seriouseats.com", true, .cook),
-        ("link", "discogs.com", false, .listen),
-        ("link", "bandcamp.com", false, .listen),
-        ("link", "music.apple.com", false, .listen),
-        ("link", "open.spotify.com", false, .listen),
+struct StartVerbTests {
+    @Test("The start button says what you'll do, from the block's kind and site", arguments: [
+        ("link", "paulgraham.com", false, "Start reading"),
+        ("video", "youtube.com", false, "Start watching"),
+        ("place", "maps.apple.com", false, "Go there"),
+        ("link", "seriouseats.com", true, "Cook it"),
+        ("link", "discogs.com", false, "Put it on"),
+        ("link", "open.spotify.com", false, "Put it on"),
+        ("product", "hay.dk", false, "Have a look"),
+        ("note", "Note", false, "Open it"),
+        ("checklist", "Checklist", false, "Open it"),
     ])
-    func pile(kind: String, site: String, recipe: Bool, expected: Pile) {
-        #expect(Pile.of(kind: kind, site: site, isRecipe: recipe, override: nil) == expected)
-    }
-
-    @Test("Notes, checklists, products, images and files are on no pile", arguments: ["note", "checklist", "product", "image", "file"])
-    func noPile(kind: String) {
-        #expect(Pile.of(kind: kind, site: "example.com", isRecipe: false, override: nil) == nil)
-    }
-
-    @Test("A block's own pile takes priority")
-    func override() {
-        #expect(Pile.of(kind: "video", site: "youtube.com", isRecipe: false, override: .cook) == .cook)
-        #expect(Pile.of(kind: "note", site: "Note", isRecipe: false, override: .read) == .read)
+    func verb(kind: String, site: String, recipe: Bool, expected: String) {
+        #expect(LuckyDip.startVerb(kind: kind, site: site, isRecipe: recipe) == expected)
     }
 }
 
@@ -97,7 +87,7 @@ struct LuckyDipTests {
         #expect(LuckyDip.weekStart(today: 100, weekday: weekday) == start)
     }
 
-    @Test("A pile's total time")
+    @Test("Total time of what Lucky Dip picks from")
     func total() {
         #expect(LuckyDip.totalTime([13, 47, nil, 130]) == "3 h 10 min")
         #expect(LuckyDip.totalTime([nil]) == "")

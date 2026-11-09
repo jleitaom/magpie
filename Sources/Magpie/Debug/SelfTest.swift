@@ -177,20 +177,26 @@ enum SelfTest {
             check("Inbox shows only Inbox blocks", model.blocks(in: .inbox, from: all).allSatisfy { $0.status == .inbox })
             check("nothing is lost after a save", (try? context.save()) != nil)
 
-            // S-069 piles and S-070–S-072 Lucky Dip.
+            // S-070–S-072 Lucky Dip, picking from a collection (#3).
             let essayToRead = model.save(url: URL(string: "https://example.com/long-read")!)
             essayToRead.minutes = 25
             let quickRead = model.save(url: URL(string: "https://example.com/quick-read")!)
             quickRead.minutes = 5
             let film2 = model.save(url: URL(string: "https://vimeo.com/123")!)
-            check("an article is on Read, a video on Watch", essayToRead.pile == .read && film2.pile == .watch)
-            model.setPile(film2, to: .cook)
-            check("a pile chosen by hand wins", film2.pile == .cook && model.pileBlocks(.cook).contains { $0.uid == film2.uid })
-            model.setPile(film2, to: nil)
-            model.addNote()
-            check("a note is on no pile", model.block(model.selection)?.pile == nil)
+            film2.minutes = 40
+            if let dip = model.createCollection(named: "Dip test", pin: false),
+               let inner = model.createCollection(named: "Dip inner", pin: false) {
+                inner.parent = dip
+                model.move(essayToRead, to: dip, undo: nil, announce: false)
+                model.move(quickRead, to: dip, undo: nil, announce: false)
+                model.move(film2, to: inner, undo: nil, announce: false)
+                let fromDip = Set(model.dipBlocks(from: dip.uid).map(\.uid))
+                check("Lucky Dip picks from a collection and the ones inside it", fromDip == [essayToRead.uid, quickRead.uid, film2.uid])
+                check("…and from everything", Set(model.dipBlocks(from: nil).map(\.uid)).isSuperset(of: fromDip))
+                check("the start button says what you'll do", essayToRead.startVerb == "Start reading" && film2.startVerb == "Start watching")
+                model.dipCollection = dip.uid
+            }
             model.show(.luckyDip)
-            model.dipPile = .read
             model.dipMaxMinutes = 10
             model.spin(reduceMotion: true)
             try? await Task.sleep(for: .milliseconds(200))
@@ -214,10 +220,17 @@ enum SelfTest {
             model.startPick(essayToRead)
             check("Start marks it In progress and shows it on Lucky Dip", essayToRead.status == .inProgress && model.inProgressBlock?.uid == essayToRead.uid)
             check("Start opens its page (recorded, not opened, during the self-test)", model.lastOpenedURL == essayToRead.url)
-            check("an In progress block is off the pile", !model.pileBlocks(.read).contains { $0.uid == essayToRead.uid })
+            check("an In progress block isn't picked again", !model.dipBlocks(from: model.dipCollection).contains { $0.uid == essayToRead.uid })
             model.finishPick(essayToRead)
             check("Finish marks it done with a finished date", essayToRead.status == .done && essayToRead.finishedAt != nil && model.inProgressBlock == nil)
             check("a finished pick counts toward the dip streak and this week", model.dipStreak >= 1 && model.finishedThisWeek >= 1 && model.today.finished >= 1)
+            if let dip = model.collection(model.dipCollection) {
+                let inner = model.collections.first { $0.parent?.uid == dip.uid }
+                [essayToRead, quickRead, film2].forEach { model.move($0, to: nil, undo: nil, announce: false) }
+                if let inner { model.deleteCollection(inner) }
+                model.deleteCollection(dip)
+                check("a deleted collection falls back to Everything", model.dipCollection == nil)
+            }
             model.show(.gallery)
 
             // S-014 and S-015 tags.

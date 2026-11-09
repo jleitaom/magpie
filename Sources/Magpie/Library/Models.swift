@@ -67,9 +67,10 @@ final class Block {
     /// A product's price when it was saved, in `currency` (an ISO code like "EUR").
     var price: Double?
     var currency: String?
-    /// The page is a schema.org Recipe (for the Cook pile).
+    /// The page is a schema.org Recipe (Lucky Dip says "Cook it").
     var isRecipe: Bool = false
-    /// A pile chosen by hand, over the one worked out from the kind (S-069).
+    /// No longer used: Lucky Dip had piles until 1.1 (#3), now it picks from collections. Kept so
+    /// existing libraries and exports still open, and so the model stays CloudKit-safe.
     var pileRaw: String?
     /// How often Lucky Dip's "Not today" passed on it; it comes up less often (S-071).
     var timesSkipped: Int = 0
@@ -121,13 +122,8 @@ final class Block {
     /// delete must not read it: SwiftData stops the app when a deleted block's picture is read.
     var isGone: Bool { isDeleted || modelContext == nil }
 
-    var pileOverride: Pile? {
-        get { pileRaw.flatMap(Pile.init(rawValue:)) }
-        set { pileRaw = newValue?.rawValue }
-    }
-
-    /// The Lucky Dip pile it's on, or nil (notes, products, images…).
-    var pile: Pile? { Pile.of(kind: kindRaw, site: siteName, isRecipe: isRecipe, override: pileOverride) }
+    /// What Lucky Dip's start button says for it: "Start watching", "Cook it", "Go there"…
+    var startVerb: String { LuckyDip.startVerb(kind: kindRaw, site: siteName, isRecipe: isRecipe) }
 
     /// Everything search looks in, folded once: title, note, text, link, site, tags, text in the image.
     var searchIndex: String {
