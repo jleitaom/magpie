@@ -33,7 +33,7 @@ and then nudges you to read, watch and use what you saved.
 ## Features
 
 - **Save anything.** Paste, drop or add links, images, videos, files, notes and checklists. Links get their title, picture and site name on their own, and videos, products and places show their length, price or a map
-- **Quick Save** (⌃⌥Space, anywhere) saves Safari's front tab or the clipboard without leaving what you're doing. You can also drop things onto the Dock icon, or turn a screenshot into a Block (⌃⌥S)
+- **Quick Save** (⌃⌥Space, anywhere) saves your browser's front tab (Safari, Chrome, Arc, Brave, Edge) or the clipboard without leaving what you're doing. You can also drop things onto the Dock icon, or turn a screenshot into a Block (⌃⌥S)
 - **Gallery and Journal.** See image-first cards, each tinted with its picture's color, or a dense list. Sort by newest, quickest, title, site, color, shuffle or your own order
 - **Collections and tags.** Nest collections, pin up to 5 to the top bar, and tag across them
 - **Sort Inbox.** Go through new saves one at a time from the keyboard, with a suggested collection. Reaching Inbox zero keeps a daily streak
@@ -65,7 +65,7 @@ open **System Settings → Privacy & Security**, scroll down and click **Open An
 to do this once; updates don't ask again.
 
 Magpie checks for updates through GitHub, after asking you first. Updates keep the access you gave
-Quick Save (Safari) and screenshots (Screen Recording): every release is signed with the same
+Quick Save (your browser) and screenshots (Screen Recording): every release is signed with the same
 certificate, so macOS recognizes the new version as the same app.
 
 ### Why the warning?
@@ -90,7 +90,7 @@ cd magpie
 ./build.sh --install    # builds, copies to /Applications and launches
 ```
 
-Your builds are ad hoc signed, so macOS treats each rebuild as a new app and asks again for Safari
+Your builds are ad hoc signed, so macOS treats each rebuild as a new app and asks again for browser
 and Screen Recording access. To avoid that, create a self-signed code signing certificate named
 `Magpie Self-Signed` in Keychain Access (Certificate Assistant → Create a Certificate, type Code
 Signing); `build.sh` uses it automatically.
@@ -107,7 +107,7 @@ Your library is a SwiftData database in `~/Library/Application Support/Magpie/`,
 sync can be turned on later without a migration. When you save a link, Apple's LinkPresentation
 fetches its title and picture (like Messages does), and Magpie reads the page once for a video's
 length, a product's price or an article's read time. Text in pictures and screenshots is read on
-your Mac with Apple's Vision. Quick Save asks Safari for its front tab with Apple Events, and its
+your Mac with Apple's Vision. Quick Save asks your browser for its front tab with Apple Events, and its
 shortcut uses the system's hot key service, which needs no permission.
 
 ## Releasing

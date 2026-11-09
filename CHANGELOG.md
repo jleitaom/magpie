@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Quick Save reads Chrome, Arc, Brave, Edge and other Chromium browsers,** not only Safari, so in them it saves the page you're on instead of whatever link you copied last. In Firefox, which doesn't let other apps read its tabs, the panel says it's using the clipboard (#5)
+- Deleting, renaming or recoloring a tag in the Collections panel shows right away, without closing and reopening it (#4)
+
 ## [1.0.1] - 2026-11-08
 
 ### Security

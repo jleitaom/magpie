@@ -59,7 +59,7 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>26.0</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Quick Save reads the address and title of Safari’s front tab when you press its shortcut. Nothing else.</string>
+	<string>Quick Save reads the address and title of your browser’s front tab (Safari, Chrome, Arc, Brave, Edge…) when you press its shortcut. Nothing else.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>

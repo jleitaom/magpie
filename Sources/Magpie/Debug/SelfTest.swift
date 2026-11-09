@@ -396,6 +396,16 @@ enum SelfTest {
                 let draft = QuickSaveSource.clipboard(board2)
                 check("Quick Save reads a link from the clipboard", draft.content == .web(URL(string: "https://example.com/quick-save")!)
                       && draft.source == "From the clipboard")
+                // #5: in Firefox, which can't share its tab, the panel says the link is the clipboard's.
+                let fromFirefox = await QuickSaveSource.capture(frontApp: "org.mozilla.firefox", pasteboard: board2)
+                check("in Firefox, Quick Save says it's using the clipboard and why",
+                      fromFirefox.content == draft.content && fromFirefox.source.contains("Firefox") && fromFirefox.source.contains("clipboard"),
+                      fromFirefox.source)
+                let elsewhere = await QuickSaveSource.capture(frontApp: "com.apple.TextEdit", pasteboard: board2)
+                check("…and in an app that isn't a browser it saves the clipboard", elsewhere.source == "From the clipboard")
+                check("Chrome, Arc, Brave and Edge are read like Safari",
+                      ["com.google.Chrome", "company.thebrowser.Browser", "com.brave.Browser", "com.microsoft.edgemac"]
+                        .allSatisfy { QuickSaveSource.browsers[$0]?.isSafari == false } && QuickSaveSource.browsers["com.apple.Safari"]?.isSafari == true)
                 board2.clearContents()
                 check("an empty clipboard says so", QuickSaveSource.clipboard(board2).content == .nothing)
                 board2.releaseGlobally()

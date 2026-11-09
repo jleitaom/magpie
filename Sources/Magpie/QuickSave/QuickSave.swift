@@ -17,22 +17,52 @@ struct QuickSaveDraft: Equatable {
     var source: String
 }
 
-/// Reads the front Safari tab, or the clipboard (S-030).
+/// Reads the front browser tab, or the clipboard (S-030, #5).
 enum QuickSaveSource {
-    /// Safari's front tab when Safari is the front app, else the clipboard. Safari is read with
+    /// A browser Quick Save can ask for its front tab, by bundle identifier.
+    struct Browser: Sendable {
+        let name: String
+        /// Safari calls it the "current tab" and its title "name"; Chromium browsers say "active tab" and "title".
+        let isSafari: Bool
+    }
+
+    static let browsers: [String: Browser] = {
+        var all = ["com.apple.Safari": Browser(name: "Safari", isSafari: true),
+                   "com.apple.SafariTechnologyPreview": Browser(name: "Safari", isSafari: true)]
+        for (id, name) in [("com.google.Chrome", "Chrome"), ("com.google.Chrome.beta", "Chrome"), ("com.google.Chrome.dev", "Chrome"),
+                           ("com.google.Chrome.canary", "Chrome"), ("org.chromium.Chromium", "Chromium"), ("com.brave.Browser", "Brave"),
+                           ("com.microsoft.edgemac", "Edge"), ("company.thebrowser.Browser", "Arc"), ("com.vivaldi.Vivaldi", "Vivaldi"),
+                           ("com.operasoftware.Opera", "Opera")] {
+            all[id] = Browser(name: name, isSafari: false)
+        }
+        return all
+    }()
+
+    /// Browsers that don't let other apps read their tabs.
+    static let unreadable = ["org.mozilla.firefox": "Firefox", "org.mozilla.firefoxdeveloperedition": "Firefox",
+                             "org.mozilla.nightly": "Firefox", "app.zen-browser.zen": "Zen"]
+
+    /// The front tab when a browser is the front app, else the clipboard. Browsers are read with
     /// AppleScript; the first time macOS asks for permission, and if it's refused the clipboard is used.
-    static func capture(frontApp: NSRunningApplication?) async -> QuickSaveDraft {
-        if frontApp?.bundleIdentifier == "com.apple.Safari" {
-            switch await safariTab() {
+    /// When the clipboard is used while a browser is in front, the panel says why, so an old copied
+    /// link is never mistaken for the page you're on.
+    static func capture(frontApp bundleID: String?, pasteboard: NSPasteboard = .general) async -> QuickSaveDraft {
+        if let bundleID, let browser = browsers[bundleID] {
+            switch await frontTab(of: bundleID, browser) {
             case .success(let tab):
-                return QuickSaveDraft(content: .web(tab.url), title: tab.title, source: "From Safari")
+                return QuickSaveDraft(content: .web(tab.url), title: tab.title, source: "From \(browser.name)")
             case .failure(let reason):
-                var draft = clipboard()
+                var draft = clipboard(pasteboard)
                 draft.source = reason.reason + " Saving the clipboard instead."
                 return draft
             }
         }
-        return clipboard()
+        if let bundleID, let name = unreadable[bundleID] {
+            var draft = clipboard(pasteboard)
+            draft.source = "\(name) doesn’t let other apps read its tabs. Copy the link first (⌘L, ⌘C). This is the clipboard."
+            return draft
+        }
+        return clipboard(pasteboard)
     }
 
     static func clipboard(_ pasteboard: NSPasteboard = .general) -> QuickSaveDraft {
@@ -56,25 +86,29 @@ enum QuickSaveSource {
     private struct Tab: Sendable { let url: URL; let title: String }
     private struct Refused: Error { let reason: String }
 
-    private static func safariTab() async -> Result<Tab, Refused> {
+    private static func frontTab(of bundleID: String, _ browser: Browser) async -> Result<Tab, Refused> {
         await Task.detached {
+            let tab = browser.isSafari ? "current tab of front window" : "active tab of front window"
+            let title = browser.isSafari ? "name" : "title"
             let source = """
-            tell application "Safari"
+            tell application id "\(bundleID)"
                 if (count of windows) is 0 then return ""
-                set theTab to current tab of front window
-                return (URL of theTab) & linefeed & (name of theTab)
+                set theTab to \(tab)
+                return (URL of theTab) & linefeed & (\(title) of theTab)
             end tell
             """
             var error: NSDictionary?
             let output = NSAppleScript(source: source)?.executeAndReturnError(&error).stringValue ?? ""
             if let error {
                 let code = error[NSAppleScript.errorNumber] as? Int ?? 0
-                return .failure(Refused(reason: code == -1743 ? "Magpie isn't allowed to read Safari (System Settings → Privacy & Security → Automation)."
-                                                              : "Couldn't read Safari's tab."))
+                return .failure(Refused(reason: code == -1743
+                    ? "Magpie isn’t allowed to read \(browser.name) (System Settings → Privacy & Security → Automation)."
+                    : "Couldn’t read \(browser.name)’s tab."))
             }
             let lines = output.split(separator: "\n", maxSplits: 1).map(String.init)
-            guard let first = lines.first, let url = URL(string: first), url.scheme?.hasPrefix("http") == true else {
-                return .failure(Refused(reason: "Safari has no web page open."))
+            guard let first = lines.first, let url = URL(string: first), let scheme = url.scheme?.lowercased(),
+                  scheme == "http" || scheme == "https" else {
+                return .failure(Refused(reason: "\(browser.name) has no web page open."))
             }
             return .success(Tab(url: url, title: lines.count > 1 ? lines[1] : Links.siteName(url)))
         }.value
@@ -82,7 +116,7 @@ enum QuickSaveSource {
 }
 
 /// The floating Quick Save panel. It takes the keyboard without bringing Magpie's window
-/// forward, so you stay in Safari. Return saves, Escape cancels.
+/// forward, so you stay in your browser. Return saves, Escape cancels.
 @MainActor
 final class QuickSavePanel {
     private var panel: NSPanel?
@@ -97,7 +131,7 @@ final class QuickSavePanel {
 
     /// The shortcut: read the front tab or clipboard, then show the panel.
     func open() {
-        let front = NSWorkspace.shared.frontmostApplication
+        let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         Task {
             let draft = await QuickSaveSource.capture(frontApp: front)
             show(draft)

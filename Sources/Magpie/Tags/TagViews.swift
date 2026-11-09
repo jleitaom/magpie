@@ -1,4 +1,5 @@
 import MagpieKit
+import SwiftData
 import SwiftUI
 
 /// The tags on a block, in the details panel (S-014): chips to filter by or remove, and a field
@@ -6,12 +7,14 @@ import SwiftUI
 struct TagEditor: View {
     @Bindable var block: Block
     @Environment(AppModel.self) private var model
+    /// Watched, so suggestions follow tags made, renamed or deleted elsewhere.
+    @Query private var allTags: [Tag]
     @State private var draft = ""
     @FocusState private var typing: Bool
 
     var body: some View {
         let mine = (block.tags ?? []).sorted { Tags.key($0.name) < Tags.key($1.name) }
-        let names = model.tags.map(\.name)
+        let names = allTags.map(\.name)
         let suggestions = typing ? Tags.suggestions(for: draft, from: names, excluding: mine.map(\.name), limit: 5) : []
         VStack(alignment: .leading, spacing: Space.sm) {
             KitFlow(spacing: Space.xs) {
@@ -111,9 +114,11 @@ struct TagMenu: View {
 /// Every tag, in the Collections panel: click to show its blocks.
 struct TagCloud: View {
     @Environment(AppModel.self) private var model
+    /// Watched, so a tag deleted, renamed or recolored here updates the list right away (#4).
+    @Query private var allTags: [Tag]
 
     var body: some View {
-        let all = model.tags
+        let all = allTags.filter { !$0.isDeleted }.sorted { Tags.key($0.name) < Tags.key($1.name) }
         if !all.isEmpty {
             VStack(alignment: .leading, spacing: Space.sm) {
                 Text("Tags").kitType(.meta).foregroundStyle(Ink.secondary).padding(.horizontal, Space.xs)

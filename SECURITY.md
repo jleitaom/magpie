@@ -2,9 +2,11 @@
 
 ## What the app can access
 
-- **One optional permission.** Quick Save asks once to control Safari (Automation), only to read the
-  address and title of Safari's front tab when you press its shortcut. Say no and Quick Save uses the
-  clipboard instead. Magpie doesn't ask for Accessibility, screen recording, contacts or anything else.
+- **Reading your browser's tab (optional).** Quick Save asks once per browser to control it
+  (Automation), only to read the address and title of its front tab when you press the shortcut.
+  It works with Safari and with Chrome, Arc, Brave, Edge and other Chromium browsers; Firefox doesn't
+  allow it, so there Quick Save uses the clipboard and says so. Say no and Quick Save uses the
+  clipboard instead. Magpie doesn't ask for Accessibility, contacts or anything else.
   The Quick Save shortcut uses the system's hot key service, which needs no permission.
 - **Screen Recording, only for screenshots.** ⌃⌥S runs macOS's own screenshot tool to save the area
   you select. macOS asks for Screen Recording permission the first time. The picture stays in your
@@ -47,7 +49,7 @@ Or skip downloads entirely and build from source with `./build.sh`.
 ## Code signing
 
 Releases are signed with the project's self-signed certificate, `Magpie Self-Signed`, so every
-version has the same code identity and keeps the Safari and Screen Recording access you granted.
+version has the same code identity and keeps the browser and Screen Recording access you granted.
 To check a downloaded app:
 
 ```sh
@@ -63,7 +65,7 @@ must be signed with the same certificate as the one you have.
 
 The app is signed with the hardened runtime and two entitlements:
 
-- `com.apple.security.automation.apple-events`, so Quick Save can ask Safari for its front tab.
+- `com.apple.security.automation.apple-events`, so Quick Save can ask your browser for its front tab.
   macOS still asks you before it allows it.
 - `com.apple.security.cs.disable-library-validation`, so the hardened runtime can load
   `Sparkle.framework`, which is signed with the same self-signed certificate. That certificate

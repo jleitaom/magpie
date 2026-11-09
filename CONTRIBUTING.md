@@ -29,7 +29,8 @@ Thanks for helping out!
   - `Rediscover/`: five old saves a day to keep or archive (`RediscoverView.swift`). The pick and
     the expiry rules are in `MagpieKit/Rediscover.swift`
   - `QuickSave/`: the global shortcut (`HotKey.swift`, Carbon, no permission needed) and the floating
-    panel that saves Safari's front tab or the clipboard (`QuickSave.swift`)
+    panel that saves the front browser tab (Safari, or Chrome, Arc, Brave, Edge and other
+    Chromium browsers) or the clipboard (`QuickSave.swift`)
   - `Import/`: the bookmarks import sheet (`ImportSheet.swift`); the file format is read by
     `MagpieKit/Bookmarks.swift`
   - `Tags/`: the tag editor in the details panel, the tag list in the Collections panel, and the
