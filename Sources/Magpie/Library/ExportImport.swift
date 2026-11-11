@@ -195,7 +195,6 @@ extension AppModel {
             context.insert(day)
         }
         save()
-        refreshStreak()
         refreshDipStats()
         return added
     }

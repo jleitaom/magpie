@@ -150,12 +150,11 @@ enum SelfTest {
                 model.rename(card, to: "   ")
                 check("an empty title is ignored", card.title == "A better name")
             }
-            // S-061 Inbox zero: sorting the last block marks today and starts the streak.
+            // S-061 Inbox zero: sorting the last block marks today.
             model.startSorting()
             check("today hasn't reached Inbox zero while blocks wait", !model.today.reachedInboxZero && !model.inboxUIDs.isEmpty)
             while model.sortSession.current != nil { model.sortDone() }
             check("sorting the last block reaches Inbox zero", model.inboxUIDs.isEmpty && model.today.reachedInboxZero)
-            check("the streak counts today", model.streakDays >= 1)
             check("the run ends on the celebration with its counts", model.sortingBlock == nil && model.sortSession.sorted > 0)
             check("today's activity counts what was saved and sorted", model.today.saved > 0 && model.today.sorted > 0)
             model.show(.gallery)

@@ -21,7 +21,7 @@ struct SortInboxView: View {
                 Spacer(minLength: 0)
             } else if run.sorted > 0 {
                 Spacer()
-                InboxZero(run: run, streak: model.streakDays)
+                InboxZero(run: run)
                 Spacer()
             } else {
                 Spacer()
@@ -64,7 +64,6 @@ struct SortInboxView: View {
 /// The celebration after the last Inbox block is sorted (S-061).
 private struct InboxZero: View {
     let run: SortSession
-    let streak: Int
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown = false
@@ -82,15 +81,7 @@ private struct InboxZero: View {
             .frame(width: Metric.celebrationRing, height: Metric.celebrationRing)
             .accessibilityHidden(true)
             Text("Inbox zero.").kitType(.display).foregroundStyle(Ink.text)
-            Group {
-                if streak > 1 {
-                    let days = Text("\(streak) days in a row").foregroundStyle(Ink.accentText).bold()
-                    Text("That’s \(days). Your nest is tidy.")
-                } else {
-                    Text("Day one of your streak. Your nest is tidy.")
-                }
-            }
-            .kitType(.body).foregroundStyle(Ink.secondary)
+            Text("Your nest is tidy.").kitType(.body).foregroundStyle(Ink.secondary)
             HStack(spacing: Space.sm) {
                 KitStatTile(value: run.sorted, label: "sorted")
                 KitStatTile(value: run.kept, label: "kept")

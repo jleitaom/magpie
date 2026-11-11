@@ -177,7 +177,6 @@ final class AppModel {
     /// Called once the window is up: retries previews that didn't finish last time.
     func start() {
         applyAppearance()
-        refreshStreak()
         refreshDipStats()
         expireDue()
         refreshDockBadge()
@@ -743,7 +742,7 @@ final class AppModel {
         flash("Deleted")
     }
 
-    // MARK: Streak (S-061)
+    // MARK: Day activity (S-061)
 
     /// Today's activity record if there is one, without making it (safe while a view draws).
     var todayIfAny: DayActivity? {
@@ -769,20 +768,6 @@ final class AppModel {
         let record = today
         guard !record.reachedInboxZero else { return }
         record.reachedInboxZero = true
-        streakDays = computeStreak()
-    }
-
-    /// Days in a row with Inbox zero. Stored, so the top bar redraws when it changes.
-    private(set) var streakDays = 0
-
-    func refreshStreak() {
-        streakDays = computeStreak()
-    }
-
-    private func computeStreak() -> Int {
-        let records = ((try? context.fetch(FetchDescriptor<DayActivity>())) ?? [])
-            .map { DayRecord(day: $0.day, saved: $0.saved, reachedInboxZero: $0.reachedInboxZero) }
-        return Streak.days(records, today: DayActivity.number(for: .now))
     }
 
     // MARK: Lucky Dip (S-069–S-072)

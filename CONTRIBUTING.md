@@ -43,7 +43,7 @@ Thanks for helping out!
     top bar) and the window chrome
   - `Debug/`: the self-test, snapshot mode and sample data
 - `Sources/MagpieKit/` holds the rules with no UI (link parsing and normalizing, masonry math,
-  color math, the collection tree, the Sort Inbox queue and suggestions, the Inbox zero streak, Lucky Dip,
+  color math, the collection tree, the Sort Inbox queue and suggestions, Lucky Dip,
   sort orders, tags, search, Rediscover and expiry, the bookmarks file, the export format, and `PageReader`,
   which reads video length, price, recipes and read time from a page's HTML), so they can be unit tested. Put new logic there, not in the views.
 - The app target builds in Swift 6 mode with the main actor as its default isolation. Mark slow

@@ -160,46 +160,6 @@ struct KitTotalsStrip: View {
     }
 }
 
-// MARK: - Streak pill (top bar, next to the traffic lights)
-
-/// "6-day streak" with a ring that fills over a week. A button: it opens Sort Inbox.
-struct KitStreakPillStyle: ButtonStyle {
-    let days: Int
-
-    func makeBody(configuration: Configuration) -> some View {
-        Part(configuration: configuration, days: days)
-    }
-
-    private struct Part: View {
-        let configuration: Configuration
-        let days: Int
-        @Environment(\.forcedPartState) private var forced
-        @Environment(\.isEnabled) private var isEnabled
-        @Environment(\.isFocused) private var isFocused
-        @State private var hovering = false
-
-        var body: some View {
-            let state = PartState.resolve(forced: forced, enabled: isEnabled, pressed: configuration.isPressed,
-                                          hovering: hovering, focused: isFocused)
-            HStack(spacing: Space.sm) {
-                KitStreakRing(days: days)
-                configuration.label.kitType(.meta).foregroundStyle(Ink.text)
-            }
-            .fixedSize()
-            .padding(.leading, Space.sm)
-            .padding(.trailing, Space.md)
-            .frame(height: Metric.streakPill)
-            .background(Capsule().fill(state.isActive ? Ink.control : Ink.surface))
-            .overlay(Capsule().strokeBorder(Ink.hairline))
-            .kitFocusRing(Capsule(), state: state)
-            .contentShape(Capsule())
-            .kitPress(state)
-            .onHover { hovering = $0 }
-            .animation(Motion.hover, value: hovering)
-        }
-    }
-}
-
 // MARK: - Stat tile (Inbox zero)
 
 /// A big number over a small label: "5 sorted".
@@ -219,7 +179,7 @@ struct KitStatTile: View {
     }
 }
 
-// MARK: - Progress bar and streak ring
+// MARK: - Progress bar
 
 struct KitProgressBar: View {
     /// 0...1
@@ -238,22 +198,5 @@ struct KitProgressBar: View {
         .accessibilityElement()
         .accessibilityLabel("Progress")
         .accessibilityValue("\(Int(value * 100)) percent")
-    }
-}
-
-struct KitStreakRing: View {
-    /// Days in the streak; the ring fills by 1/7 per day.
-    let days: Int
-
-    var body: some View {
-        ZStack {
-            Circle().stroke(Ink.control, lineWidth: Metric.ringStroke)
-            Circle()
-                .trim(from: 0, to: Streak.ringFill(days))
-                .stroke(Ink.accentText, style: StrokeStyle(lineWidth: Metric.ringStroke, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-        }
-        .frame(width: Metric.ring - Metric.ringStroke, height: Metric.ring - Metric.ringStroke)
-        .accessibilityHidden(true)
     }
 }
