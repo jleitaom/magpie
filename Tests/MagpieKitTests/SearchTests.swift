@@ -29,13 +29,17 @@ struct SearchTests {
         #expect(ranges.map { String(text[$0]) } == ["Café", "Lis", "cafe"])
     }
 
-    @Test("5,000 blocks search well under 100 ms")
+    /// 100 ms on a Mac. CI runners are shared, slower and run suites in parallel, so they get 500 ms:
+    /// still enough to catch search turning quadratic, without failing on a busy machine.
+    @Test("5,000 blocks search well under 100 ms (500 ms on CI)")
     func speed() {
+        let limit = ProcessInfo.processInfo.environment["CI"] == "true" ? 0.5 : 0.1
         let indexes = (0..<5000).map { Search.index(["Block number \($0) about vinyl records", "site\($0 % 50).com", "note \($0)"]) }
         let start = Date()
         let hits = indexes.filter { Search.matches(index: $0, terms: Search.terms("vin site4")) }
         let elapsed = Date().timeIntervalSince(start)
-        #expect(hits.count == 1100 && elapsed < 0.1)
+        #expect(hits.count == 1100)
+        #expect(elapsed < limit, "took \(Int(elapsed * 1000)) ms, limit \(Int(limit * 1000)) ms")
     }
 }
 
