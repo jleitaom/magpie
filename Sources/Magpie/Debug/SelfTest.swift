@@ -383,7 +383,10 @@ enum SelfTest {
             let found = model.searchResults("coff site3", in: all5000)
             let elapsed = Date.now.timeIntervalSince(started)
             print("SELFTEST note: search over 5,000 blocks took \(Int(elapsed * 1000)) ms")
-            check("search over 5,000 blocks takes under 100 ms", found.count >= 125 && elapsed < 0.1, "\(Int(elapsed * 1000)) ms, \(found.count) found")
+            // 100 ms on a Mac; shared CI runners (CI=true) are slower, so they get 500 ms, like the unit test.
+            let limit = ProcessInfo.processInfo.environment["CI"] == "true" ? 0.5 : 0.1
+            check("search over 5,000 blocks finds the right blocks", found.count >= 125, "\(found.count) found")
+            check("search over 5,000 blocks takes under \(Int(limit * 1000)) ms", elapsed < limit, "\(Int(elapsed * 1000)) ms")
             many.forEach(context.delete)
             [essay2, archivedNote].forEach { model.delete([$0.uid], undo: nil) }
 
