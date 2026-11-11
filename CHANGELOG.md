@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- **The Journal's middle column is named after what it shows** (#10): PRICE for a list of products, LENGTH for articles and videos, and DETAILS for a mix. Clicking it sorts Quickest first only when it says LENGTH
+
 ### Removed
 
 - **The Inbox zero streak** (#7): the "N-day streak" pill is gone from the top bar, and the Inbox zero screen no longer counts days in a row. Sort Inbox is still in the menu bar and on ⌃⌘3. Lucky Dip's daily dip streak stays

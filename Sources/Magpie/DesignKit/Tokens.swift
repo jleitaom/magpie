@@ -117,7 +117,7 @@ enum Metric {
     static let journalRow: CGFloat = 48
     static let journalHeader: CGFloat = 36
     static let journalNumber: CGFloat = 40
-    static let journalLength: CGFloat = 96
+    static let journalDetails: CGFloat = 96
     static let journalCollection: CGFloat = 128
     static let journalSaved: CGFloat = 72
     static let tagDot: CGFloat = 8
