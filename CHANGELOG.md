@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Cards keep their shape whatever the picture** (#6, #8): a very wide picture (like a shop's logo) no longer stretches its card over the cards beside it and past the window edge, and a tall picture (like a fashion photo) no longer covers the top of the card's text. The picture fills its space at the top of the card and is cropped to fit. Picture tiles in Choose Picture… are cropped the same way
+
 ## [1.1.0] - 2026-11-09
 
 ### Added

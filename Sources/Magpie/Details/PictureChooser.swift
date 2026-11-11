@@ -78,6 +78,7 @@ private struct Picture: View {
     var body: some View {
         Image(nsImage: image).resizable().scaledToFill()
             .frame(width: Metric.pictureTile.width, height: Metric.pictureTile.height)
+            .clipped()
             .background(Ink.control)
     }
 }

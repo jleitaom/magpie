@@ -112,7 +112,10 @@ struct BlockCardView: View {
         VStack(alignment: .leading, spacing: 0) {
             switch content.body {
             case .visual(let thumb):
-                ThumbView(thumb: thumb, badge: content.badge).frame(height: content.thumbHeight)
+                ThumbView(thumb: thumb, badge: content.badge)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: content.thumbHeight)
+                    .clipped()
             case .place:
                 MapThumb().frame(height: content.thumbHeight * 0.8)
             case .note, .checklist, .plain:
@@ -164,8 +167,12 @@ struct ThumbView: View {
         ZStack(alignment: .bottomTrailing) {
             switch thumb {
             case .image(let image):
-                Image(nsImage: image).resizable().scaledToFill()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+                // The picture fills the space the card gives it and never sets the card's size:
+                // a scaled-to-fill image reports its overflowing size, so it goes in an overlay
+                // on a shape that takes exactly the offered space (#6, #8).
+                Color.clear
+                    .overlay { Image(nsImage: image).resizable().scaledToFill() }
+                    .clipped()
             case .loading:
                 Ink.control.overlay { ProgressView().controlSize(.small) }
             }
