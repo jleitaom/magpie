@@ -1,5 +1,6 @@
 import AppKit
 import SwiftData
+import SwiftUI
 import MagpieKit
 
 /// Self-test for agents: runs the app's real functions on a test store,
@@ -149,12 +150,11 @@ enum SelfTest {
                 model.rename(card, to: "   ")
                 check("an empty title is ignored", card.title == "A better name")
             }
-            // S-061 Inbox zero: sorting the last block marks today and starts the streak.
+            // S-061 Inbox zero: sorting the last block marks today.
             model.startSorting()
             check("today hasn't reached Inbox zero while blocks wait", !model.today.reachedInboxZero && !model.inboxUIDs.isEmpty)
             while model.sortSession.current != nil { model.sortDone() }
             check("sorting the last block reaches Inbox zero", model.inboxUIDs.isEmpty && model.today.reachedInboxZero)
-            check("the streak counts today", model.streakDays >= 1)
             check("the run ends on the celebration with its counts", model.sortingBlock == nil && model.sortSession.sorted > 0)
             check("today's activity counts what was saved and sorted", model.today.saved > 0 && model.today.sorted > 0)
             model.show(.gallery)
@@ -383,7 +383,10 @@ enum SelfTest {
             let found = model.searchResults("coff site3", in: all5000)
             let elapsed = Date.now.timeIntervalSince(started)
             print("SELFTEST note: search over 5,000 blocks took \(Int(elapsed * 1000)) ms")
-            check("search over 5,000 blocks takes under 100 ms", found.count >= 125 && elapsed < 0.1, "\(Int(elapsed * 1000)) ms, \(found.count) found")
+            // 100 ms on a Mac; shared CI runners (CI=true) are slower, so they get 500 ms, like the unit test.
+            let limit = ProcessInfo.processInfo.environment["CI"] == "true" ? 0.5 : 0.1
+            check("search over 5,000 blocks finds the right blocks", found.count >= 125, "\(found.count) found")
+            check("search over 5,000 blocks takes under \(Int(limit * 1000)) ms", elapsed < limit, "\(Int(elapsed * 1000)) ms")
             many.forEach(context.delete)
             [essay2, archivedNote].forEach { model.delete([$0.uid], undo: nil) }
 
@@ -722,9 +725,78 @@ enum SelfTest {
                 check("export and import run without errors", false, "\(error)")
             }
 
+            // #9: a web Block's kind can be changed by hand, and a refresh keeps it.
+            do {
+                let shop = model.save(url: URL(string: "https://www.example-shop.com/p/perfume-P123.html")!)
+                shop.minutes = 2   // a wrong read time, as a blocked shop page once got
+                // One undo group per change, as separate menu clicks would make.
+                let kindUndo = UndoManager()
+                kindUndo.groupsByEvent = false
+                @MainActor func setKind(_ kind: BlockKind) {
+                    kindUndo.beginUndoGrouping()
+                    model.setKind(kind, for: shop, undo: kindUndo)
+                    kindUndo.endUndoGrouping()
+                }
+                setKind(.product)
+                check("a link can be made a product by hand", shop.kind == .product && shop.kindChosen)
+                check("…and a product shows no read time", shop.minutes == nil && shop.badge == nil)
+                model.apply(PageFacts(kind: .article, wordCount: 900), to: shop)
+                check("…and a refresh keeps it a product without a read time", shop.kind == .product && shop.minutes == nil)
+                model.apply(PageFacts(kind: .product, price: 61, currency: "EUR"), to: shop)
+                check("…but still fills in a price the page has", shop.price == 61 && shop.currency == "EUR")
+                setKind(.link)
+                check("making it a link again drops the price", shop.kind == .link && shop.price == nil && shop.currency == nil)
+                model.apply(PageFacts(kind: .product, price: 61, currency: "EUR"), to: shop)
+                check("…and a refresh doesn't turn a chosen link back into a product", shop.kind == .link && shop.price == nil)
+                kindUndo.undo()
+                check("undo brings back the product and its price", shop.kind == .product && shop.price == 61)
+                model.addNote()
+                check("notes can't change kind", model.block(model.selection).map { !model.canChangeKind($0) } ?? false)
+            }
+
+            // #6, #8: a card's picture fills its own band and never resizes or covers the card.
+            for (name, size) in [("very wide", CGSize(width: 2000, height: 100)), ("very tall", CGSize(width: 100, height: 1000))] {
+                let result = cardPictureStaysInside(pictureSize: size)
+                check("a \(name) picture keeps the card one column wide", result.width, result.detail)
+                check("a \(name) picture stays above the card's text", result.inside, result.detail)
+            }
+
             print(failures == 0 ? "SELFTEST PASS \(count) checks" : "SELFTEST FAIL \(failures) of \(count) checks")
             finish(code: failures == 0 ? 0 : 1)
         }
+    }
+
+    /// Renders a card with a solid red picture of this size in a 240 pt column, then checks the
+    /// card's width and that no red shows below the picture's band, where the text is.
+    private static func cardPictureStaysInside(pictureSize: CGSize) -> (width: Bool, inside: Bool, detail: String) {
+        let picture = NSImage(size: pictureSize, flipped: false) { rect in
+            NSColor.red.setFill()
+            rect.fill()
+            return true
+        }
+        let column: CGFloat = 240, band: CGFloat = 180
+        let content = CardContent(body: .visual(.image(picture)), kindLabel: "Link", title: "A card", site: "example.com",
+                                  thumbHeight: band)
+        let card = BlockCardView(content: content)
+        let fitted = NSHostingController(rootView: card).sizeThatFits(in: CGSize(width: column, height: .infinity))
+        let renderer = ImageRenderer(content: card.frame(width: column))
+        renderer.scale = 1
+        // Redrawn into a plain 8-bit RGBA bitmap: the renderer's own pixel format can vary.
+        guard let rendered = renderer.cgImage,
+              let bitmap = CGContext(data: nil, width: rendered.width, height: rendered.height, bitsPerComponent: 8,
+                                     bytesPerRow: rendered.width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let bytes = bitmap.data?.assumingMemoryBound(to: UInt8.self)
+        else { return (false, false, "the card didn't render") }
+        bitmap.draw(rendered, in: CGRect(x: 0, y: 0, width: rendered.width, height: rendered.height))
+        // Look along a row just under the picture band (rows run top to bottom in memory): no red allowed.
+        let row = Int(band) + 4
+        let red = (0..<rendered.width).contains { x in
+            let pixel = bytes + row * rendered.width * 4 + x * 4
+            return pixel[0] > 200 && pixel[1] < 60 && pixel[2] < 60
+        }
+        let widthOK = abs(fitted.width - column) < 1
+        return (widthOK, !red, "card \(Int(fitted.width))×\(Int(fitted.height)), rendered \(rendered.width)×\(rendered.height)")
     }
 
     private static func check(_ name: String, _ ok: Bool, _ detail: String = "") {

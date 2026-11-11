@@ -2,7 +2,7 @@ import MagpieKit
 import SwiftUI
 
 /// The Journal (S-067): the same blocks as the Gallery, as a dense numbered list. Clicking the
-/// Title, Length or Saved header sorts by it (S-065). Click a row for its details, double-click
+/// Title or Saved header sorts by it, and Length too when every value shown is a length (S-065, #10). Click a row for its details, double-click
 /// or Return to open it, ↑ and ↓ to move.
 struct JournalView: View {
     let blocks: [Block]
@@ -98,7 +98,14 @@ struct JournalView: View {
             Text("NO.")
             Color.clear
             headButton("TITLE", on: order == .title) { model.setOrder(.title, for: model.scope) }
-            headButton("LENGTH", on: order == .quickest) { model.setOrder(.quickest, for: model.scope) }
+            // Price or length, per block: the header says which, or DETAILS for a mix (#10).
+            let details = DetailsColumn(hasLength: blocks.contains { $0.price == nil && $0.minutes != nil },
+                                        hasPrice: blocks.contains { $0.price != nil })
+            if details.sortsByLength {
+                headButton(details.title, on: order == .quickest) { model.setOrder(.quickest, for: model.scope) }
+            } else {
+                Text(details.title)
+            }
             Text("COLLECTION")
             headButton(order == .oldest ? "SAVED ↑" : "SAVED ↓", on: order == .newest || order == .oldest, trailing: true) {
                 model.setOrder(order == .newest ? .oldest : .newest, for: model.scope)
@@ -121,7 +128,7 @@ struct JournalView: View {
     }
 }
 
-/// One row: number, color dot, title, length, collection, saved date. Selected: inverted.
+/// One row: number, color dot, title, price or length, collection, saved date. Selected: inverted.
 private struct JournalRow: View {
     let number: Int
     let block: Block
@@ -164,12 +171,12 @@ private struct JournalRow: View {
 
 /// The Journal's columns, shared by the header and the rows so they line up.
 private struct JournalColumns: Layout {
-    /// No., dot, title (nil: the rest), length, collection, saved.
+    /// No., dot, title (nil: the rest), details (price or length), collection, saved.
     let widths: [CGFloat?]
     let gap: CGFloat
 
     @MainActor static var widths: [CGFloat?] {
-        [Metric.journalNumber, Metric.tagDot, nil, Metric.journalLength, Metric.journalCollection, Metric.journalSaved]
+        [Metric.journalNumber, Metric.tagDot, nil, Metric.journalDetails, Metric.journalCollection, Metric.journalSaved]
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {

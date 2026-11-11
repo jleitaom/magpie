@@ -20,7 +20,7 @@ enum SeedData {
         for name in ["Reading", "Watch later", "Shopping", "Ideas", "Vinyl", "Lisbon trip", "Recipes"] {
             collections[name] = model.createCollection(named: name)
         }
-        // Five past days of Inbox zero, so the top bar shows a streak.
+        // Five past days of activity, so Lucky Dip shows its stats.
         let today = DayActivity.number(for: .now)
         for back in 1...5 {
             let day = DayActivity(day: today - back)
@@ -31,7 +31,6 @@ enum SeedData {
             day.finished = back <= 4 ? 1 : 0
             context.insert(day)
         }
-        model.refreshStreak()
         model.refreshDipStats()
         // One nested collection, so the Collections panel shows the tree.
         if let trip = collections["Lisbon trip"], let ideas = collections["Ideas"] { model.place(trip, .inside(ideas.uid)) }

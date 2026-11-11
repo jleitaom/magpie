@@ -166,3 +166,28 @@ public enum ManualOrder {
         return index(between: before, and: after)
     }
 }
+
+/// The Journal's details column shows each block's price or length (#10). Its header names
+/// what the blocks on screen actually have, and only a column of lengths sorts (Quickest first).
+public enum DetailsColumn: Equatable, Sendable {
+    case length, price, details
+
+    public init(hasLength: Bool, hasPrice: Bool) {
+        switch (hasLength, hasPrice) {
+        case (true, false): self = .length
+        case (false, true): self = .price
+        default: self = .details
+        }
+    }
+
+    public var title: String {
+        switch self {
+        case .length: "LENGTH"
+        case .price: "PRICE"
+        case .details: "DETAILS"
+        }
+    }
+
+    /// Clicking the header sorts Quickest first only when every value shown is a length.
+    public var sortsByLength: Bool { self == .length }
+}

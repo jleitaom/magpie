@@ -95,13 +95,15 @@ public struct LibraryExport: Codable, Equatable, Sendable {
         public var sortIndex: Double
         /// The picture was chosen by hand. Missing in exports from before 1.1.
         public var pictureChosen: Bool?
+        /// The kind was chosen by hand (#9). Missing in exports from before 1.2.
+        public var kindChosen: Bool?
 
         public init(uid: UUID, kind: String, url: String?, normalizedURL: String?, title: String, siteName: String, note: String,
                     bodyText: String, checklist: [ChecklistItem], image: String?, imageAspect: Double, colorHex: Int?,
                     status: String, statusBeforeArchive: String?, createdAt: Date, openedAt: Date?, finishedAt: Date?,
                     expiresAt: Date?, expiredAt: Date?, lastShownAt: Date?, collection: UUID?, tags: [UUID], minutes: Int?,
                     price: Double?, currency: String?, isRecipe: Bool, pile: String?, timesSkipped: Int, ocrText: String?,
-                    sortIndex: Double, pictureChosen: Bool? = nil) {
+                    sortIndex: Double, pictureChosen: Bool? = nil, kindChosen: Bool? = nil) {
             self.uid = uid; self.kind = kind; self.url = url; self.normalizedURL = normalizedURL; self.title = title
             self.siteName = siteName; self.note = note; self.bodyText = bodyText; self.checklist = checklist; self.image = image
             self.imageAspect = imageAspect; self.colorHex = colorHex; self.status = status; self.statusBeforeArchive = statusBeforeArchive
@@ -109,6 +111,7 @@ public struct LibraryExport: Codable, Equatable, Sendable {
             self.expiredAt = expiredAt; self.lastShownAt = lastShownAt; self.collection = collection; self.tags = tags
             self.minutes = minutes; self.price = price; self.currency = currency; self.isRecipe = isRecipe; self.pile = pile
             self.timesSkipped = timesSkipped; self.ocrText = ocrText; self.sortIndex = sortIndex; self.pictureChosen = pictureChosen
+            self.kindChosen = kindChosen
         }
     }
 

@@ -88,8 +88,6 @@ enum Metric {
     static let check: CGFloat = 14
     static let swatch: CGFloat = 10
     static let progressHeight: CGFloat = 6
-    static let ring: CGFloat = 16
-    static let ringStroke: CGFloat = 2.4
     static let pillInset: CGFloat = 4
     /// Small values measured from the mockup; named so views never hard-code them.
     static let inlineGap: CGFloat = 6        // icon + label, kind label to title
@@ -107,7 +105,6 @@ enum Metric {
     static let collectionsWidth: CGFloat = 400
     static let collectionsMaxHeight: CGFloat = 360
     static let keyCap: CGFloat = 24
-    static let streakPill: CGFloat = 28
     static let tagChip: CGFloat = 24
     static let searchWidth: CGFloat = 560
     static let quickSaveWidth: CGFloat = 440
@@ -120,12 +117,10 @@ enum Metric {
     static let journalRow: CGFloat = 48
     static let journalHeader: CGFloat = 36
     static let journalNumber: CGFloat = 40
-    static let journalLength: CGFloat = 96
+    static let journalDetails: CGFloat = 96
     static let journalCollection: CGFloat = 128
     static let journalSaved: CGFloat = 72
     static let tagDot: CGFloat = 8
-    /// The streak pill's distance from the window's left edge, clear of the traffic lights.
-    static let streakInset: CGFloat = 88
     static let celebrationRing: CGFloat = 120
     static let celebrationWidth: CGFloat = 520
     static let dipSidebar: CGFloat = 332      // Lucky Dip's Pick from column

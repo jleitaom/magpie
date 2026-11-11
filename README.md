@@ -36,7 +36,7 @@ and then nudges you to read, watch and use what you saved.
 - **Quick Save** (⌃⌥Space, anywhere) saves your browser's front tab (Safari, Chrome, Arc, Brave, Edge) or the clipboard without leaving what you're doing. You can also drop things onto the Dock icon, or turn a screenshot into a Block (⌃⌥S)
 - **Gallery and Journal.** See image-first cards, each tinted with its picture's color, or a dense list. Sort by newest, quickest, title, site, color, shuffle or your own order
 - **Collections and tags.** Nest collections, pin up to 5 to the top bar, and tag across them
-- **Sort Inbox.** Go through new saves one at a time from the keyboard, with a suggested collection. Reaching Inbox zero keeps a daily streak
+- **Sort Inbox.** Go through new saves one at a time from the keyboard, with a suggested collection, until you reach Inbox zero
 - **Lucky Dip.** Can't decide what to read or watch? Pick a collection (or everything) and how much time you have, and Magpie picks one. You get two re-spins a day, then you commit
 - **Rediscover.** Five old saves a day to keep or archive. Collections like Watch later can expire their Blocks, so they empty themselves
 - **Search everything,** including the text inside your images

@@ -101,3 +101,15 @@ struct GridNavigationTests {
         #expect(GridNavigation.next(from: 0, .left, columns: columns, heights: heights, gap: 16) == nil)
     }
 }
+
+struct DetailsColumnTests {
+    @Test("The details header names what the blocks have, and only lengths sort")
+    func header() {
+        #expect(DetailsColumn(hasLength: true, hasPrice: false) == .length)
+        #expect(DetailsColumn(hasLength: false, hasPrice: true) == .price)
+        #expect(DetailsColumn(hasLength: true, hasPrice: true) == .details)
+        #expect(DetailsColumn(hasLength: false, hasPrice: false) == .details)
+        #expect(DetailsColumn.length.sortsByLength)
+        #expect(!DetailsColumn.price.sortsByLength && !DetailsColumn.details.sortsByLength)
+    }
+}

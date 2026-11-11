@@ -22,6 +22,10 @@ enum BlockKind: String, CaseIterable, Codable {
         case .checklist: "Checklist"
         }
     }
+
+    /// The kinds a web Block can be switched between by hand (#9). Places, pictures, files,
+    /// notes and checklists are what they are.
+    static let choosable: [BlockKind] = [.link, .video, .product]
 }
 
 enum BlockStatus: String, Codable {
@@ -57,6 +61,8 @@ final class Block {
     var thumbnailAspect: Double = 0
     /// The picture was chosen by hand (Choose Picture…, #2), so refreshing the link keeps it.
     var pictureChosen: Bool = false
+    /// The kind was chosen by hand (#9), so refreshing the link never changes it back.
+    var kindChosen: Bool = false
     /// The thumbnail's main color as 0xRRGGBB (stored as Int for SwiftData).
     var colorHex: Int?
     var statusRaw: String = BlockStatus.inbox.rawValue
@@ -190,7 +196,7 @@ enum CollectionColors {
     static let all: [Int] = [0x7FD9D3, 0xE8A27A, 0xE8CF8A, 0xA8D5A2, 0x8FB5E8, 0xC9A8E8, 0xE88FB0, 0xA1A1A8]
 }
 
-/// What happened on one day, for the Inbox zero streak (and later Lucky Dip's re-spins).
+/// What happened on one day, Inbox zero and Lucky Dip's re-spins and finished picks.
 /// One record per day; duplicates (from sync, later) are merged when read.
 @Model
 final class DayActivity {

@@ -3,7 +3,7 @@
 ## v1: the Mac app (released as 1.0.0)
 
 Saving from anywhere (Quick Save, the Dock icon, screenshots, bookmark import), the Gallery
-and Journal, nested collections and tags, Sort Inbox with a daily streak, Lucky Dip,
+and Journal, nested collections and tags, Sort Inbox, Lucky Dip,
 Rediscover and expiring collections, search that includes text in images, and a full export.
 See the [changelog](CHANGELOG.md) for the details.
 

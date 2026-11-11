@@ -177,7 +177,6 @@ final class AppModel {
     /// Called once the window is up: retries previews that didn't finish last time.
     func start() {
         applyAppearance()
-        refreshStreak()
         refreshDipStats()
         expireDue()
         refreshDockBadge()
@@ -405,6 +404,15 @@ final class AppModel {
     /// Video length, price, recipe and read time from the page (S-063).
     func apply(_ facts: PageFacts?, to block: Block) {
         guard let facts else { return }
+        // A kind chosen by hand stays, and only gets the facts that fit it (#9).
+        if block.kindChosen {
+            if block.kind == .product {
+                if block.price == nil, facts.kind == .product { block.price = facts.price; block.currency = facts.currency }
+            } else {
+                block.minutes = facts.minutes ?? block.minutes
+            }
+            return
+        }
         block.minutes = facts.minutes ?? block.minutes
         switch facts.kind {
         case .video where block.kind == .link:
@@ -425,6 +433,39 @@ final class AppModel {
         block.thumbnail = processed.jpeg
         block.thumbnailAspect = processed.aspect
         block.colorHex = processed.color.map(Int.init)
+    }
+
+    // MARK: Changing the kind (#9)
+
+    /// Web links can be switched between Link, Video and Product.
+    func canChangeKind(_ block: Block) -> Bool {
+        guard let scheme = block.url?.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return false }
+        return BlockKind.choosable.contains(block.kind)
+    }
+
+    /// Sets a web Block's kind by hand. A product has a price and no reading time; a link or a
+    /// video has no price. Refreshing the link keeps the kind. Undoable.
+    func setKind(_ kind: BlockKind, for block: Block, undo: UndoManager?) {
+        guard canChangeKind(block), BlockKind.choosable.contains(kind), kind != block.kind else { return }
+        let before = (kind: block.kind, chosen: block.kindChosen, minutes: block.minutes, price: block.price, currency: block.currency)
+        block.kind = kind
+        block.kindChosen = true
+        if kind == .product {
+            block.minutes = nil
+        } else {
+            block.price = nil
+            block.currency = nil
+        }
+        save()
+        let uid = block.uid
+        undo?.registerUndo(withTarget: self) { model in
+            guard let block = model.block(uid) else { return }
+            block.kind = before.kind; block.kindChosen = before.chosen
+            block.minutes = before.minutes; block.price = before.price; block.currency = before.currency
+            model.save()
+        }
+        undo?.setActionName("Change Kind")
+        flash("Now a \(kind.label.lowercased())")
     }
 
     // MARK: Choosing a picture (#2)
@@ -743,7 +784,7 @@ final class AppModel {
         flash("Deleted")
     }
 
-    // MARK: Streak (S-061)
+    // MARK: Day activity (S-061)
 
     /// Today's activity record if there is one, without making it (safe while a view draws).
     var todayIfAny: DayActivity? {
@@ -769,20 +810,6 @@ final class AppModel {
         let record = today
         guard !record.reachedInboxZero else { return }
         record.reachedInboxZero = true
-        streakDays = computeStreak()
-    }
-
-    /// Days in a row with Inbox zero. Stored, so the top bar redraws when it changes.
-    private(set) var streakDays = 0
-
-    func refreshStreak() {
-        streakDays = computeStreak()
-    }
-
-    private func computeStreak() -> Int {
-        let records = ((try? context.fetch(FetchDescriptor<DayActivity>())) ?? [])
-            .map { DayRecord(day: $0.day, saved: $0.saved, reachedInboxZero: $0.reachedInboxZero) }
-        return Streak.days(records, today: DayActivity.number(for: .now))
     }
 
     // MARK: Lucky Dip (S-069–S-072)
@@ -1665,12 +1692,14 @@ struct PictureChoice: Identifiable {
 private struct BlockCopy {
     let uid: UUID, kindRaw: String, urlString: String?, normalizedURL: String?, title: String, siteName: String
     let note: String, bodyText: String, checklistData: Data?, thumbnail: Data?, thumbnailAspect: Double, pictureChosen: Bool
+    let kindChosen: Bool, minutes: Int?, price: Double?, currency: String?
     let colorHex: Int?, statusRaw: String, enrichRaw: String, createdAt: Date, openedAt: Date?, collectionUID: UUID?
 
     init(_ b: Block) {
         uid = b.uid; kindRaw = b.kindRaw; urlString = b.urlString; normalizedURL = b.normalizedURL; title = b.title
         siteName = b.siteName; note = b.note; bodyText = b.bodyText; checklistData = b.checklistData
         thumbnail = b.thumbnail; thumbnailAspect = b.thumbnailAspect; pictureChosen = b.pictureChosen; colorHex = b.colorHex; statusRaw = b.statusRaw
+        kindChosen = b.kindChosen; minutes = b.minutes; price = b.price; currency = b.currency
         enrichRaw = b.enrichRaw; createdAt = b.createdAt; openedAt = b.openedAt; collectionUID = b.collection?.uid
     }
 
@@ -1679,6 +1708,7 @@ private struct BlockCopy {
         b.uid = uid; b.urlString = urlString; b.normalizedURL = normalizedURL; b.siteName = siteName; b.note = note
         b.bodyText = bodyText; b.checklistData = checklistData; b.thumbnail = thumbnail; b.thumbnailAspect = thumbnailAspect
         b.pictureChosen = pictureChosen
+        b.kindChosen = kindChosen; b.minutes = minutes; b.price = price; b.currency = currency
         b.colorHex = colorHex; b.statusRaw = statusRaw; b.enrichRaw = enrichRaw; b.createdAt = createdAt; b.openedAt = openedAt
         b.collection = model.collection(collectionUID)
         return b

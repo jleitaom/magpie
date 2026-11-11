@@ -183,6 +183,15 @@ struct BlockMenu: View {
         }
         Button("Show Details") { model.selection = block.uid; if model.viewMode != .journal { model.show(.gallery) } }
         Divider()
+        if model.canChangeKind(block) {
+            Menu("Kind") {
+                ForEach(Array(BlockKind.choosable.enumerated()), id: \.element) { index, kind in
+                    Toggle(kind.label, isOn: Binding(get: { block.kind == kind },
+                                                     set: { if $0 { model.setKind(kind, for: block, undo: undoManager) } }))
+                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.command, .option])
+                }
+            }
+        }
         Menu("Move to") {
             Button("Inbox") { model.move(block, to: nil, undo: undoManager) }
                 .disabled(block.collection == nil && block.status == .inbox)
