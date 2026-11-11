@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- **Change what a link is** (#9): when Magpie guesses wrong, make a web Block a Link, Video or Product from **Kind** in its details, its right-click menu, or **Block → Kind** (⌥⌘1, ⌥⌘2, ⌥⌘3). A product shows no reading time, and a link or video shows no price. Refreshing the link keeps the kind you chose. Shops that block Magpie (like H&M and Sephora) are saved as plain links
+
 ### Changed
 
 - **The Journal's middle column is named after what it shows** (#10): PRICE for a list of products, LENGTH for articles and videos, and DETAILS for a mix. Clicking it sorts Quickest first only when it says LENGTH

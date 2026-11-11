@@ -722,6 +722,35 @@ enum SelfTest {
                 check("export and import run without errors", false, "\(error)")
             }
 
+            // #9: a web Block's kind can be changed by hand, and a refresh keeps it.
+            do {
+                let shop = model.save(url: URL(string: "https://www.example-shop.com/p/perfume-P123.html")!)
+                shop.minutes = 2   // a wrong read time, as a blocked shop page once got
+                // One undo group per change, as separate menu clicks would make.
+                let kindUndo = UndoManager()
+                kindUndo.groupsByEvent = false
+                @MainActor func setKind(_ kind: BlockKind) {
+                    kindUndo.beginUndoGrouping()
+                    model.setKind(kind, for: shop, undo: kindUndo)
+                    kindUndo.endUndoGrouping()
+                }
+                setKind(.product)
+                check("a link can be made a product by hand", shop.kind == .product && shop.kindChosen)
+                check("…and a product shows no read time", shop.minutes == nil && shop.badge == nil)
+                model.apply(PageFacts(kind: .article, wordCount: 900), to: shop)
+                check("…and a refresh keeps it a product without a read time", shop.kind == .product && shop.minutes == nil)
+                model.apply(PageFacts(kind: .product, price: 61, currency: "EUR"), to: shop)
+                check("…but still fills in a price the page has", shop.price == 61 && shop.currency == "EUR")
+                setKind(.link)
+                check("making it a link again drops the price", shop.kind == .link && shop.price == nil && shop.currency == nil)
+                model.apply(PageFacts(kind: .product, price: 61, currency: "EUR"), to: shop)
+                check("…and a refresh doesn't turn a chosen link back into a product", shop.kind == .link && shop.price == nil)
+                kindUndo.undo()
+                check("undo brings back the product and its price", shop.kind == .product && shop.price == 61)
+                model.addNote()
+                check("notes can't change kind", model.block(model.selection).map { !model.canChangeKind($0) } ?? false)
+            }
+
             // #6, #8: a card's picture fills its own band and never resizes or covers the card.
             for (name, size) in [("very wide", CGSize(width: 2000, height: 100)), ("very tall", CGSize(width: 100, height: 1000))] {
                 let result = cardPictureStaysInside(pictureSize: size)

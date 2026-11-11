@@ -121,6 +121,21 @@ struct DetailsPanel: View {
                 .buttonStyle(.kit(.secondary))
                 .fixedSize()
             }
+            if model.canChangeKind(block) {
+                GridRow {
+                    Text("Kind").kitType(.meta).foregroundStyle(Ink.secondary)
+                    Menu(block.kind.label) {
+                        ForEach(BlockKind.choosable, id: \.self) { kind in
+                            Toggle(kind.label, isOn: Binding(get: { block.kind == kind },
+                                                             set: { if $0 { model.setKind(kind, for: block, undo: undoManager) } }))
+                        }
+                    }
+                    .menuStyle(.button)
+                    .buttonStyle(.kit(.secondary))
+                    .fixedSize()
+                    .help("Magpie guessed wrong? Choose what this is (⌥⌘1 Link, ⌥⌘2 Video, ⌥⌘3 Product)")
+                }
+            }
             if model.canChoosePicture(block) {
                 GridRow {
                     Text("Picture").kitType(.meta).foregroundStyle(Ink.secondary)

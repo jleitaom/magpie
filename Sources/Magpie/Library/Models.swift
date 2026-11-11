@@ -22,6 +22,10 @@ enum BlockKind: String, CaseIterable, Codable {
         case .checklist: "Checklist"
         }
     }
+
+    /// The kinds a web Block can be switched between by hand (#9). Places, pictures, files,
+    /// notes and checklists are what they are.
+    static let choosable: [BlockKind] = [.link, .video, .product]
 }
 
 enum BlockStatus: String, Codable {
@@ -57,6 +61,8 @@ final class Block {
     var thumbnailAspect: Double = 0
     /// The picture was chosen by hand (Choose Picture…, #2), so refreshing the link keeps it.
     var pictureChosen: Bool = false
+    /// The kind was chosen by hand (#9), so refreshing the link never changes it back.
+    var kindChosen: Bool = false
     /// The thumbnail's main color as 0xRRGGBB (stored as Int for SwiftData).
     var colorHex: Int?
     var statusRaw: String = BlockStatus.inbox.rawValue

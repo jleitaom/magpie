@@ -107,6 +107,15 @@ struct MagpieCommands: Commands {
             Button("Choose Picture…") { if let block = model.block(selection) { model.choosePicture(block) } }
                 .keyboardShortcut("p", modifiers: [.command, .option])
                 .disabled(model.block(selection).map { !model.canChoosePicture($0) } ?? true)
+            Menu("Kind") {
+                ForEach(Array(BlockKind.choosable.enumerated()), id: \.element) { index, kind in
+                    Button(kind.label) {
+                        if let block = model.block(selection) { model.setKind(kind, for: block, undo: NSApp.keyWindow?.undoManager) }
+                    }
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.command, .option])
+                    .disabled(model.block(selection).map { !model.canChangeKind($0) || $0.kind == kind } ?? true)
+                }
+            }
             Button(model.block(selection)?.status == .archived ? "Unarchive" : "Archive") {
                 guard let block = model.block(selection) else { return }
                 if block.status == .archived { model.unarchive(block) } else { model.archive(block, undo: NSApp.keyWindow?.undoManager) }
