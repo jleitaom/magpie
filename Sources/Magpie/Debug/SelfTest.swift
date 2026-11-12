@@ -10,8 +10,9 @@ import MagpieKit
 @MainActor
 enum SelfTest {
     static var requested: Bool { CommandLine.arguments.contains("--selftest") }
-    /// Read by AppDelegate.applicationWillTerminate.
-    static var exitCode: Int32 = 0
+    /// Read by AppDelegate.applicationWillTerminate. Starts as a failure, so a run that quits
+    /// before it finishes (a crash in a check, or closing the window quitting the app) exits 1.
+    static var exitCode: Int32 = 1
     private static var failures = 0
     private static var count = 0
 
@@ -760,6 +761,32 @@ enum SelfTest {
                 check("a \(name) picture keeps the card one column wide", result.width, result.detail)
                 check("a \(name) picture stays above the card's text", result.inside, result.detail)
             }
+
+            // The menu bar keeps Magpie's own menus, and Window lists Magpie once, on ⌘0.
+            let menus = NSApp.mainMenu?.items.map(\.title) ?? []
+            check("the menu bar has the Block, Inbox, Collection and Lucky Dip menus",
+                  ["Block", "Inbox", "Collection", "Lucky Dip"].allSatisfy(menus.contains), menus.joined(separator: ", "))
+            let windowItems = NSApp.mainMenu?.items.first { $0.title == "Window" }?.submenu?.items.filter { $0.title == "Magpie" } ?? []
+            check("Window → Magpie is listed once, on ⌘0",
+                  windowItems.count == 1 && windowItems.first?.keyEquivalent == "0" && windowItems.first?.keyEquivalentModifierMask == .command,
+                  "\(windowItems.count) item(s), key \(windowItems.first?.keyEquivalent ?? "-")")
+            let kindKeys = NSApp.mainMenu?.items.first { $0.title == "Block" }?.submenu?.items.first { $0.title == "Kind" }?.submenu?.items
+                .map(\.keyEquivalentModifierMask) ?? []
+            check("Block → Kind uses ⌃⌥⌘, clear of Sort By's ⌥⌘ keys",
+                  kindKeys.count == 3 && kindKeys.allSatisfy { $0 == [.control, .option, .command] })
+
+            // Closing the window (⌘W) leaves Magpie running; asking for it again (a Dock click) brings it back.
+            // Last, because it closes the window. If closing quit the app, the summary below never prints.
+            @MainActor func mainWindows() -> [NSWindow] { NSApp.windows.filter { $0.isVisible && $0.canBecomeMain } }
+            // Earlier checks can leave a sheet open, and a window with a sheet doesn't close (for ⌘W either).
+            for window in NSApp.windows { if let sheet = window.attachedSheet { window.endSheet(sheet) } }
+            try? await Task.sleep(for: .milliseconds(300))
+            mainWindows().first?.performClose(nil)
+            try? await Task.sleep(for: .seconds(1))
+            check("closing the window leaves Magpie running, with no window", mainWindows().isEmpty)
+            _ = try? await NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: NSWorkspace.OpenConfiguration())
+            for _ in 0..<20 where mainWindows().isEmpty { try? await Task.sleep(for: .milliseconds(250)) }
+            check("opening Magpie again (a Dock click) brings the window back", mainWindows().count == 1)
 
             print(failures == 0 ? "SELFTEST PASS \(count) checks" : "SELFTEST FAIL \(failures) of \(count) checks")
             finish(code: failures == 0 ? 0 : 1)

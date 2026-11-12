@@ -188,7 +188,7 @@ struct BlockMenu: View {
                 ForEach(Array(BlockKind.choosable.enumerated()), id: \.element) { index, kind in
                     Toggle(kind.label, isOn: Binding(get: { block.kind == kind },
                                                      set: { if $0 { model.setKind(kind, for: block, undo: undoManager) } }))
-                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.command, .option])
+                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.control, .option, .command])
                 }
             }
         }
