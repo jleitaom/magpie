@@ -212,46 +212,85 @@ struct MagpieCommands: Commands {
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
                 .disabled(open == nil)
         }
+        // Split into small typed parts: as one expression, this group was too much for CI's
+        // type checker ("unable to type-check this expression in reasonable time").
         CommandGroup(after: .sidebar) {
-            ForEach(ViewMode.allCases.filter(\.isAvailable)) { mode in
-                Toggle(mode.title, isOn: Binding(get: { viewMode == mode }, set: { if $0 { front { model.show(mode) } } }))
-                    .keyboardShortcut(KeyEquivalent(mode.shortcut), modifiers: [.control, .command])
+            viewModeItems
+            Divider()
+            placeItems
+            Divider()
+            sortByMenu
+            Divider()
+            appearanceMenu
+            Divider()
+        }
+    }
+
+    /// Gallery, Journal, Sort Inbox, Lucky Dip, Rediscover (⌃⌘1…).
+    private var viewModeItems: some View {
+        ForEach(ViewMode.allCases.filter(\.isAvailable)) { mode in
+            Toggle(mode.title, isOn: showing(mode))
+                .keyboardShortcut(KeyEquivalent(mode.shortcut), modifiers: [.control, .command])
+        }
+    }
+
+    /// All, Inbox, the pinned collections (⌘1–⌘7), Archive and the Collections panel.
+    @ViewBuilder private var placeItems: some View {
+        Button("All Blocks") { go(to: .all) }
+            .keyboardShortcut("1")
+        Button("Inbox") { go(to: .inbox) }
+            .keyboardShortcut("2")
+        // ⌘3–⌘7: the pinned collections, in top bar order (S-032).
+        ForEach(Array(pinned.enumerated()), id: \.element.id) { index, pin in
+            Button(pin.name) { go(to: .collection(pin.id), gallery: viewMode != .journal) }
+                .keyboardShortcut(KeyEquivalent(Character(String(index + 3))))
+        }
+        Button("Archive") { go(to: .archive, gallery: true) }
+            .keyboardShortcut("0", modifiers: [.control, .command])
+        Button("Collections…") { front { model.showsCollections = true } }
+            .keyboardShortcut("k")
+    }
+
+    /// Collection → Sort By (⌥⌘1–⌥⌘8), for the Gallery and the Journal.
+    private var sortByMenu: some View {
+        Menu("Sort By") {
+            ForEach(Array(BlockOrder.allCases.enumerated()), id: \.element) { index, order in
+                Toggle(order.title, isOn: sorted(by: order))
+                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [.option, .command])
+            }
+        }
+        .disabled(viewMode != .gallery && viewMode != .journal)
+    }
+
+    /// Dark, Light, Match my Mac, and Switch Dark and Light (⌃⌘T).
+    private var appearanceMenu: some View {
+        Menu("Appearance") {
+            ForEach(AppearanceChoice.allCases) { choice in
+                Toggle(choice.title, isOn: looking(choice))
             }
             Divider()
-            Button("All Blocks") { front { model.scope = .all } }
-                .keyboardShortcut("1")
-            Button("Inbox") { front { model.scope = .inbox } }
-                .keyboardShortcut("2")
-            // ⌘3–⌘7: the pinned collections, in top bar order (S-032).
-            ForEach(Array(pinned.enumerated()), id: \.element.id) { index, pin in
-                Button(pin.name) { front { model.scope = .collection(pin.id); if viewMode != .journal { model.show(.gallery) } } }
-                    .keyboardShortcut(KeyEquivalent(Character("\(index + 3)")))
-            }
-            Button("Archive") { front { model.scope = .archive; model.show(.gallery) } }
-                .keyboardShortcut("0", modifiers: [.control, .command])
-            Button("Collections…") { front { model.showsCollections = true } }
-                .keyboardShortcut("k")
-            Divider()
-            Menu("Sort By") {
-                ForEach(Array(BlockOrder.allCases.enumerated()), id: \.element) { index, order in
-                    Toggle(order.title, isOn: Binding(get: { sortOrder == order }, set: { if $0 { model.setOrder(order, for: model.scope) } }))
-                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.option, .command])
-                }
-            }
-            .disabled(viewMode != .gallery && viewMode != .journal)
-            Divider()
-            Menu("Appearance") {
-                ForEach(AppearanceChoice.allCases) { choice in
-                    Toggle(choice.title, isOn: Binding(
-                        get: { appearance == choice },
-                        set: { if $0 { model.appearance = choice } }
-                    ))
-                }
-                Divider()
-                Button("Switch Dark and Light") { model.toggleAppearance() }
-                    .keyboardShortcut("t", modifiers: [.control, .command])
-            }
-            Divider()
+            Button("Switch Dark and Light") { model.toggleAppearance() }
+                .keyboardShortcut("t", modifiers: [.control, .command])
+        }
+    }
+
+    private func showing(_ mode: ViewMode) -> Binding<Bool> {
+        Binding(get: { viewMode == mode }, set: { on in if on { front { model.show(mode) } } })
+    }
+
+    private func sorted(by order: BlockOrder) -> Binding<Bool> {
+        Binding(get: { sortOrder == order }, set: { on in if on { model.setOrder(order, for: model.scope) } })
+    }
+
+    private func looking(_ choice: AppearanceChoice) -> Binding<Bool> {
+        Binding(get: { appearance == choice }, set: { on in if on { model.appearance = choice } })
+    }
+
+    /// Opens a place (All, Inbox, a collection, Archive), bringing the window back first.
+    private func go(to scope: Scope, gallery: Bool = false) {
+        front {
+            model.scope = scope
+            if gallery { model.show(.gallery) }
         }
     }
 
