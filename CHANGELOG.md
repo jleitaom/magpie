@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-12
+
 ### Fixed
 
 - **⌘W closes the window, not the app.** Magpie keeps running, so Quick Save, Dock drops and the Dock badge keep working. Click the Dock icon or choose **Window → Magpie** (⌘0) to bring the window back. Menu commands that show something (New Note, Find, the views, the collections) bring it back too
