@@ -26,6 +26,8 @@ struct MagpieApp: App {
             .frame(minWidth: Metric.windowMinimum.width, minHeight: Metric.windowMinimum.height)
         }
         .modelContainer(model.container)
+        // Window → Magpie (⌘0) comes from MagpieCommands instead, with a shortcut.
+        .commandsRemoved()
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: Metric.windowDefault.width, height: Metric.windowDefault.height)
         .commands {
@@ -62,13 +64,21 @@ struct MagpieCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
-        CommandGroup(after: .appInfo) {
-            CheckForUpdatesButton()
+        // One Group for these two: older SwiftUI (CI's) takes at most 10 menu groups in a list.
+        Group {
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesButton()
+            }
+            CommandGroup(before: .windowList) {
+                Button("Magpie") { front() }
+                    .keyboardShortcut("0")
+                Divider()
+            }
         }
         CommandGroup(replacing: .newItem) {
-            Button("New Note") { model.addNote() }
+            Button("New Note") { front { model.addNote() } }
                 .keyboardShortcut("n")
-            Button("New Checklist") { model.addChecklist() }
+            Button("New Checklist") { front { model.addChecklist() } }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             Divider()
             Button("Add Image or File…") { chooseFiles() }
@@ -90,7 +100,7 @@ struct MagpieCommands: Commands {
         }
         CommandGroup(after: .pasteboard) {
             Divider()
-            Button("Find…") { model.startSearch() }
+            Button("Find…") { front { model.startSearch() } }
                 .keyboardShortcut("f")
             Button("Paste as New Block") { model.paste() }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
@@ -99,7 +109,7 @@ struct MagpieCommands: Commands {
             Button("Open") { if let block = model.block(selection) { model.open(block) } }
                 .keyboardShortcut("o", modifiers: [.command, .shift])
                 .disabled(selection == nil)
-            Button("Show Details") { model.selection = selection }
+            Button("Show Details") { front { model.selection = selection } }
                 .disabled(selection == nil)
             Button("Quick Look") { model.quickLook(model.block(selection)) }
                 .keyboardShortcut("y")
@@ -112,7 +122,7 @@ struct MagpieCommands: Commands {
                     Button(kind.label) {
                         if let block = model.block(selection) { model.setKind(kind, for: block, undo: NSApp.keyWindow?.undoManager) }
                     }
-                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.command, .option])
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.control, .option, .command])
                     .disabled(model.block(selection).map { !model.canChangeKind($0) || $0.kind == kind } ?? true)
                 }
             }
@@ -136,7 +146,7 @@ struct MagpieCommands: Commands {
             .disabled(selection == nil)
         }
         CommandMenu("Inbox") {
-            Button("Sort Inbox") { model.startSorting() }
+            Button("Sort Inbox") { front { model.startSorting() } }
                 .keyboardShortcut("3", modifiers: [.control, .command])
             Divider()
             // Plain keys, like the action bar. Off unless Sort Inbox is showing a block with no field
@@ -159,7 +169,7 @@ struct MagpieCommands: Commands {
                 .disabled(!canSort)
         }
         CommandMenu("Rediscover") {
-            Button("Rediscover Old Saves") { model.show(.rediscover) }
+            Button("Rediscover Old Saves") { front { model.show(.rediscover) } }
             Divider()
             Button("Keep") { model.rediscoverKeep() }
                 .keyboardShortcut("k", modifiers: [])
@@ -169,7 +179,7 @@ struct MagpieCommands: Commands {
                 .disabled(!canRediscover)
         }
         CommandMenu("Lucky Dip") {
-            Button("Lucky Dip") { model.show(.luckyDip) }
+            Button("Lucky Dip") { front { model.show(.luckyDip) } }
                 .keyboardShortcut("4", modifiers: [.control, .command])
             Divider()
             Button(dip.hasPick ? "Spin Again" : "Randomize") { model.spin(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) }
@@ -205,47 +215,92 @@ struct MagpieCommands: Commands {
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
                 .disabled(open == nil)
         }
+        // Split into small typed parts: as one expression, this group was too much for CI's
+        // type checker ("unable to type-check this expression in reasonable time").
         CommandGroup(after: .sidebar) {
-            ForEach(ViewMode.allCases.filter(\.isAvailable)) { mode in
-                Toggle(mode.title, isOn: Binding(get: { viewMode == mode }, set: { if $0 { model.show(mode) } }))
-                    .keyboardShortcut(KeyEquivalent(mode.shortcut), modifiers: [.control, .command])
-            }
+            viewModeItems
             Divider()
-            Button("All Blocks") { model.scope = .all }
-                .keyboardShortcut("1")
-            Button("Inbox") { model.scope = .inbox }
-                .keyboardShortcut("2")
-            // ⌘3–⌘7: the pinned collections, in top bar order (S-032).
-            ForEach(Array(pinned.enumerated()), id: \.element.id) { index, pin in
-                Button(pin.name) { model.scope = .collection(pin.id); if viewMode != .journal { model.show(.gallery) } }
-                    .keyboardShortcut(KeyEquivalent(Character("\(index + 3)")))
-            }
-            Button("Archive") { model.scope = .archive; model.show(.gallery) }
-                .keyboardShortcut("0", modifiers: [.control, .command])
-            Button("Collections…") { model.showsCollections = true }
-                .keyboardShortcut("k")
+            placeItems
             Divider()
-            Menu("Sort By") {
-                ForEach(Array(BlockOrder.allCases.enumerated()), id: \.element) { index, order in
-                    Toggle(order.title, isOn: Binding(get: { sortOrder == order }, set: { if $0 { model.setOrder(order, for: model.scope) } }))
-                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.option, .command])
-                }
-            }
-            .disabled(viewMode != .gallery && viewMode != .journal)
+            sortByMenu
             Divider()
-            Menu("Appearance") {
-                ForEach(AppearanceChoice.allCases) { choice in
-                    Toggle(choice.title, isOn: Binding(
-                        get: { appearance == choice },
-                        set: { if $0 { model.appearance = choice } }
-                    ))
-                }
-                Divider()
-                Button("Switch Dark and Light") { model.toggleAppearance() }
-                    .keyboardShortcut("t", modifiers: [.control, .command])
-            }
+            appearanceMenu
             Divider()
         }
+    }
+
+    /// Gallery, Journal, Sort Inbox, Lucky Dip, Rediscover (⌃⌘1…).
+    private var viewModeItems: some View {
+        ForEach(ViewMode.allCases.filter(\.isAvailable)) { mode in
+            Toggle(mode.title, isOn: showing(mode))
+                .keyboardShortcut(KeyEquivalent(mode.shortcut), modifiers: [.control, .command])
+        }
+    }
+
+    /// All, Inbox, the pinned collections (⌘1–⌘7), Archive and the Collections panel.
+    @ViewBuilder private var placeItems: some View {
+        Button("All Blocks") { go(to: .all) }
+            .keyboardShortcut("1")
+        Button("Inbox") { go(to: .inbox) }
+            .keyboardShortcut("2")
+        // ⌘3–⌘7: the pinned collections, in top bar order (S-032).
+        ForEach(Array(pinned.enumerated()), id: \.element.id) { index, pin in
+            Button(pin.name) { go(to: .collection(pin.id), gallery: viewMode != .journal) }
+                .keyboardShortcut(KeyEquivalent(Character(String(index + 3))))
+        }
+        Button("Archive") { go(to: .archive, gallery: true) }
+            .keyboardShortcut("0", modifiers: [.control, .command])
+        Button("Collections…") { front { model.showsCollections = true } }
+            .keyboardShortcut("k")
+    }
+
+    /// Collection → Sort By (⌥⌘1–⌥⌘8), for the Gallery and the Journal.
+    private var sortByMenu: some View {
+        Menu("Sort By") {
+            ForEach(Array(BlockOrder.allCases.enumerated()), id: \.element) { index, order in
+                Toggle(order.title, isOn: sorted(by: order))
+                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [.option, .command])
+            }
+        }
+        .disabled(viewMode != .gallery && viewMode != .journal)
+    }
+
+    /// Dark, Light, Match my Mac, and Switch Dark and Light (⌃⌘T).
+    private var appearanceMenu: some View {
+        Menu("Appearance") {
+            ForEach(AppearanceChoice.allCases) { choice in
+                Toggle(choice.title, isOn: looking(choice))
+            }
+            Divider()
+            Button("Switch Dark and Light") { model.toggleAppearance() }
+                .keyboardShortcut("t", modifiers: [.control, .command])
+        }
+    }
+
+    private func showing(_ mode: ViewMode) -> Binding<Bool> {
+        Binding(get: { viewMode == mode }, set: { on in if on { front { model.show(mode) } } })
+    }
+
+    private func sorted(by order: BlockOrder) -> Binding<Bool> {
+        Binding(get: { sortOrder == order }, set: { on in if on { model.setOrder(order, for: model.scope) } })
+    }
+
+    private func looking(_ choice: AppearanceChoice) -> Binding<Bool> {
+        Binding(get: { appearance == choice }, set: { on in if on { model.appearance = choice } })
+    }
+
+    /// Opens a place (All, Inbox, a collection, Archive), bringing the window back first.
+    private func go(to scope: Scope, gallery: Bool = false) {
+        front {
+            model.scope = scope
+            if gallery { model.show(.gallery) }
+        }
+    }
+
+    /// Brings the main window back (after ⌘W closed it), then does the action there.
+    private func front(_ action: () -> Void = {}) {
+        openWindow(id: "main")
+        action()
     }
 
     private func chooseFiles() {
@@ -277,7 +332,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The last app other than Magpie that was in front.
     static var lastOtherApp: NSRunningApplication?
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    /// ⌘W closes the window, not the app: Quick Save, Dock drops and the Dock badge keep working,
+    /// and clicking the Dock icon or Window → Magpie (⌘0) brings the window back.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     /// Dropped on the Dock icon before the model was ready (Magpie was launched by the drop).
     static var pendingURLs: [URL] = []

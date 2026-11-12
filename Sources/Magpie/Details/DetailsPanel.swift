@@ -133,7 +133,7 @@ struct DetailsPanel: View {
                     .menuStyle(.button)
                     .buttonStyle(.kit(.secondary))
                     .fixedSize()
-                    .help("Magpie guessed wrong? Choose what this is (⌥⌘1 Link, ⌥⌘2 Video, ⌥⌘3 Product)")
+                    .help("Magpie guessed wrong? Choose what this is (⌃⌥⌘1 Link, ⌃⌥⌘2 Video, ⌃⌥⌘3 Product)")
                 }
             }
             if model.canChoosePicture(block) {
