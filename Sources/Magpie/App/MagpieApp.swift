@@ -64,13 +64,16 @@ struct MagpieCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
-        CommandGroup(after: .appInfo) {
-            CheckForUpdatesButton()
-        }
-        CommandGroup(before: .windowList) {
-            Button("Magpie") { front() }
-                .keyboardShortcut("0")
-            Divider()
+        // One Group for these two: older SwiftUI (CI's) takes at most 10 menu groups in a list.
+        Group {
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesButton()
+            }
+            CommandGroup(before: .windowList) {
+                Button("Magpie") { front() }
+                    .keyboardShortcut("0")
+                Divider()
+            }
         }
         CommandGroup(replacing: .newItem) {
             Button("New Note") { front { model.addNote() } }

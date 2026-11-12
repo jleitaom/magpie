@@ -766,6 +766,8 @@ enum SelfTest {
             let menus = NSApp.mainMenu?.items.map(\.title) ?? []
             check("the menu bar has the Block, Inbox, Collection and Lucky Dip menus",
                   ["Block", "Inbox", "Collection", "Lucky Dip"].allSatisfy(menus.contains), menus.joined(separator: ", "))
+            let appMenu = NSApp.mainMenu?.items.first?.submenu?.items.map(\.title) ?? []
+            check("the Magpie menu has Check for Updates…", appMenu.contains("Check for Updates…"), appMenu.joined(separator: ", "))
             let windowItems = NSApp.mainMenu?.items.first { $0.title == "Window" }?.submenu?.items.filter { $0.title == "Magpie" } ?? []
             check("Window → Magpie is listed once, on ⌘0",
                   windowItems.count == 1 && windowItems.first?.keyEquivalent == "0" && windowItems.first?.keyEquivalentModifierMask == .command,
