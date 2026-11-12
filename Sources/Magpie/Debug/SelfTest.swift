@@ -784,7 +784,12 @@ enum SelfTest {
             mainWindows().first?.performClose(nil)
             try? await Task.sleep(for: .seconds(1))
             check("closing the window leaves Magpie running, with no window", mainWindows().isEmpty)
-            _ = try? await NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: NSWorkspace.OpenConfiguration())
+            // The Dock's own "reopen" event, sent to this process: opening the app by its bundle could
+            // reach another copy of Magpie that's running (the installed one) instead.
+            let reopen = NSAppleEventDescriptor(eventClass: AEEventClass(kCoreEventClass), eventID: AEEventID(kAEReopenApplication),
+                                                targetDescriptor: NSAppleEventDescriptor(processIdentifier: getpid()),
+                                                returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID))
+            _ = try? reopen.sendEvent(options: [.noReply], timeout: 5)
             for _ in 0..<20 where mainWindows().isEmpty { try? await Task.sleep(for: .milliseconds(250)) }
             check("opening Magpie again (a Dock click) brings the window back", mainWindows().count == 1)
 
