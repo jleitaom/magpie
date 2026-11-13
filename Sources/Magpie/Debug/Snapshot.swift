@@ -8,6 +8,7 @@ import SwiftUI
 /// writes <page>-light.png and <page>-dark.png for every SnapshotPage, and
 /// settings-<tab>-light.png and settings-<tab>-dark.png for every Settings tab, then quits.
 /// APP_SNAPSHOT_PAGES=all,details limits the pages (SnapshotPage). Add "settings" to include Settings.
+/// APP_SNAPSHOT_SIZE=1500x885 sets the window's size in points.
 enum Snapshot {
     static func runIfRequested(model: AppModel, openSettings: OpenSettingsAction) {
         let env = ProcessInfo.processInfo.environment
@@ -28,6 +29,13 @@ enum Snapshot {
             IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
                                         IOPMAssertionLevel(kIOPMAssertionLevelOn), "Snapshots" as CFString, &awake)
             try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+            // APP_SNAPSHOT_SIZE=1500x885: the window's size in points, for pictures of a known
+            // size (the README's screenshots). Without it the window keeps the size it opened at.
+            let size = (env["APP_SNAPSHOT_SIZE"] ?? "").split(separator: "x").compactMap { Double($0) }
+            if size.count == 2, let window = NSApp.windows.first(where: { $0.isVisible && !($0 is NSPanel) }) {
+                window.setContentSize(NSSize(width: size[0], height: size[1]))
+                window.center()
+            }
             try? await Task.sleep(for: .seconds(1.5))
             for mode in ["light", "dark"] {
                 NSApp.appearance = NSAppearance(named: mode == "light" ? .aqua : .darkAqua)
