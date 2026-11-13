@@ -108,7 +108,7 @@ struct KitTabField: View {
             .onChange(of: focused) { _, now in
                 if !now, hadFocus { onCommit(text) }
             }
-            .accessibilityLabel("Collection name")
+            .accessibilityLabel("Pile name")
     }
 }
 

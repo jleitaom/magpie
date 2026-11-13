@@ -106,7 +106,7 @@ struct JournalView: View {
             } else {
                 Text(details.title)
             }
-            Text("COLLECTION")
+            Text("PILE")
             headButton(order == .oldest ? "SAVED ↑" : "SAVED ↓", on: order == .newest || order == .oldest, trailing: true) {
                 model.setOrder(order == .newest ? .oldest : .newest, for: model.scope)
             }

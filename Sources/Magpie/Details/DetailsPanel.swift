@@ -107,7 +107,7 @@ struct DetailsPanel: View {
     private var facts: some View {
         Grid(alignment: .leading, horizontalSpacing: Space.md, verticalSpacing: Space.sm) {
             GridRow {
-                Text("Collection").kitType(.meta).foregroundStyle(Ink.secondary)
+                Text("Pile").kitType(.meta).foregroundStyle(Ink.secondary)
                 Menu(block.collection?.name ?? "Inbox") {
                     Button("Inbox") { model.move(block, to: nil, undo: undoManager) }
                     Divider()
@@ -115,7 +115,7 @@ struct DetailsPanel: View {
                         Button(target.name) { model.move(block, to: target, undo: undoManager) }
                     }
                     Divider()
-                    Button("Manage Collections…") { model.showsCollections = true }
+                    Button("Manage Piles…") { model.showsCollections = true }
                 }
                 .menuStyle(.button)
                 .menuIndicator(.hidden)

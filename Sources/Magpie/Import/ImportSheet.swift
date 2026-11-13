@@ -14,7 +14,7 @@ struct ImportSheet: View {
         VStack(alignment: .leading, spacing: Space.lg) {
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text("Import bookmarks").kitType(.title).foregroundStyle(Ink.text)
-                Text("From \(plan.file). Folders become collections; tick the ones you want.")
+                Text("From \(plan.file). Folders become piles; tick the ones you want.")
                     .kitType(.body).foregroundStyle(Ink.secondary)
             }
             ScrollView {
@@ -61,7 +61,7 @@ struct ImportSheet: View {
 
     private func summary(_ count: Int, collections: Int, duplicates: Int) -> String {
         var text = "\(count) \(count == 1 ? "bookmark" : "bookmarks")"
-        if collections > 0 { text += " into \(collections) \(collections == 1 ? "collection" : "collections")" }
+        if collections > 0 { text += " into \(collections) \(collections == 1 ? "pile" : "piles")" }
         if duplicates > 0 { text += " · \(duplicates) already saved" }
         return text
     }

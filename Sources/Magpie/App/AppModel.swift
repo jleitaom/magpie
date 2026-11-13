@@ -1153,7 +1153,7 @@ final class AppModel {
         switch scope {
         case .all: "Everything"
         case .inbox: "Inbox"
-        case .collection(let uid): collection(uid)?.name ?? "Collection"
+        case .collection(let uid): collection(uid)?.name ?? "Pile"
         case .tag(let uid): tag(uid).map { "#\($0.name)" } ?? "Tag"
         case .archive: "Archive"
         }

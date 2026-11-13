@@ -122,7 +122,7 @@ struct ShortcutSettings: View {
             keys("Rediscover", "K keep · A archive · → skip · ↩ open")
             keys("Gallery, Journal", "arrows move · Space Quick Look · ↩ open · ⌫ delete · T tag")
             keys("Lucky Dip", "⌘R spin · ⌘↩ start or finish · ⌥⌘⌫ not today")
-            keys("Anywhere in the window", "⌘F search · ⌘1–⌘7 places · ⌘K collections · ⇧⌘V paste")
+            keys("Anywhere in the window", "⌘F search · ⌘1–⌘7 places · ⌘K piles · ⇧⌘V paste")
         }
     }
 

@@ -13,18 +13,18 @@ struct CollectionsPopover: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            TextField("Find a collection", text: $search).kitField()
+            TextField("Find a pile", text: $search).kitField()
                 // Off while a name is being edited, so the panel can't hand it the focus.
                 .disabled(model.renamingCollection != nil)
             HStack {
-                Text("All collections").kitType(.meta).foregroundStyle(Ink.secondary)
+                Text("All piles").kitType(.meta).foregroundStyle(Ink.secondary)
                 Spacer()
                 Text("Drag to reorder or nest · pin up to \(Pins.limit)").kitType(.meta).foregroundStyle(Ink.secondary)
             }
             .padding(.horizontal, Space.xs)
             let rows = filtered
             if rows.isEmpty {
-                Text(model.collections.isEmpty ? "No collections yet. Make your first one below." : "No collection matches “\(search)”.")
+                Text(model.collections.isEmpty ? "No piles yet. Make your first one below." : "No pile matches “\(search)”.")
                     .kitType(.body).foregroundStyle(Ink.secondary)
                     .padding(.vertical, Space.md).padding(.horizontal, Space.xs)
             } else {
@@ -51,7 +51,7 @@ struct CollectionsPopover: View {
                 .buttonStyle(KitChipStyle(isSelected: model.scope == .archive))
                 .help("Blocks you archived (⌃⌘0)")
             HStack(spacing: Space.sm) {
-                TextField("New collection", text: $newName).kitField().onSubmit(create)
+                TextField("New pile", text: $newName).kitField().onSubmit(create)
                 Button("Add", action: create).buttonStyle(.kit()).disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
@@ -244,7 +244,7 @@ struct CollectionMenu: View {
         Divider()
         Button(target.isPinned ? "Unpin from Top Bar" : "Pin to Top Bar") { model.togglePin(target) }
         Divider()
-        Button("Delete Collection…", role: .destructive) { model.collectionToDelete = target.uid }
+        Button("Delete Pile…", role: .destructive) { model.collectionToDelete = target.uid }
     }
 }
 

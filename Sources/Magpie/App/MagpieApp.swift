@@ -197,9 +197,9 @@ struct MagpieCommands: Commands {
                 .keyboardShortcut(.delete, modifiers: [.command, .option])
                 .disabled(!dip.hasPick || dip.inProgress)
         }
-        CommandMenu("Collection") {
+        CommandMenu("Pile") {
             let open = model.openCollection
-            Button("Rename Collection…") {
+            Button("Rename Pile…") {
                 // The open collection always has a tab in the top bar: rename it there.
                 if let open { model.renamingCollection = open.uid }
             }
@@ -214,7 +214,7 @@ struct MagpieCommands: Commands {
             Button("Move to Top Level") { if let open { model.place(open, .topLevel) } }
                 .disabled(open?.parent == nil)
             Divider()
-            Button("Delete Collection…") { model.collectionToDelete = open?.uid }
+            Button("Delete Pile…") { model.collectionToDelete = open?.uid }
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
                 .disabled(open == nil)
         }
@@ -253,7 +253,7 @@ struct MagpieCommands: Commands {
         }
         Button("Archive") { go(to: .archive, gallery: true) }
             .keyboardShortcut("0", modifiers: [.control, .command])
-        Button("Collections…") { front { model.showsCollections = true } }
+        Button("Piles…") { front { model.showsCollections = true } }
             .keyboardShortcut("k")
     }
 

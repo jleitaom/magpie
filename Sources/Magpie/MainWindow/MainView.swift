@@ -103,7 +103,7 @@ struct MainView: View {
         switch model.scope {
         case .all: "Magpie"
         case .inbox: "your Inbox"
-        case .collection(let uid): collections.first { $0.uid == uid }?.name ?? "this collection"
+        case .collection(let uid): collections.first { $0.uid == uid }?.name ?? "this pile"
         case .tag(let uid): model.tag(uid).map { "#\($0.name)" } ?? "this tag"
         case .archive: "the Archive"
         }
@@ -178,12 +178,12 @@ struct TopBar: View {
             KitBarDivider()
             Button { model.showsCollections.toggle() } label: {
                 HStack(spacing: Metric.inlineGap) {
-                    Text(hidden > 0 ? "\(hidden) more" : "Collections")
+                    Text(hidden > 0 ? "\(hidden) more" : "Piles")
                     KitIconView(icon: .chevronDown, size: Metric.chevron)
                 }
             }
             .buttonStyle(KitTabStyle(isSelected: false))
-            .help("All collections (⌘K)")
+            .help("All piles (⌘K)")
         }
     }
 
@@ -285,7 +285,7 @@ private struct SortMenu: View {
                 }
                 .buttonStyle(KitOptionRowStyle(hint: order.hint, isSelected: order == current))
             }
-            Text("Each collection remembers its own order.")
+            Text("Each pile remembers its own order.")
                 .kitType(.meta).foregroundStyle(Ink.secondary)
                 .padding(Metric.rowInset)
         }
@@ -403,7 +403,7 @@ private struct EmptyGallery: View {
             return ("Inbox zero.", "Everything you’ve saved has a place. New saves land here first.",
                     [("Rediscover old saves", { model.show(.rediscover) }), ("Back to All", { model.scope = .all })])
         case .collection(let uid):
-            let name = model.collection(uid)?.name ?? "this collection"
+            let name = model.collection(uid)?.name ?? "this pile"
             return ("Nothing in \(name) yet.",
                     "Paste or drop something while it’s open, choose Move to in a card’s menu, or pick it in Quick Save.",
                     [("Paste from clipboard", { model.paste() }), ("New note", { model.addNote() })])
@@ -413,7 +413,7 @@ private struct EmptyGallery: View {
                     [("Back to All", { model.scope = .all })])
         case .archive:
             return ("Nothing archived.",
-                    "Archive blocks you’re done with (⇧⌘A). They leave your collections, and search still finds them.",
+                    "Archive blocks you’re done with (⇧⌘A). They leave your piles, and search still finds them.",
                     [("Back to All", { model.scope = .all })])
         case .all:
             return ("Nothing in \(scopeName) yet.", "Drop something here\(quickSave).",

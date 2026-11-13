@@ -105,28 +105,28 @@ enum SelfTest {
 
             // Collections, pins and moving.
             for name in ["One", "Two", "Three", "Four", "Five", "Six"] { model.createCollection(named: name) }
-            check("the first five collections are pinned", model.pinnedCollections.count == 5)
+            check("the first five piles are pinned", model.pinnedCollections.count == 5)
             let six = model.collections.first { $0.name == "Six" }
             check("the sixth isn't pinned (the limit is 5)", six?.isPinned == false)
             if let six { model.togglePin(six) }
             check("pinning a sixth is refused", model.pinnedCollections.count == 5)
             if let one = model.collections.first(where: { $0.name == "One" }), let block = model.block(saved.uid) {
                 model.move(block, to: one, undo: undo)
-                check("moving into a collection keeps it out of the Inbox", block.status == .kept && block.collection?.uid == one.uid)
+                check("moving into a pile keeps it out of the Inbox", block.status == .kept && block.collection?.uid == one.uid)
                 undo.undo()
                 check("undo moves it back to the Inbox", block.status == .inbox && block.collection == nil)
                 model.move(block, to: one, undo: nil)
                 model.deleteCollection(one)
-                check("deleting a collection sends its blocks back to the Inbox", block.collection == nil && block.status == .inbox)
+                check("deleting a pile sends its blocks back to the Inbox", block.collection == nil && block.status == .inbox)
             }
 
             // S-011 nest, reorder, rename and delete collections.
             if let two = model.collections.first(where: { $0.name == "Two" }),
                let three = model.collections.first(where: { $0.name == "Three" }),
                let four = model.collections.first(where: { $0.name == "Four" }) {
-                check("nesting puts a collection inside another", model.place(three, .inside(two.uid)) && three.parent?.uid == two.uid)
+                check("nesting puts a pile inside another", model.place(three, .inside(two.uid)) && three.parent?.uid == two.uid)
                 model.place(four, .inside(three.uid))
-                check("a collection can't go inside its own child", !model.place(two, .inside(four.uid)) && two.parent == nil)
+                check("a pile can't go inside its own child", !model.place(two, .inside(four.uid)) && two.parent == nil)
                 let tree = model.collectionTree
                 let rowTwo = tree.firstIndex { $0.collection.uid == two.uid } ?? -1
                 check("the tree shows children right after their parent, indented",
@@ -152,7 +152,7 @@ enum SelfTest {
                 check("the confirmation counts the blocks that go back", model.deleteMessage(for: three).hasPrefix("Its block goes back to the Inbox"))
                 model.deleteCollection(three)
                 check("deleting sends its blocks to the Inbox and deletes none", note.collection == nil && note.status == .inbox && blocks().count == count)
-                check("the collection inside moves up to the deleted one's parent", four.parent?.uid == two.uid)
+                check("the pile inside moves up to the deleted one's parent", four.parent?.uid == two.uid)
             }
 
             // S-060 Sort Inbox: each action moves on, Skip goes to the back of the queue.
@@ -165,7 +165,7 @@ enum SelfTest {
                 let second = model.sortingBlock
                 let target = model.collections.first { $0.name == "Second" }
                 model.sortMove(to: target, undo: nil)
-                check("Move puts it in the collection and goes to the next", second?.collection?.uid == target?.uid && second?.status == .kept && model.sortSession.current == queue[2])
+                check("Move puts it in the pile and goes to the next", second?.collection?.uid == target?.uid && second?.status == .kept && model.sortSession.current == queue[2])
                 let third = model.sortingBlock
                 model.sortDone()
                 check("Done takes it out of the Inbox and goes to the next", third?.status == .done && model.sortSession.current == queue[3])
@@ -233,7 +233,7 @@ enum SelfTest {
                 model.move(quickRead, to: dip, undo: nil, announce: false)
                 model.move(film2, to: inner, undo: nil, announce: false)
                 let fromDip = Set(model.dipBlocks(from: dip.uid).map(\.uid))
-                check("Lucky Dip picks from a collection and the ones inside it", fromDip == [essayToRead.uid, quickRead.uid, film2.uid])
+                check("Lucky Dip picks from a pile and the ones inside it", fromDip == [essayToRead.uid, quickRead.uid, film2.uid])
                 check("…and from everything", Set(model.dipBlocks(from: nil).map(\.uid)).isSuperset(of: fromDip))
                 check("the start button says what you'll do", essayToRead.startVerb == "Start reading" && film2.startVerb == "Start watching")
                 model.dipCollection = dip.uid
@@ -271,7 +271,7 @@ enum SelfTest {
                 [essayToRead, quickRead, film2].forEach { model.move($0, to: nil, undo: nil, announce: false) }
                 if let inner { model.deleteCollection(inner) }
                 model.deleteCollection(dip)
-                check("a deleted collection falls back to Everything", model.dipCollection == nil)
+                check("a deleted pile falls back to Everything", model.dipCollection == nil)
             }
             model.show(.gallery)
 
@@ -314,7 +314,7 @@ enum SelfTest {
                 let knownBeforeUnknown = shown.drop { $0.minutes != nil }.allSatisfy { $0.minutes == nil }
                 check("Quickest lists short first and unknown length last",
                       position(quick) < position(slow) && position(slow) < position(unknown) && knownBeforeUnknown)
-                check("each collection remembers its own order",
+                check("each pile remembers its own order",
                       model.order(for: .collection(second.uid)) == .quickest && model.order(for: .collection(five.uid)) == .newest)
                 model.setOrder(.shuffle, for: .collection(second.uid))
                 let firstSeed = second.shuffleSeed
@@ -323,9 +323,9 @@ enum SelfTest {
                 model.scope = .collection(second.uid)
                 model.show(.journal)
                 model.scope = .collection(five.uid)
-                check("a collection opens in Gallery until switched", model.viewMode == .gallery)
+                check("a pile opens in Gallery until switched", model.viewMode == .gallery)
                 model.scope = .collection(second.uid)
-                check("each collection remembers Journal or Gallery", model.viewMode == .journal && second.viewModeRaw == "journal")
+                check("each pile remembers Journal or Gallery", model.viewMode == .journal && second.viewModeRaw == "journal")
                 model.show(.gallery)
                 model.scope = .all
                 [quick, slow, unknown].forEach { model.delete([$0.uid], undo: nil) }
@@ -337,7 +337,7 @@ enum SelfTest {
                 model.move(old, to: second, undo: nil)
                 model.archive(old)
                 let all = blocks()
-                check("archived blocks leave All and their collection", !model.blocks(in: .all, from: all).contains { $0.uid == old.uid }
+                check("archived blocks leave All and their pile", !model.blocks(in: .all, from: all).contains { $0.uid == old.uid }
                       && !model.blocks(in: .collection(second.uid), from: all).contains { $0.uid == old.uid })
                 check("…and show in the Archive", model.blocks(in: .archive, from: all).contains { $0.uid == old.uid })
                 model.unarchive(old)
@@ -434,7 +434,7 @@ enum SelfTest {
             let mug = model.save(url: URL(string: "https://shop.example.com/totals2")!)
             mug.price = 60
             mug.currency = "USD"
-            check("a collection's video total sums known lengths", model.videoTotal([film3, film4, lamp]) == "3 h 10 min")
+            check("a pile's video total sums known lengths", model.videoTotal([film3, film4, lamp]) == "3 h 10 min")
             check("the wishlist total is kept per currency", model.priceTotal([lamp, mug])?.contains("+") == true)
             [film3, film4, lamp, mug].forEach { model.delete([$0.uid], undo: nil) }
 
@@ -469,7 +469,7 @@ enum SelfTest {
                 panel.show(draft)
                 panel.save(QuickSavePanel.Edited(draft: draft, title: "Quick one", collection: second.uid, tags: "fast, later", note: "From the panel"))
                 let quick = blocks().first { $0.urlString == "https://example.com/quick-save" }
-                check("Return (Save) saves to the chosen collection with its tags and note, and closes",
+                check("Return (Save) saves to the chosen pile with its tags and note, and closes",
                       !panel.isVisible && quick?.collection?.uid == second.uid && quick?.title == "Quick one"
                       && (quick?.tags ?? []).count == 2 && quick?.note == "From the panel")
                 let text = model.quickSave(QuickSavePanel.Edited(draft: QuickSaveDraft(content: .text("Buy film for the trip"), title: "Buy film", source: ""),
@@ -477,12 +477,12 @@ enum SelfTest {
                 check("text from the clipboard becomes a note in the Inbox", text?.kind == .note && text?.status == .inbox)
                 // A link that's already saved stays where it is, unless a collection is chosen for it.
                 let again = model.quickSave(QuickSavePanel.Edited(draft: draft, title: "Quick one", collection: nil, tags: "", note: ""))
-                check("Quick Save of a link already in a collection leaves it there",
+                check("Quick Save of a link already in a pile leaves it there",
                       again?.uid == quick?.uid && again?.collection?.uid == second.uid && again?.status == .kept
                       && model.toast == "Already in \(second.name)", "in \(again?.collection?.name ?? "the Inbox"), message: \(model.toast ?? "")")
                 let first = model.collections.first { $0.uid != second.uid }
                 let chosen = model.quickSave(QuickSavePanel.Edited(draft: draft, title: "Quick one", collection: first?.uid, tags: "", note: ""))
-                check("…and moves it when you choose a collection", first != nil && chosen?.collection?.uid == first?.uid
+                check("…and moves it when you choose a pile", first != nil && chosen?.collection?.uid == first?.uid
                       && blocks().filter { $0.urlString == "https://example.com/quick-save" }.count == 1)
                 [quick, text].compactMap { $0 }.forEach { model.delete([$0.uid], undo: nil) }
                 model.tags.filter { ["fast", "later"].contains($0.name) }.forEach(model.deleteTag)
@@ -542,8 +542,8 @@ enum SelfTest {
                       && model.importInFlightMost <= AppModel.importBatch, "\(model.importInFlightMost) at once")
                 let bar = model.collections.first { $0.name == "Imported Bar" }
                 let recipes = model.collections.first { $0.name == "Imported Recipes" }
-                check("bookmark folders become nested collections", recipes?.parent?.uid == bar?.uid && (recipes?.blocks ?? []).count == 8)
-                check("imported collections aren't pinned", bar?.isPinned == false && recipes?.isPinned == false)
+                check("bookmark folders become nested piles", recipes?.parent?.uid == bar?.uid && (recipes?.blocks ?? []).count == 8)
+                check("imported piles aren't pinned", bar?.isPinned == false && recipes?.isPinned == false)
                 check("duplicates are skipped and counted", result.duplicates == 1 && result.saved == 9)
                 let loose = blocks().first { $0.urlString == "https://bookmarks.invalid/loose" }
                 check("links outside folders go to the Inbox", loose?.status == .inbox)
@@ -582,7 +582,7 @@ enum SelfTest {
             if let five = model.collections.first(where: { $0.name == "Five" }) {
                 model.move(quiet[0], to: five, undo: nil, announce: false)
                 let again = model.receive([URL(string: "https://example.com/quiet-drop?utm_source=x")!], quietly: true)
-                check("a link already in a collection, dropped on the Dock again, stays there",
+                check("a link already in a pile, dropped on the Dock again, stays there",
                       again.count == 1 && again[0].uid == quiet[0].uid && again[0].collection?.uid == five.uid && again[0].status == .kept
                       && model.receiveMessage == "Already in Five", "message: \(model.receiveMessage)")
             }
@@ -754,7 +754,7 @@ enum SelfTest {
                     for index in copy.blocks.indices { copy.blocks[index].tags.sort { $0.uuidString < $1.uuidString } }
                     return copy
                 }
-                check("reading an export back loses nothing: every block, field, collection, tag and day",
+                check("reading an export back loses nothing: every block, field, pile, tag and day",
                       added == before.blocks.count && normal(before) == normal(after), "\(added) of \(before.blocks.count) blocks")
                 let pictureBefore = try Data(contentsOf: first.appending(path: "images/\(pictureID.uuidString).jpg"))
                 let pictureAfter = model.block(pictureID)?.thumbnail
@@ -805,8 +805,8 @@ enum SelfTest {
 
             // The menu bar keeps Magpie's own menus, and Window lists Magpie once, on ⌘0.
             let menus = NSApp.mainMenu?.items.map(\.title) ?? []
-            check("the menu bar has the Block, Inbox, Collection and Lucky Dip menus",
-                  ["Block", "Inbox", "Collection", "Lucky Dip"].allSatisfy(menus.contains), menus.joined(separator: ", "))
+            check("the menu bar has the Block, Inbox, Pile and Lucky Dip menus",
+                  ["Block", "Inbox", "Pile", "Lucky Dip"].allSatisfy(menus.contains), menus.joined(separator: ", "))
             let appMenu = NSApp.mainMenu?.items.first?.submenu?.items.map(\.title) ?? []
             check("the Magpie menu has Check for Updates…", appMenu.contains("Check for Updates…"), appMenu.joined(separator: ", "))
             let windowItems = NSApp.mainMenu?.items.first { $0.title == "Window" }?.submenu?.items.filter { $0.title == "Magpie" } ?? []

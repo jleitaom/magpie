@@ -115,8 +115,8 @@ public enum CollectionTree {
         }
         switch childCount {
         case 0: break
-        case 1: parts.append("The collection inside it moves up a level.")
-        default: parts.append("The \(childCount) collections inside it move up a level.")
+        case 1: parts.append("The pile inside it moves up a level.")
+        default: parts.append("The \(childCount) piles inside it move up a level.")
         }
         parts.append("No blocks are deleted.")
         return parts.joined(separator: " ")

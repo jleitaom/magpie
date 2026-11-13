@@ -3,7 +3,7 @@
 ## v1: the Mac app (released as 1.0.0)
 
 Saving from anywhere (Quick Save, the Dock icon, screenshots, bookmark import), the Gallery
-and Journal, nested collections and tags, Sort Inbox, Lucky Dip,
+and Journal, nested piles and tags, Sort Inbox, Lucky Dip,
 Rediscover, search that includes text in images, and a full export.
 See the [changelog](CHANGELOG.md) for the details.
 
@@ -19,5 +19,5 @@ See the [changelog](CHANGELOG.md) for the details.
 - Block types with their own fields, starting with a **Record** type for vinyl (Discogs
   lookup, barcode scanning, and a wishlist that turns into "owned")
 - A free canvas Board view, stacks and a compare view
-- Share a collection as a web page
+- Share a pile as a web page
 - Find broken links

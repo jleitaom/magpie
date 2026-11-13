@@ -147,8 +147,9 @@ final class Block {
     }
 }
 
-/// A named place for blocks (Watch later, Shopping…). Called BlockCollection in code
-/// because Swift already has a `Collection`.
+/// A named place for blocks (Watch later, Shopping…). The app calls it a **Pile** (since 1.2.2;
+/// "Collection" before). The code keeps `BlockCollection` and `collection`: renaming the stored
+/// model would need a migration, and exports keep their `collections` key.
 @Model
 final class BlockCollection {
     var uid: UUID = UUID()
