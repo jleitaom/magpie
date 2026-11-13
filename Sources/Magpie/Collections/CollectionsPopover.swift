@@ -47,16 +47,9 @@ struct CollectionsPopover: View {
             }
             TagCloud()
                 .padding(.top, Space.xs)
-            HStack(spacing: Space.xs) {
-                Button("Archive  \(model.archiveCount)") { open(.archive) }
-                    .buttonStyle(KitChipStyle(isSelected: model.scope == .archive))
-                    .help("Blocks you archived (⌃⌘0)")
-                if model.expiredCount > 0 {
-                    Button("Expired  \(model.expiredCount)") { open(.expired) }
-                        .buttonStyle(KitChipStyle(isSelected: model.scope == .expired))
-                        .help("Blocks archived because their collection expires them")
-                }
-            }
+            Button("Archive  \(model.archiveCount)") { open(.archive) }
+                .buttonStyle(KitChipStyle(isSelected: model.scope == .archive))
+                .help("Blocks you archived (⌃⌘0)")
             HStack(spacing: Space.sm) {
                 TextField("New collection", text: $newName).kitField().onSubmit(create)
                 Button("Add", action: create).buttonStyle(.kit()).disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -248,13 +241,6 @@ struct CollectionMenu: View {
             .disabled(CollectionTree.step(target.uid, up: true, in: model.collections.map(\.node)) == nil)
         Button("Move Down") { model.step(target, up: false) }
             .disabled(CollectionTree.step(target.uid, up: false, in: model.collections.map(\.node)) == nil)
-        Menu("Expire Blocks After") {
-            Toggle("Never", isOn: Binding(get: { target.defaultExpiryDays == nil }, set: { if $0 { model.setExpiry(target, days: nil) } }))
-            Divider()
-            ForEach(Expiry.choices, id: \.self) { days in
-                Toggle("\(days) Days", isOn: Binding(get: { target.defaultExpiryDays == days }, set: { if $0 { model.setExpiry(target, days: days) } }))
-            }
-        }
         Divider()
         Button(target.isPinned ? "Unpin from Top Bar" : "Pin to Top Bar") { model.togglePin(target) }
         Divider()

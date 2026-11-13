@@ -133,6 +133,8 @@ enum Snapshot {
 enum SnapshotPage: String, CaseIterable {
     /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
     @MainActor static var startedOriginal: (UUID, BlockStatus)?
+    /// Blocks the empty Archive page took out of the Archive, to put back for the next page.
+    @MainActor static var unarchived: [(UUID, BlockStatus)] = []
 
     case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet, dropHUD, sortRename, afterDelete, firstLaunch, emptyArchive, pictureChooser
 
@@ -148,6 +150,9 @@ enum SnapshotPage: String, CaseIterable {
         model.todayIfAny?.spins = 0
         if let (uid, status) = Self.startedOriginal, let block = model.block(uid) { block.status = status }
         Self.startedOriginal = nil
+        // The empty Archive page puts archived blocks back for a moment; archive them again.
+        for (uid, status) in Self.unarchived { model.block(uid)?.status = status }
+        Self.unarchived = []
         model.selection = nil
         model.renamingCollection = nil
         model.showsCollections = false
@@ -187,9 +192,12 @@ enum SnapshotPage: String, CaseIterable {
         case .firstLaunch:
             model.scope = .all
         case .emptyArchive:
-            model.scope = .expired
-            // The sample library's expired talk, unarchived for this page, so Expired is empty.
-            for block in model.blocks(in: .expired, from: (try? model.context.fetch(FetchDescriptor<Block>())) ?? []) { block.expiredAt = nil }
+            model.scope = .archive
+            // The sample library's archived blocks, put back for this page, so the Archive is empty.
+            for block in model.blocks(in: .archive, from: (try? model.context.fetch(FetchDescriptor<Block>())) ?? []) {
+                Self.unarchived.append((block.uid, block.status))
+                block.status = .kept
+            }
         case .afterDelete:
             model.scope = .all
             let shown = model.ordered(model.blocks(in: .all, from: (try? model.context.fetch(FetchDescriptor<Block>())) ?? []), in: .all)

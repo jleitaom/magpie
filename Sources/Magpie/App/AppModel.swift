@@ -11,8 +11,8 @@ enum Scope: Hashable {
     case collection(UUID)
     /// Every block with this tag (S-014).
     case tag(UUID)
-    /// Archived blocks (S-022), and the ones that expired (S-021).
-    case archive, expired
+    /// Archived blocks (S-022).
+    case archive
 }
 
 /// The view switcher's modes. Gallery and Sort Inbox exist so far (notes/PLAN.md).
@@ -178,7 +178,6 @@ final class AppModel {
     func start() {
         applyAppearance()
         refreshDipStats()
-        expireDue()
         refreshDockBadge()
         registerQuickSave()
         registerScreenshot()
@@ -221,7 +220,6 @@ final class AppModel {
         case .collection(let uid): all.filter { $0.collection?.uid == uid && $0.status != .archived }
         case .tag(let uid): all.filter { block in block.status != .archived && (block.tags ?? []).contains { $0.uid == uid } }
         case .archive: all.filter { $0.status == .archived }
-        case .expired: all.filter { $0.status == .archived && $0.expiredAt != nil }
         }
     }
 
@@ -232,7 +230,6 @@ final class AppModel {
         if case .collection(let uid) = scope, let target = collection(uid) {
             block.collection = target
             block.status = .kept
-            block.expiresAt = Expiry.date(addedAt: .now, days: target.defaultExpiryDays)
         } else {
             block.status = .inbox
         }
@@ -544,9 +541,6 @@ final class AppModel {
         let beforeStatus = block.status
         block.collection = target
         block.status = target == nil ? .inbox : .kept
-        // Moving in starts the collection's expiry; moving out (or out of the archive) ends it.
-        block.expiresAt = Expiry.date(addedAt: .now, days: target?.defaultExpiryDays)
-        block.expiredAt = nil
         block.statusBeforeArchiveRaw = nil
         noteInboxZero()
         save()
@@ -585,13 +579,12 @@ final class AppModel {
     // MARK: Collections
 
     @discardableResult
-    func createCollection(named name: String, colorHex: Int? = nil, pin: Bool = true, useDefaults: Bool = true) -> BlockCollection? {
+    func createCollection(named name: String, colorHex: Int? = nil, pin: Bool = true) -> BlockCollection? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let existing = collections
         let color = colorHex ?? CollectionColors.all[existing.count % CollectionColors.all.count]
         let new = BlockCollection(name: trimmed, colorHex: color, sortIndex: (existing.last?.sortIndex ?? 0) + 1)
-        if useDefaults { new.defaultExpiryDays = defaultExpiryDays }
         let pinned = existing.filter(\.isPinned).count
         if pin, Pins.canPin(currentlyPinned: pinned) {
             new.isPinned = true
@@ -1070,7 +1063,6 @@ final class AppModel {
         case .inbox: "inbox"
         case .tag(let uid): "tag-\(uid.uuidString)"
         case .archive: "archive"
-        case .expired: "expired"
         case .collection: nil
         }
     }
@@ -1133,11 +1125,10 @@ final class AppModel {
         case .collection(let uid): collection(uid)?.name ?? "Collection"
         case .tag(let uid): tag(uid).map { "#\($0.name)" } ?? "Tag"
         case .archive: "Archive"
-        case .expired: "Expired"
         }
     }
 
-    // MARK: Archive (S-022) and expiry (S-021)
+    // MARK: Archive (S-022)
 
     /// Hides a block from collections, All and tags. It stays in the Archive (and, later, search).
     func archive(_ block: Block, undo: UndoManager? = nil) {
@@ -1154,54 +1145,24 @@ final class AppModel {
         flash("Archived")
     }
 
-    /// Puts an archived (or expired) block back where it was.
+    /// Puts an archived block back where it was.
     func unarchive(_ block: Block) {
         guard block.status == .archived else { return }
         block.status = block.statusBeforeArchiveRaw.flatMap(BlockStatus.init) ?? (block.collection == nil ? .inbox : .kept)
         block.statusBeforeArchiveRaw = nil
-        block.expiredAt = nil
-        block.expiresAt = nil
         save()
         flash("Back in \(block.collection?.name ?? "the Inbox")")
     }
 
-    /// Keep: an expiring block stops expiring, and Rediscover won't show it again for a while.
+    /// Keep: Rediscover won't show it again for a while.
     func keep(_ block: Block) {
-        block.expiresAt = nil
         block.lastShownAt = .now
         save()
-    }
-
-    /// Blocks added to this collection from now on expire after `days`. Existing ones don't change.
-    func setExpiry(_ target: BlockCollection, days: Int?) {
-        target.defaultExpiryDays = days
-        save()
-        flash(days.map { "New blocks in \(target.name) expire after \($0) days" } ?? "Blocks in \(target.name) don't expire")
-    }
-
-    /// Archives every block whose expiry passed. Runs at launch and when the window changes place.
-    func expireDue(now: Date = .now) {
-        let archived = BlockStatus.archived.rawValue
-        let due = ((try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.expiresAt != nil && $0.statusRaw != archived }))) ?? [])
-            .filter { Expiry.isDue($0.expiresAt, now: now) }
-        guard !due.isEmpty else { return }
-        for block in due {
-            block.statusBeforeArchiveRaw = block.status.rawValue
-            block.status = .archived
-            block.expiredAt = now
-        }
-        save()
-        flash(due.count == 1 ? "1 block expired" : "\(due.count) blocks expired")
     }
 
     var archiveCount: Int {
         let archived = BlockStatus.archived.rawValue
         return (try? context.fetchCount(FetchDescriptor<Block>(predicate: #Predicate { $0.statusRaw == archived }))) ?? 0
-    }
-
-    var expiredCount: Int {
-        let archived = BlockStatus.archived.rawValue
-        return (try? context.fetchCount(FetchDescriptor<Block>(predicate: #Predicate { $0.statusRaw == archived && $0.expiredAt != nil }))) ?? 0
     }
 
     // MARK: Rediscover (S-020)
@@ -1220,7 +1181,6 @@ final class AppModel {
 
     /// Opens Rediscover, picking today's five the first time today.
     func startRediscover() {
-        expireDue()
         let record = today
         if record.rediscoverRaw == nil {
             let all = (try? context.fetch(FetchDescriptor<Block>())) ?? []
@@ -1471,7 +1431,7 @@ final class AppModel {
             let parentID = parent?.uid
             let name = path.last!
             let existing = collections.first { $0.parent?.uid == parentID && Tags.key($0.name) == Tags.key(name) }
-            let made = existing ?? createCollection(named: name, pin: false, useDefaults: false)
+            let made = existing ?? createCollection(named: name, pin: false)
             if existing == nil, let made, let parent { place(made, .inside(parent.uid)) }
             folders[key] = made
             return made
@@ -1665,11 +1625,6 @@ final class AppModel {
     }
 
     // MARK: Settings (S-053)
-
-    /// New collections expire their blocks after this many days. Nil: never.
-    var defaultExpiryDays: Int? = (UserDefaults.standard.object(forKey: "defaultExpiryDays") as? Int) {
-        didSet { UserDefaults.standard.set(defaultExpiryDays, forKey: "defaultExpiryDays") }
-    }
 
     /// Rediscover's count for today on the Dock icon.
     var rediscoverDockBadge: Bool = UserDefaults.standard.bool(forKey: "rediscoverDockBadge") {

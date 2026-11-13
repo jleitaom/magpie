@@ -55,32 +55,6 @@ public enum Rediscover {
     }
 }
 
-/// Collections whose blocks expire (S-021).
-public enum Expiry {
-    /// Choices offered for a collection.
-    public static let choices = [7, 14, 30, 90]
-    /// Cards show a warning this many days ahead.
-    public static let warningDays = 3
-
-    /// When a block added now expires, or nil when the collection doesn't expire blocks.
-    public static func date(addedAt: Date, days: Int?) -> Date? {
-        guard let days, days > 0 else { return nil }
-        return addedAt.addingTimeInterval(Double(days) * 86_400)
-    }
-
-    public static func isDue(_ expiresAt: Date?, now: Date) -> Bool {
-        expiresAt.map { $0 <= now } ?? false
-    }
-
-    /// "expires today", "expires in 1 d" … within the warning window, else nil.
-    public static func label(_ expiresAt: Date?, now: Date) -> String? {
-        guard let expiresAt, expiresAt > now else { return nil }
-        let days = Int((expiresAt.timeIntervalSince(now) / 86_400).rounded(.up))
-        guard days <= warningDays else { return nil }
-        return days <= 0 ? "expires today" : "expires in \(days) d"
-    }
-}
-
 /// Dock drops (S-041): a quick drop saves quietly; holding the item on the icon until the Dock
 /// brings Magpie forward (spring-loading) opens it.
 public enum DockDrop {

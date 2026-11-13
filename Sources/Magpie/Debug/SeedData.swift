@@ -71,24 +71,16 @@ enum SeedData {
         for (index, block) in kept.enumerated() {
             block.createdAt = now.addingTimeInterval(-Double(18 + index * 11) * 86_400)
         }
-        // Watch later expires blocks after 30 days; one is 2 days from expiring (S-021).
-        if let watch = collections["Watch later"] {
-            watch.defaultExpiryDays = 30
-            let videos = (watch.blocks ?? []).sorted { $0.createdAt > $1.createdAt }
-            videos.first?.expiresAt = now.addingTimeInterval(2 * 86_400 - 3_600)
-            videos.dropFirst().first?.expiresAt = now.addingTimeInterval(20 * 86_400)
-        }
-        // One expired block and one archived by hand (S-021, S-022).
+        // Two archived blocks (S-022).
         let gone = Block(kind: .video, title: "Conference talk you never got to")
         gone.siteName = "youtube.com"
-        gone.urlString = "https://www.youtube.com/watch?v=sample-expired"
+        gone.urlString = "https://www.youtube.com/watch?v=sample-archived"
         gone.normalizedURL = Links.normalize(URL(string: gone.urlString!)!)
         gone.minutes = 52
         gone.collection = collections["Watch later"]
         gone.status = .archived
         gone.statusBeforeArchiveRaw = BlockStatus.kept.rawValue
         gone.createdAt = now.addingTimeInterval(-40 * 86_400)
-        gone.expiredAt = now.addingTimeInterval(-10 * 86_400)
         context.insert(gone)
         let done = Block(kind: .note, title: "Old trip notes: Porto")
         done.siteName = "Note"

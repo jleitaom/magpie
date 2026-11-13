@@ -218,9 +218,6 @@ struct BlockMenu: View {
             .keyboardShortcut("t")
         }
         Divider()
-        if Expiry.label(block.expiresAt, now: .now) != nil {
-            Button("Keep (Don’t Expire)") { model.keep(block) }
-        }
         if block.status == .archived {
             Button("Unarchive") { model.unarchive(block) }
                 .keyboardShortcut("a", modifiers: [.command, .shift])
@@ -263,7 +260,7 @@ enum CardLayout {
         }
         return CardContent(body: body, kindLabel: block.kind.label, title: block.title.isEmpty ? "Untitled" : block.title,
                            site: block.siteName, badge: block.badge, tint: block.tint, thumbHeight: height,
-                           warning: Expiry.label(block.expiresAt, now: .now), highlight: Search.terms(highlightQuery))
+                           highlight: Search.terms(highlightQuery))
     }
 
     /// A close guess of the card's height, so columns come out even before cards render.

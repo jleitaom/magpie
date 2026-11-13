@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Removed
+
+- **Collections that expire their Blocks.** Expire Blocks After is gone from a collection's right-click menu and from Settings, and so are the "expires in 2 d" note on cards, Keep (Don't Expire), and the Expired place. Nothing is archived on its own any more. Blocks that had already expired stay in the Archive, where Unarchive puts them back
+
 ### Fixed
 
 - **Undo after a delete brings everything back.** A Block you deleted and brought back with Undo had lost its tags, the text read from its picture, its place in your own order, its expiry and whether it was archived

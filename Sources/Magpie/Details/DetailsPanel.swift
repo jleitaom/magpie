@@ -145,24 +145,6 @@ struct DetailsPanel: View {
                         .help("Pick another picture from the page (⌥⌘P)")
                 }
             }
-            if let expires = block.expiresAt, block.status != .archived {
-                GridRow {
-                    Text("Expires").kitType(.meta).foregroundStyle(Ink.secondary)
-                    HStack(spacing: Space.sm) {
-                        Text(expires.formatted(.relative(presentation: .named)))
-                            .kitType(.meta).foregroundStyle(Expiry.label(expires, now: .now) == nil ? Ink.text : Ink.noteLabel)
-                        Button("Keep") { model.keep(block) }
-                            .buttonStyle(.kit(.secondary))
-                            .help("Stop this block from expiring")
-                    }
-                }
-            }
-            if let expired = block.expiredAt {
-                GridRow {
-                    Text("Expired").kitType(.meta).foregroundStyle(Ink.secondary)
-                    Text(expired.formatted(.dateTime.day().month().year())).kitType(.meta).foregroundStyle(Ink.text)
-                }
-            }
             GridRow {
                 Text("Saved").kitType(.meta).foregroundStyle(Ink.secondary)
                 Text(block.createdAt.formatted(.dateTime.day().month().hour().minute()))

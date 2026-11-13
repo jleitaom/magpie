@@ -69,14 +69,6 @@ struct GeneralSettings: View {
             Text("Magpie is designed dark. Switch any time with View → Appearance, or ⌃⌘T.")
                 .font(.caption).foregroundStyle(.secondary)
         }
-        Section("New collections") {
-            Picker("Expire blocks after", selection: $model.defaultExpiryDays) {
-                Text("Never").tag(Int?.none)
-                ForEach(Expiry.choices, id: \.self) { Text("\($0) days").tag(Int?.some($0)) }
-            }
-            Text("Each collection can change this from its right-click menu. Expired blocks are archived, never deleted.")
-                .font(.caption).foregroundStyle(.secondary)
-        }
         Section("Rediscover") {
             Toggle("Show today’s count on the Dock icon", isOn: $model.rediscoverDockBadge)
             Text("A small number on Magpie’s icon: old saves waiting in today’s Rediscover.")

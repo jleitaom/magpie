@@ -101,7 +101,6 @@ struct MainView: View {
         case .collection(let uid): collections.first { $0.uid == uid }?.name ?? "this collection"
         case .tag(let uid): model.tag(uid).map { "#\($0.name)" } ?? "this tag"
         case .archive: "the Archive"
-        case .expired: "Expired"
         }
     }
 }
@@ -163,7 +162,7 @@ struct TopBar: View {
             tab("Inbox", scope: .inbox, count: inboxCount)
             ForEach(pinned) { collectionTab($0) }
             if let extra { collectionTab(extra) }
-            if model.scope == .archive || model.scope == .expired {
+            if model.scope == .archive {
                 tab(model.placeName(model.scope), scope: model.scope)
             }
             if let tag = model.openTag {
@@ -387,9 +386,8 @@ private struct EmptyGallery: View {
                     [("Rediscover old saves", { model.show(.rediscover) }), ("Back to All", { model.scope = .all })])
         case .collection(let uid):
             let name = model.collection(uid)?.name ?? "this collection"
-            let expiry = model.collection(uid)?.defaultExpiryDays.map { " Blocks added here expire after \($0) days." } ?? ""
             return ("Nothing in \(name) yet.",
-                    "Paste or drop something while it’s open, choose Move to in a card’s menu, or pick it in Quick Save.\(expiry)",
+                    "Paste or drop something while it’s open, choose Move to in a card’s menu, or pick it in Quick Save.",
                     [("Paste from clipboard", { model.paste() }), ("New note", { model.addNote() })])
         case .tag(let uid):
             return ("Nothing tagged #\(model.tag(uid)?.name ?? "").",
@@ -398,10 +396,6 @@ private struct EmptyGallery: View {
         case .archive:
             return ("Nothing archived.",
                     "Archive blocks you’re done with (⇧⌘A). They leave your collections, and search still finds them.",
-                    [("Back to All", { model.scope = .all })])
-        case .expired:
-            return ("Nothing has expired.",
-                    "A collection can expire its blocks after a few days (right-click it). Expired ones wait here, never deleted.",
                     [("Back to All", { model.scope = .all })])
         case .all:
             return ("Nothing in \(scopeName) yet.", "Drop something here\(quickSave).",

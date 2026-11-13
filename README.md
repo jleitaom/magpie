@@ -38,7 +38,7 @@ and then nudges you to read, watch and use what you saved.
 - **Collections and tags.** Nest collections, pin up to 5 to the top bar, and tag across them
 - **Sort Inbox.** Go through new saves one at a time from the keyboard, with a suggested collection, until you reach Inbox zero
 - **Lucky Dip.** Can't decide what to read or watch? Pick a collection (or everything) and how much time you have, and Magpie picks one. You get two re-spins a day, then you commit
-- **Rediscover.** Five old saves a day to keep or archive. Collections like Watch later can expire their Blocks, so they empty themselves
+- **Rediscover.** Five old saves a day to keep or archive.
 - **Search everything,** including the text inside your images
 - **Import your bookmarks** from Safari, Chrome or Firefox, with folders becoming collections
 - Dark by default, with Light or Match my Mac. Every action has a keyboard shortcut

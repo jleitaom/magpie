@@ -26,8 +26,8 @@ Thanks for helping out!
     collection suggestion are in `MagpieKit/Sorting.swift`
   - `LuckyDip/`: Lucky Dip, one random pick from a collection or everything (`LuckyDipView.swift`).
     The weighted pick, re-spins, start verbs and the dip streak are in `MagpieKit/LuckyDip.swift`
-  - `Rediscover/`: five old saves a day to keep or archive (`RediscoverView.swift`). The pick and
-    the expiry rules are in `MagpieKit/Rediscover.swift`
+  - `Rediscover/`: five old saves a day to keep or archive (`RediscoverView.swift`). The pick's rules
+    are in `MagpieKit/Rediscover.swift`
   - `QuickSave/`: the global shortcut (`HotKey.swift`, Carbon, no permission needed) and the floating
     panel that saves the front browser tab (Safari, or Chrome, Arc, Brave, Edge and other
     Chromium browsers) or the clipboard (`QuickSave.swift`)
@@ -44,7 +44,7 @@ Thanks for helping out!
   - `Debug/`: the self-test, snapshot mode and sample data
 - `Sources/MagpieKit/` holds the rules with no UI (link parsing and normalizing, masonry math,
   color math, the collection tree, the Sort Inbox queue and suggestions, Lucky Dip,
-  sort orders, tags, search, Rediscover and expiry, the bookmarks file, the export format, and `PageReader`,
+  sort orders, tags, search, Rediscover, the bookmarks file, the export format, and `PageReader`,
   which reads video length, price, recipes and read time from a page's HTML), so they can be unit tested. Put new logic there, not in the views.
 - The app target builds in Swift 6 mode with the main actor as its default isolation. Mark slow
   work `nonisolated` and run it off the main thread, like the preview fetch in `Ingest.swift`.

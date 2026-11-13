@@ -4,7 +4,7 @@
 
 Saving from anywhere (Quick Save, the Dock icon, screenshots, bookmark import), the Gallery
 and Journal, nested collections and tags, Sort Inbox, Lucky Dip,
-Rediscover and expiring collections, search that includes text in images, and a full export.
+Rediscover, search that includes text in images, and a full export.
 See the [changelog](CHANGELOG.md) for the details.
 
 ## v1.1: iPhone and the Share menu
