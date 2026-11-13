@@ -47,7 +47,7 @@ struct KitField: ViewModifier {
             .padding(.vertical, Metric.fieldVertical)
             .frame(minHeight: Metric.control)
             .background(shape.fill(Ink.window))
-            .overlay(shape.strokeBorder(focused ? Ink.accentText : Ink.hairline, lineWidth: focused ? 1.5 : 1))
+            .overlay(shape.strokeBorder(focused ? Ink.accentText : Ink.edge, lineWidth: focused ? 1.5 : 1))
     }
 }
 

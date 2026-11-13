@@ -88,7 +88,7 @@ private struct SourceColumn: View {
             .buttonStyle(KitSourceTileStyle(mark: chosen.map { .color(UInt32($0.colorHex)) } ?? .icon(.gallery),
                                             detail: "\(pool.count) waiting" + (time.isEmpty ? "" : " · \(time)")))
             .disabled(model.isShuffling)
-            .help("Lucky Dip picks one thing from here. A collection includes the ones inside it.")
+            .help("Lucky Dip picks one thing from here. A pile includes the ones inside it.")
             Text("How much time do you have?").kitType(.meta).foregroundStyle(Ink.secondary)
                 .padding(.horizontal, 2).padding(.top, Space.md)
             KitFlow(spacing: Space.sm) {
@@ -148,7 +148,7 @@ private struct Idle: View {
                                            maxMinutes: model.dipMaxMinutes)
             let place = model.dipCollection == nil ? "everything you saved" : model.dipSourceName
             Text(pool.isEmpty ? emptySource : fitting.isEmpty
-                 ? "Nothing in \(place)\(limit). Try more time, or another collection."
+                 ? "Nothing in \(place)\(limit). Try more time, or another pile."
                  : "One random thing from \(place)\(limit). You get 2 re-spins a day. After that, you commit.")
                 .kitType(.body).foregroundStyle(Ink.secondary)
                 .multilineTextAlignment(.center)
@@ -174,7 +174,7 @@ extension Idle {
     fileprivate var emptySource: String {
         model.dipCollection == nil
             ? "Nothing waiting yet. Save some articles, videos or places, and Lucky Dip will pick one."
-            : "Nothing waiting in \(model.dipSourceName). Pick another collection, or Everything."
+            : "Nothing waiting in \(model.dipSourceName). Pick another pile, or Everything."
     }
 }
 
@@ -252,7 +252,7 @@ private struct PickCard: View {
         .background(Ink.card(tint: block.tint))
         .clipShape(shape)
         .overlay(shape.strokeBorder(Ink.hairline))
-        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
         .contextMenu { BlockMenu(block: block) }
         .transition(.scale(scale: 0.96).combined(with: .opacity))
     }

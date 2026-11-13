@@ -71,7 +71,7 @@ struct SortSuggestionTests {
         #expect(suggest("inkandswitch.com", "link") == reading)
     }
 
-    @Test("With no collection that fits, it falls back to the one used last for that site")
+    @Test("With no pile that fits, it falls back to the one used last for that site")
     func fallback() {
         let only: [(id: UUID, name: String)] = [(reading, "Reading"), (vinyl, "Vinyl")]
         #expect(suggest("youtube.com", "video", last: vinyl, in: only) == vinyl)
@@ -79,7 +79,7 @@ struct SortSuggestionTests {
         #expect(suggest("youtube.com", "video", last: UUID(), in: only) == nil)
     }
 
-    @Test("A recipe goes to a cooking collection")
+    @Test("A recipe goes to a cooking pile")
     func recipe() {
         let cook = UUID()
         #expect(suggest("example.com", "link", title: "Pastéis de nata recipe", in: collections + [(cook, "Recipes")]) == cook)

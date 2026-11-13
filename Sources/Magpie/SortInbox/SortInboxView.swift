@@ -152,7 +152,7 @@ private struct SortCardStack: View {
             .background(Ink.card(tint: block.tint))
             .clipShape(shape)
             .overlay(shape.strokeBorder(Ink.hairline))
-            .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+            .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
             // Up to two cards peeking out below: each one narrower and lower than the one in front.
             .background(alignment: .top) {
                 ZStack(alignment: .top) {
@@ -288,7 +288,7 @@ private struct SortActionBar: View {
         .padding(Space.sm)
         .background(RoundedRectangle(cornerRadius: Metric.radiusCard, style: .continuous).fill(Ink.surface))
         .overlay(RoundedRectangle(cornerRadius: Metric.radiusCard, style: .continuous).strokeBorder(Ink.hairline))
-        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Sort this block")
     }

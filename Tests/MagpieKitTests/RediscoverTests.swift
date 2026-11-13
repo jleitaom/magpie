@@ -40,34 +40,6 @@ struct RediscoverTests {
     }
 }
 
-struct ExpiryTests {
-    let now = Date(timeIntervalSince1970: 1_800_000_000)
-
-    @Test("New items expire after the collection's days")
-    func date() {
-        #expect(Expiry.date(addedAt: now, days: 30) == now.addingTimeInterval(30 * 86_400))
-        #expect(Expiry.date(addedAt: now, days: nil) == nil && Expiry.date(addedAt: now, days: 0) == nil)
-    }
-
-    @Test("Due once the date passes")
-    func due() {
-        #expect(Expiry.isDue(now.addingTimeInterval(-1), now: now))
-        #expect(!Expiry.isDue(now.addingTimeInterval(60), now: now) && !Expiry.isDue(nil, now: now))
-    }
-
-    @Test("Cards warn within 3 days", arguments: [(0.5, "expires in 1 d"), (2.0, "expires in 2 d"), (3.0, "expires in 3 d")])
-    func label(days: Double, text: String) {
-        #expect(Expiry.label(now.addingTimeInterval(days * 86_400), now: now) == text)
-    }
-
-    @Test("No warning further out, or once expired")
-    func noLabel() {
-        #expect(Expiry.label(now.addingTimeInterval(5 * 86_400), now: now) == nil)
-        #expect(Expiry.label(now.addingTimeInterval(-60), now: now) == nil)
-        #expect(Expiry.label(nil, now: now) == nil)
-    }
-}
-
 struct DockDropTests {
     let now = Date(timeIntervalSince1970: 1_800_000_000)
 
@@ -82,5 +54,12 @@ struct DockDropTests {
     @Test("A drop that launches Magpie saves and steps back")
     func launched() {
         #expect(DockDrop.shouldStepBack(activeSince: now, wasRunning: false, now: now))
+    }
+}
+
+struct DropHintTests {
+    @Test("The drop hint shows only while the library is new", arguments: [(0, false), (1, true), (4, true), (5, false), (500, false)])
+    func shows(count: Int, expected: Bool) {
+        #expect(DropHint.shows(blockCount: count) == expected)
     }
 }

@@ -37,6 +37,28 @@ public enum Pins {
     public static let limit = 5
 
     public static func canPin(currentlyPinned: Int) -> Bool { currentlyPinned < limit }
+
+    /// The top bar's order after `moving` is dropped on `target`: it takes that place and the
+    /// ones between shift over. Nil when nothing would change, or either isn't pinned.
+    /// Ready for dragging tabs in the top bar, which isn't built yet (S-080); Move Left and
+    /// Move Right use `stepped`.
+    public static func dropped(_ moving: UUID, onto target: UUID, in order: [UUID]) -> [UUID]? {
+        guard moving != target, let from = order.firstIndex(of: moving), let to = order.firstIndex(of: target) else { return nil }
+        var new = order
+        new.remove(at: from)
+        new.insert(moving, at: to)
+        return new
+    }
+
+    /// One place left or right. Nil at the end of the bar, or when it isn't pinned.
+    public static func stepped(_ moving: UUID, left: Bool, in order: [UUID]) -> [UUID]? {
+        guard let from = order.firstIndex(of: moving) else { return nil }
+        let to = from + (left ? -1 : 1)
+        guard order.indices.contains(to) else { return nil }
+        var new = order
+        new.swapAt(from, to)
+        return new
+    }
 }
 
 /// Arrow keys in the masonry (S-032): up and down within a column, left and right to the card

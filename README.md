@@ -19,14 +19,14 @@
 
 ## Why
 
-Browser bookmarks pile up in folders like "watch later" and "ideas" and never get opened again.
-Magpie turns each save into a **Block** with a picture, keeps it in collections you can see,
+Browser bookmarks sink into folders like "watch later" and "ideas" and never get opened again.
+Magpie turns each save into a **Block** with a picture, keeps it in piles you can see,
 and then nudges you to read, watch and use what you saved.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
-    <img src="docs/screenshot-light.png" width="800" alt="Magpie's Gallery: image-first cards for links, videos, places, notes and checklists, with pinned collections in the top bar">
+    <img src="docs/screenshot-light.png" width="800" alt="Magpie's Gallery: image-first cards for links, videos, places, notes and checklists, with pinned piles in the top bar">
   </picture>
 </p>
 
@@ -35,12 +35,12 @@ and then nudges you to read, watch and use what you saved.
 - **Save anything.** Paste, drop or add links, images, videos, files, notes and checklists. Links get their title, picture and site name on their own, and videos, products and places show their length, price or a map. Don't like the picture? Choose another from the page
 - **Quick Save** (⌃⌥Space, anywhere) saves your browser's front tab (Safari, Chrome, Arc, Brave, Edge) or the clipboard without leaving what you're doing. You can also drop things onto the Dock icon, or turn a screenshot into a Block (⌃⌥S)
 - **Gallery and Journal.** See image-first cards, each tinted with its picture's color, or a dense list. Sort by newest, quickest, title, site, color, shuffle or your own order
-- **Collections and tags.** Nest collections, pin up to 5 to the top bar, and tag across them
-- **Sort Inbox.** Go through new saves one at a time from the keyboard, with a suggested collection, until you reach Inbox zero
-- **Lucky Dip.** Can't decide what to read or watch? Pick a collection (or everything) and how much time you have, and Magpie picks one. You get two re-spins a day, then you commit
-- **Rediscover.** Five old saves a day to keep or archive. Collections like Watch later can expire their Blocks, so they empty themselves
+- **Piles and tags.** Nest piles, pin up to 5 to the top bar in the order you like, and tag across them
+- **Sort Inbox.** Go through new saves one at a time from the keyboard, with a suggested pile, until you reach Inbox zero
+- **Lucky Dip.** Can't decide what to read or watch? Pick a pile (or everything) and how much time you have, and Magpie picks one. You get two re-spins a day, then you commit
+- **Rediscover.** Five old saves a day to keep or archive
 - **Search everything,** including the text inside your images
-- **Import your bookmarks** from Safari, Chrome or Firefox, with folders becoming collections
+- **Import your bookmarks** from Safari, Chrome or Firefox, with folders becoming piles
 - Dark by default, with Light or Match my Mac. Every action has a keyboard shortcut
 - Local and private. Everything stays on your Mac, with no account and no server
 - **Update checks** through GitHub, with your permission and a switch to turn them off

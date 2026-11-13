@@ -230,7 +230,8 @@ struct QuickSaveView: View {
                     }
                 }
                 .menuStyle(.button)
-                .buttonStyle(.kit(.secondary))
+                .menuIndicator(.hidden)
+                .buttonStyle(.kit(.secondary, menu: true))
                 .fixedSize()
             }
             TextField("Tags, separated by commas", text: $tags).kitField().focused($focus, equals: .tags)

@@ -3,12 +3,13 @@
 ## v1: the Mac app (released as 1.0.0)
 
 Saving from anywhere (Quick Save, the Dock icon, screenshots, bookmark import), the Gallery
-and Journal, nested collections and tags, Sort Inbox, Lucky Dip,
-Rediscover and expiring collections, search that includes text in images, and a full export.
+and Journal, nested piles and tags, Sort Inbox, Lucky Dip,
+Rediscover, search that includes text in images, and a full export.
 See the [changelog](CHANGELOG.md) for the details.
 
 ## v1.1: iPhone and the Share menu
 
+- Drag pinned piles into order in the top bar, the way browser tabs move (for now: Pile → Move Left / Right in Top Bar)
 - An iPhone app with a share sheet
 - Save from the Share menu on the Mac (a Share extension)
 - iCloud sync between the Mac and the iPhone. The data model already follows CloudKit's
@@ -19,5 +20,5 @@ See the [changelog](CHANGELOG.md) for the details.
 - Block types with their own fields, starting with a **Record** type for vinyl (Discogs
   lookup, barcode scanning, and a wishlist that turns into "owned")
 - A free canvas Board view, stacks and a compare view
-- Share a collection as a web page
+- Share a pile as a web page
 - Find broken links

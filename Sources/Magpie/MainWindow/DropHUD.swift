@@ -12,7 +12,7 @@ enum DropHUD {
         let panel = panel ?? make()
         Self.panel = panel
         panel.contentView = NSHostingView(rootView: Label(text: text))
-        panel.setContentSize(panel.contentView?.fittingSize ?? NSSize(width: 220, height: 44))
+        panel.setContentSize(panel.contentView?.fittingSize ?? Metric.hudFallback)
         // Centered just above the Dock (the bottom of the visible area) on the screen with the mouse.
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         if let visible = screen?.visibleFrame {
@@ -37,7 +37,7 @@ enum DropHUD {
     static var window: NSWindow? { panel }
 
     private static func make() -> NSPanel {
-        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 220, height: 44),
+        let panel = NSPanel(contentRect: NSRect(origin: .zero, size: Metric.hudFallback),
                             styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: true)
         panel.level = .statusBar
         panel.isOpaque = false
@@ -54,7 +54,7 @@ enum DropHUD {
 
         var body: some View {
             HStack(spacing: Space.sm) {
-                KitIconView(icon: .check, size: 12).foregroundStyle(Ink.accentText)
+                KitIconView(icon: .check, size: Metric.iconSmall).foregroundStyle(Ink.accentText)
                 Text(text).kitType(.labelStrong).foregroundStyle(Ink.text)
             }
             .padding(.horizontal, Space.lg)

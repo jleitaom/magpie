@@ -18,10 +18,10 @@ struct DetailsPanel: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if let data = block.thumbnail, let image = ThumbnailCache.image(for: block.uid, data: data) {
                         ThumbView(thumb: .image(image))
-                            .frame(height: min(Metric.panelWidth / max(block.thumbnailAspect, 0.6), 260))
+                            .frame(height: min(Metric.panelWidth / max(block.thumbnailAspect, Metric.detailsPictureMinAspect), Metric.detailsPictureMax))
                             .clipped()
                     } else if block.kind == .place {
-                        MapThumb().frame(height: 160)
+                        MapThumb().frame(height: Metric.detailsMapHeight)
                     }
                     VStack(alignment: .leading, spacing: Space.lg) {
                         header
@@ -40,6 +40,15 @@ struct DetailsPanel: View {
             }
             .scrollIndicators(.never)
             .safeAreaInset(edge: .bottom) { actions }
+            // Close sits in the panel's top corner, over the picture or map when there is one,
+            // and stays there while the details scroll.
+            .overlay(alignment: .topTrailing) {
+                Button { model.selection = nil } label: { KitIconView(icon: .close, size: Metric.iconCompact) }
+                    .buttonStyle(KitRoundButtonStyle(kind: .surface))
+                    .help("Close (Esc)")
+                    .accessibilityLabel("Close details")
+                    .padding(Space.md)
+            }
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .onChange(of: block.title) { model.save() }
@@ -47,23 +56,22 @@ struct DetailsPanel: View {
         .onChange(of: block.bodyText) { model.save() }
     }
 
+    /// A picture or a map fills the top of the panel; the close button then sits on it.
+    private var hasTopPicture: Bool { block.thumbnail != nil || block.kind == .place }
+
     private var header: some View {
-        HStack(alignment: .top, spacing: Space.sm) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text(block.kind.label.uppercased()).kitType(.kind)
-                    .foregroundStyle(block.kind == .note ? Ink.noteLabel : Ink.secondary)
-                TextField("Title", text: $block.title, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .kitType(.heading)
-                    .foregroundStyle(Ink.text)
-                    .lineLimit(1...4)
-            }
-            Spacer(minLength: 0)
-            Button { model.selection = nil } label: { KitIconView(icon: .close, size: 11) }
-                .buttonStyle(.kit(.secondary))
-                .help("Close (Esc)")
-                .accessibilityLabel("Close details")
+        VStack(alignment: .leading, spacing: Space.xs) {
+            Text(block.kind.label.uppercased()).kitType(.kind)
+                .foregroundStyle(block.kind == .note ? Ink.noteLabel : Ink.secondary)
+            TextField("Title", text: $block.title, axis: .vertical)
+                .textFieldStyle(.plain)
+                .kitType(.heading)
+                .foregroundStyle(Ink.text)
+                .lineLimit(1...4)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // With no picture the close button is beside the title: keep the text clear of it.
+        .padding(.trailing, hasTopPicture ? 0 : Metric.closeButton)
     }
 
     @ViewBuilder
@@ -107,7 +115,7 @@ struct DetailsPanel: View {
     private var facts: some View {
         Grid(alignment: .leading, horizontalSpacing: Space.md, verticalSpacing: Space.sm) {
             GridRow {
-                Text("Collection").kitType(.meta).foregroundStyle(Ink.secondary)
+                Text("Pile").kitType(.meta).foregroundStyle(Ink.secondary)
                 Menu(block.collection?.name ?? "Inbox") {
                     Button("Inbox") { model.move(block, to: nil, undo: undoManager) }
                     Divider()
@@ -115,10 +123,11 @@ struct DetailsPanel: View {
                         Button(target.name) { model.move(block, to: target, undo: undoManager) }
                     }
                     Divider()
-                    Button("Manage Collections…") { model.showsCollections = true }
+                    Button("Manage Piles…") { model.showsCollections = true }
                 }
                 .menuStyle(.button)
-                .buttonStyle(.kit(.secondary))
+                .menuIndicator(.hidden)
+                .buttonStyle(.kit(.secondary, menu: true))
                 .fixedSize()
             }
             if model.canChangeKind(block) {
@@ -131,7 +140,8 @@ struct DetailsPanel: View {
                         }
                     }
                     .menuStyle(.button)
-                    .buttonStyle(.kit(.secondary))
+                    .menuIndicator(.hidden)
+                    .buttonStyle(.kit(.secondary, menu: true))
                     .fixedSize()
                     .help("Magpie guessed wrong? Choose what this is (⌃⌥⌘1 Link, ⌃⌥⌘2 Video, ⌃⌥⌘3 Product)")
                 }
@@ -143,24 +153,6 @@ struct DetailsPanel: View {
                         .buttonStyle(.kit(.secondary))
                         .fixedSize()
                         .help("Pick another picture from the page (⌥⌘P)")
-                }
-            }
-            if let expires = block.expiresAt, block.status != .archived {
-                GridRow {
-                    Text("Expires").kitType(.meta).foregroundStyle(Ink.secondary)
-                    HStack(spacing: Space.sm) {
-                        Text(expires.formatted(.relative(presentation: .named)))
-                            .kitType(.meta).foregroundStyle(Expiry.label(expires, now: .now) == nil ? Ink.text : Ink.noteLabel)
-                        Button("Keep") { model.keep(block) }
-                            .buttonStyle(.kit(.secondary))
-                            .help("Stop this block from expiring")
-                    }
-                }
-            }
-            if let expired = block.expiredAt {
-                GridRow {
-                    Text("Expired").kitType(.meta).foregroundStyle(Ink.secondary)
-                    Text(expired.formatted(.dateTime.day().month().year())).kitType(.meta).foregroundStyle(Ink.text)
                 }
             }
             GridRow {
@@ -236,7 +228,7 @@ private struct ChecklistEditor: View {
                         .foregroundStyle(item.done ? Ink.secondary : Ink.text)
                         .focused($focused, equals: item.id)
                         .onSubmit { addItem() }
-                    Button { remove(item.id) } label: { KitIconView(icon: .close, size: 9) }
+                    Button { remove(item.id) } label: { KitIconView(icon: .close, size: Metric.iconMicro) }
                         .buttonStyle(.kit(.ghost))
                         .accessibilityLabel("Remove item")
                 }

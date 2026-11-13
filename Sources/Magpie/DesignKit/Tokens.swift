@@ -38,6 +38,8 @@ enum Ink {
     static let secondary = Color(light: Palette.ink600, dark: Palette.fog400)
     static let tertiary = Color(light: Palette.ink400, dark: Palette.fog600)
     static let hairline = Color(lightAlpha: (0x000000, 0.08), darkAlpha: (0xFFFFFF, 0.08))
+    /// A border that must show on its own: a text field on a panel, a dark swatch on a dark window.
+    static let edge = Color(lightAlpha: (0x000000, 0.10), darkAlpha: (0xFFFFFF, 0.16))
     static let hover = Color(lightAlpha: (0x000000, 0.05), darkAlpha: (0xFFFFFF, 0.06))
     static let accent = Color(hex: Palette.teal600)
     static let accentText = Color(light: Palette.teal700, dark: Palette.teal300)
@@ -71,6 +73,7 @@ enum Metric {
     static let control: CGFloat = 32
     static let controlLarge: CGFloat = 44
     static let roundButton: CGFloat = 36
+    static let closeButton: CGFloat = 28      // the round close button on the details panel
     static let segmentWidth: CGFloat = 34
     static let segmentHeight: CGFloat = 30
     static let radiusField: CGFloat = 10
@@ -91,6 +94,7 @@ enum Metric {
     static let pillInset: CGFloat = 4
     /// Small values measured from the mockup; named so views never hard-code them.
     static let inlineGap: CGFloat = 6        // icon + label, kind label to title
+    static let chevron: CGFloat = 10         // the chevron on a menu button and on "N more"
     static let trackInset: CGFloat = 3       // segment track padding
     static let rowInset: CGFloat = 10        // menu rows, fields, chip-like capsules
     static let fieldVertical: CGFloat = 7
@@ -137,6 +141,26 @@ enum Metric {
     static let buttonPadding: CGFloat = 14
     static let focusRing: CGFloat = 2
     static let barShadowRadius: CGFloat = 15
+    static let barShadowY: CGFloat = 6        // how far a floating bar's shadow drops
+    /// Icon sizes. `KitIconView` draws at `icon` unless told otherwise.
+    static let icon: CGFloat = 14
+    static let iconLarge: CGFloat = 16        // the mark in a source tile
+    static let iconSmall: CGFloat = 12        // beside a label: Sort, pin, check
+    static let iconCompact: CGFloat = 11      // the details panel's close
+    static let iconMicro: CGFloat = 9         // remove a checklist item
+    /// Top bar: the width kept free on each side, so the pill stays centered.
+    static let barSideWidth: CGFloat = 360
+    /// Gallery: the narrowest a column gets before one is dropped.
+    static let galleryColumnMin: CGFloat = 220
+    /// Details panel: its picture is at most this tall and never treated as narrower than this aspect; the map's height.
+    static let detailsPictureMax: CGFloat = 260
+    static let detailsPictureMinAspect: CGFloat = 0.6
+    static let detailsMapHeight: CGFloat = 160
+    static let settingsWidth: CGFloat = 520
+    /// The Dock drop message's size before its text is measured.
+    static let hudFallback = CGSize(width: 220, height: 44)
+    /// The dashes of the "Drop to save" outline.
+    static let dropDash: [CGFloat] = [8, 6]
     static let pressScale: CGFloat = 0.97
     static let windowDefault = CGSize(width: 1200, height: 800)
     static let windowMinimum = CGSize(width: 1040, height: 560)

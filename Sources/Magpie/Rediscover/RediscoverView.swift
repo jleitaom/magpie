@@ -96,7 +96,7 @@ private struct RediscoverCard: View {
         .background(Ink.card(tint: block.tint))
         .clipShape(shape)
         .overlay(shape.strokeBorder(Ink.hairline))
-        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
         .background(alignment: .top) {
             ZStack(alignment: .top) {
                 ForEach((0..<max(behind, 0)).reversed(), id: \.self) { index in
@@ -143,7 +143,7 @@ private struct RediscoverBar: View {
         .padding(Space.sm)
         .background(RoundedRectangle(cornerRadius: Metric.radiusCard, style: .continuous).fill(Ink.surface))
         .overlay(RoundedRectangle(cornerRadius: Metric.radiusCard, style: .continuous).strokeBorder(Ink.hairline))
-        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Rediscover this block")
     }

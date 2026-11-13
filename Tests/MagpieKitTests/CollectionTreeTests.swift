@@ -24,21 +24,21 @@ struct CollectionTreeTests {
         #expect(rows.map(\.depth) == [0, 1, 2, 0, 0])
     }
 
-    @Test("A collection whose parent is gone shows at the top level")
+    @Test("A pile whose parent is gone shows at the top level")
     func orphan() {
         let lost = UUID()
         let rows = CollectionTree.flatten(nodes + [TreeNode(id: lost, parent: UUID(), sortIndex: 9)])
         #expect(rows.last?.id == lost && rows.last?.depth == 0)
     }
 
-    @Test("A loop in the data never hides a collection")
+    @Test("A loop in the data never hides a pile")
     func loop() {
         let a = UUID(), b = UUID()
         let rows = CollectionTree.flatten([TreeNode(id: a, parent: b, sortIndex: 1), TreeNode(id: b, parent: a, sortIndex: 2)])
         #expect(Set(rows.map(\.id)) == [a, b])
     }
 
-    @Test("A collection can't be nested inside itself or its own child")
+    @Test("A pile can't be nested inside itself or its own child")
     func noNestingInsideOwnChild() {
         #expect(!CollectionTree.canNest(reading, under: reading, in: nodes))
         #expect(!CollectionTree.canNest(reading, under: articles, in: nodes))
@@ -82,8 +82,8 @@ struct CollectionTreeTests {
         (0, 0, "It has no blocks. No blocks are deleted."),
         (1, 0, "Its block goes back to the Inbox. No blocks are deleted."),
         (12, 0, "Its 12 blocks go back to the Inbox. No blocks are deleted."),
-        (3, 1, "Its 3 blocks go back to the Inbox. The collection inside it moves up a level. No blocks are deleted."),
-        (3, 2, "Its 3 blocks go back to the Inbox. The 2 collections inside it move up a level. No blocks are deleted."),
+        (3, 1, "Its 3 blocks go back to the Inbox. The pile inside it moves up a level. No blocks are deleted."),
+        (3, 2, "Its 3 blocks go back to the Inbox. The 2 piles inside it move up a level. No blocks are deleted."),
     ])
     func deleteMessage(blocks: Int, children: Int, text: String) {
         #expect(CollectionTree.deleteMessage(blockCount: blocks, childCount: children) == text)

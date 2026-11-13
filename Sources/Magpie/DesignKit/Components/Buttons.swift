@@ -10,9 +10,12 @@ struct KitButtonStyle: ButtonStyle {
     /// False inside a view that holds keyboard focus for its whole area (the Gallery):
     /// SwiftUI reports every button in it as focused, which would draw a ring on each.
     var showsFocus = true
+    /// True for a button that opens a menu: a chevron follows the label, so it reads as a
+    /// menu and not as a plain button.
+    var isMenu = false
 
     func makeBody(configuration: Configuration) -> some View {
-        Part(configuration: configuration, kind: kind, large: large, showsFocus: showsFocus)
+        Part(configuration: configuration, kind: kind, large: large, showsFocus: showsFocus, isMenu: isMenu)
     }
 
     private struct Part: View {
@@ -20,6 +23,7 @@ struct KitButtonStyle: ButtonStyle {
         let kind: Kind
         let large: Bool
         let showsFocus: Bool
+        let isMenu: Bool
         @Environment(\.forcedPartState) private var forced
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
@@ -29,7 +33,10 @@ struct KitButtonStyle: ButtonStyle {
             let state = PartState.resolve(forced: forced, enabled: isEnabled, pressed: configuration.isPressed,
                                           hovering: hovering, focused: isFocused && showsFocus)
             let shape = RoundedRectangle(cornerRadius: Metric.radius, style: .continuous)
-            configuration.label
+            HStack(spacing: Metric.inlineGap) {
+                configuration.label
+                if isMenu { KitIconView(icon: .chevronDown, size: Metric.chevron).foregroundStyle(Ink.secondary) }
+            }
                 .lineLimit(1)
                 .fixedSize()
                 .kitType(large ? .labelStrong : .label)
@@ -58,8 +65,9 @@ struct KitButtonStyle: ButtonStyle {
 }
 
 extension ButtonStyle where Self == KitButtonStyle {
-    static func kit(_ kind: KitButtonStyle.Kind = .primary, large: Bool = false, showsFocus: Bool = true) -> KitButtonStyle {
-        KitButtonStyle(kind: kind, large: large, showsFocus: showsFocus)
+    static func kit(_ kind: KitButtonStyle.Kind = .primary, large: Bool = false, showsFocus: Bool = true,
+                    menu: Bool = false) -> KitButtonStyle {
+        KitButtonStyle(kind: kind, large: large, showsFocus: showsFocus, isMenu: menu)
     }
 }
 
@@ -149,7 +157,7 @@ struct KitSourceTileStyle: ButtonStyle {
                 Group {
                     switch mark {
                     case .icon(let icon):
-                        KitIconView(icon: icon, size: 16).foregroundStyle(on ? Ink.accentText : Ink.secondary)
+                        KitIconView(icon: icon, size: Metric.iconLarge).foregroundStyle(on ? Ink.accentText : Ink.secondary)
                     case .color(let hex):
                         RoundedRectangle(cornerRadius: Metric.swatchRadius).fill(Ink.swatch(hex)).frame(width: Metric.swatch, height: Metric.swatch)
                     }
@@ -161,7 +169,7 @@ struct KitSourceTileStyle: ButtonStyle {
                     Text(detail).kitType(.meta).foregroundStyle(Ink.secondary)
                 }
                 Spacer(minLength: 0)
-                KitIconView(icon: .chevronDown, size: 12).foregroundStyle(Ink.secondary)
+                KitIconView(icon: .chevronDown, size: Metric.iconSmall).foregroundStyle(Ink.secondary)
             }
             .padding(Space.md)
             .background(shape.fill(on ? Ink.suggest : state.isActive ? Ink.control : Ink.surface))
@@ -177,15 +185,21 @@ struct KitSourceTileStyle: ButtonStyle {
     }
 }
 
-// MARK: - Round button (the + button)
+// MARK: - Round button (the + button, and the details panel's close)
 
 struct KitRoundButtonStyle: ButtonStyle {
+    /// accent: the + button. surface: a quiet button that sits on a picture (the panel's
+    /// close), on Ink.surface with an edge, so it shows on a white picture and a black one.
+    enum Kind { case accent, surface }
+    var kind: Kind = .accent
+
     func makeBody(configuration: Configuration) -> some View {
-        Part(configuration: configuration)
+        Part(configuration: configuration, kind: kind)
     }
 
     private struct Part: View {
         let configuration: Configuration
+        let kind: Kind
         @Environment(\.forcedPartState) private var forced
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
@@ -194,10 +208,14 @@ struct KitRoundButtonStyle: ButtonStyle {
         var body: some View {
             let state = PartState.resolve(forced: forced, enabled: isEnabled, pressed: configuration.isPressed,
                                           hovering: hovering, focused: isFocused)
+            let side = kind == .accent ? Metric.roundButton : Metric.closeButton
             configuration.label
-                .foregroundStyle(Ink.onAccent)
-                .frame(width: Metric.roundButton, height: Metric.roundButton)
-                .background(Circle().fill(Ink.accent.opacity(state == .pressed ? 0.8 : state == .hover ? 0.9 : 1)))
+                .foregroundStyle(kind == .accent ? Ink.onAccent : Ink.text)
+                .frame(width: side, height: side)
+                .background(Circle().fill(kind == .accent
+                                          ? Ink.accent.opacity(state == .pressed ? 0.8 : state == .hover ? 0.9 : 1) : Ink.surface))
+                .overlay(Circle().fill(kind == .surface && state.isActive ? Ink.hover : .clear))
+                .overlay(Circle().strokeBorder(kind == .surface ? Ink.edge : .clear))
                 .kitFocusRing(Circle(), state: state)
                 .opacity(state == .disabled ? 0.4 : 1)
                 .contentShape(Circle())
@@ -323,7 +341,7 @@ struct KitOptionRowStyle: ButtonStyle {
                     Text(hint).kitType(.meta).foregroundStyle(Ink.secondary)
                 }
                 Spacer(minLength: Space.sm)
-                if isSelected { KitIconView(icon: .check, size: 12).foregroundStyle(Ink.accentText) }
+                if isSelected { KitIconView(icon: .check, size: Metric.iconSmall).foregroundStyle(Ink.accentText) }
             }
             .padding(.horizontal, Metric.rowInset)
             .padding(.vertical, Space.xs + 2)
@@ -369,7 +387,7 @@ struct KitMenuRowStyle: ButtonStyle {
                 configuration.label.kitType(.label).foregroundStyle(Ink.text).lineLimit(1)
                 Spacer(minLength: Space.sm)
                 if state == .selected {
-                    KitIconView(icon: .check, size: 12).foregroundStyle(Ink.accentText)
+                    KitIconView(icon: .check, size: Metric.iconSmall).foregroundStyle(Ink.accentText)
                 } else if let shortcut {
                     Text(shortcut).kitType(.mono).foregroundStyle(Ink.secondary)
                 }

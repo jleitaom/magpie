@@ -65,12 +65,17 @@ struct MainView: View {
             .animation(reduceMotion ? nil : Motion.panel, value: model.selection == nil)
         }
         .overlay(alignment: .bottom) {
-            if model.viewMode == .gallery { BottomHint(showsHint: selected == nil) }
+            // The hint is for a new library: gone once a few blocks are in, and on empty screens,
+            // whose headline already says it. Messages still show here.
+            if model.viewMode == .gallery {
+                BottomHint(showsHint: selected == nil && !shown.isEmpty && !model.snapshotEmptyLibrary
+                           && DropHint.shows(blockCount: blocks.count))
+            }
         }
         .overlay {
             if model.isDropTargeted {
                 RoundedRectangle(cornerRadius: Metric.radiusPanel, style: .continuous)
-                    .strokeBorder(Ink.accentText, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                    .strokeBorder(Ink.accentText, style: StrokeStyle(lineWidth: Metric.dropLine, dash: Metric.dropDash))
                     .padding(Space.sm)
                     .overlay { Text("Drop to save").kitType(.heading).foregroundStyle(Ink.accentText) }
                     .allowsHitTesting(false)
@@ -98,10 +103,9 @@ struct MainView: View {
         switch model.scope {
         case .all: "Magpie"
         case .inbox: "your Inbox"
-        case .collection(let uid): collections.first { $0.uid == uid }?.name ?? "this collection"
+        case .collection(let uid): collections.first { $0.uid == uid }?.name ?? "this pile"
         case .tag(let uid): model.tag(uid).map { "#\($0.name)" } ?? "this tag"
         case .archive: "the Archive"
-        case .expired: "Expired"
         }
     }
 }
@@ -114,7 +118,7 @@ struct TopBar: View {
     var allBlocks: [Block] = []
     @Environment(AppModel.self) private var model
     /// The right-hand controls' width, mirrored on the left so the pill stays centered.
-    private let sideWidth: CGFloat = 360
+    private let sideWidth = Metric.barSideWidth
 
     var body: some View {
         @Bindable var model = model
@@ -153,7 +157,8 @@ struct TopBar: View {
         let pinned = Array(collections.filter(\.isPinned).sorted { $0.pinIndex < $1.pinIndex }.prefix(maxPins))
         var shownIDs = Set(pinned.map(\.uid))
         var extra: BlockCollection?
-        if case .collection(let uid) = model.scope, !shownIDs.contains(uid) {
+        let shown = shownScope
+        if case .collection(let uid) = shown, !shownIDs.contains(uid) {
             extra = collections.first { $0.uid == uid }
             if let extra { shownIDs.insert(extra.uid) }
         }
@@ -163,22 +168,22 @@ struct TopBar: View {
             tab("Inbox", scope: .inbox, count: inboxCount)
             ForEach(pinned) { collectionTab($0) }
             if let extra { collectionTab(extra) }
-            if model.scope == .archive || model.scope == .expired {
-                tab(model.placeName(model.scope), scope: model.scope)
+            if shown == .archive {
+                tab(model.placeName(shown), scope: shown)
             }
-            if let tag = model.openTag {
+            if case .tag(let uid) = shown, let tag = model.tag(uid) {
                 tab("# \(tag.name)", scope: .tag(tag.uid))
                     .contextMenu { TagMenu(tag: tag) }
             }
             KitBarDivider()
             Button { model.showsCollections.toggle() } label: {
                 HStack(spacing: Metric.inlineGap) {
-                    Text(hidden > 0 ? "\(hidden) more" : "Collections")
-                    KitIconView(icon: .chevronDown, size: 10)
+                    Text(hidden > 0 ? "\(hidden) more" : "Piles")
+                    KitIconView(icon: .chevronDown, size: Metric.chevron)
                 }
             }
             .buttonStyle(KitTabStyle(isSelected: false))
-            .help("All collections (⌘K)")
+            .help("All piles (⌘K)")
         }
     }
 
@@ -201,7 +206,18 @@ struct TopBar: View {
             if model.viewMode != .gallery && model.viewMode != .journal { model.show(.gallery) }
             model.selection = nil
         }
-        .buttonStyle(KitTabStyle(isSelected: model.scope == scope, count: count))
+        .buttonStyle(KitTabStyle(isSelected: shownScope == scope, count: count))
+    }
+
+    /// The place the window is working on, which is the tab to highlight: the Inbox while
+    /// sorting it, Lucky Dip's source (All for Everything), All in Rediscover, else the open place.
+    private var shownScope: Scope {
+        switch model.viewMode {
+        case .sortInbox: .inbox
+        case .luckyDip: model.dipCollection.map { .collection($0) } ?? .all
+        case .rediscover: .all
+        case .gallery, .journal: model.scope
+        }
     }
 }
 
@@ -211,17 +227,12 @@ private struct RightControls: View {
     var body: some View {
         @Bindable var model = model
         HStack(spacing: Space.sm) {
-            if !model.isSearching {
-                Button { model.startSearch() } label: { KitIconView(icon: .search, size: 14) }
-                    .buttonStyle(.kit(.secondary))
-                    .help("Search everything (⌘F)")
-                    .accessibilityLabel("Search")
-            }
+            // Sort comes first, so Search stays where it is in the views that have no Sort.
             if (model.viewMode == .gallery || model.viewMode == .journal) && !model.isSearching {
                 let order = model.order(for: model.scope)
                 Button { model.showsSortMenu.toggle() } label: {
                     HStack(spacing: Metric.inlineGap) {
-                        KitIconView(icon: .sort, size: 12)
+                        KitIconView(icon: .sort, size: Metric.iconSmall)
                         Text(order.label)
                     }
                 }
@@ -231,6 +242,12 @@ private struct RightControls: View {
                 .popover(isPresented: $model.showsSortMenu, arrowEdge: .bottom) {
                     SortMenu().environment(model).kitPopover()
                 }
+            }
+            if !model.isSearching {
+                Button { model.startSearch() } label: { KitIconView(icon: .search) }
+                    .buttonStyle(.kit(.secondary))
+                    .help("Search everything (⌘F)")
+                    .accessibilityLabel("Search")
             }
             KitSegmentTrack {
                 ForEach(ViewMode.switcher) { mode in
@@ -268,7 +285,7 @@ private struct SortMenu: View {
                 }
                 .buttonStyle(KitOptionRowStyle(hint: order.hint, isSelected: order == current))
             }
-            Text("Each collection remembers its own order.")
+            Text("Each pile remembers its own order.")
                 .kitType(.meta).foregroundStyle(Ink.secondary)
                 .padding(Metric.rowInset)
         }
@@ -334,7 +351,7 @@ private struct BottomHint: View {
                 .frame(height: Metric.control + Space.sm)
                 .background(Capsule().fill(Ink.surface))
                 .overlay(Capsule().strokeBorder(Ink.hairline))
-                .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+                .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
             }
         }
         .padding(.bottom, Space.lg + Space.xs)
@@ -386,10 +403,9 @@ private struct EmptyGallery: View {
             return ("Inbox zero.", "Everything you’ve saved has a place. New saves land here first.",
                     [("Rediscover old saves", { model.show(.rediscover) }), ("Back to All", { model.scope = .all })])
         case .collection(let uid):
-            let name = model.collection(uid)?.name ?? "this collection"
-            let expiry = model.collection(uid)?.defaultExpiryDays.map { " Blocks added here expire after \($0) days." } ?? ""
+            let name = model.collection(uid)?.name ?? "this pile"
             return ("Nothing in \(name) yet.",
-                    "Paste or drop something while it’s open, choose Move to in a card’s menu, or pick it in Quick Save.\(expiry)",
+                    "Paste or drop something while it’s open, choose Move to in a card’s menu, or pick it in Quick Save.",
                     [("Paste from clipboard", { model.paste() }), ("New note", { model.addNote() })])
         case .tag(let uid):
             return ("Nothing tagged #\(model.tag(uid)?.name ?? "").",
@@ -397,11 +413,7 @@ private struct EmptyGallery: View {
                     [("Back to All", { model.scope = .all })])
         case .archive:
             return ("Nothing archived.",
-                    "Archive blocks you’re done with (⇧⌘A). They leave your collections, and search still finds them.",
-                    [("Back to All", { model.scope = .all })])
-        case .expired:
-            return ("Nothing has expired.",
-                    "A collection can expire its blocks after a few days (right-click it). Expired ones wait here, never deleted.",
+                    "Archive blocks you’re done with (⇧⌘A). They leave your piles, and search still finds them.",
                     [("Back to All", { model.scope = .all })])
         case .all:
             return ("Nothing in \(scopeName) yet.", "Drop something here\(quickSave).",

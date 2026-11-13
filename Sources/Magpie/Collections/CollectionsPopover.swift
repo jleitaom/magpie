@@ -13,18 +13,18 @@ struct CollectionsPopover: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            TextField("Find a collection", text: $search).kitField()
+            TextField("Find a pile", text: $search).kitField()
                 // Off while a name is being edited, so the panel can't hand it the focus.
                 .disabled(model.renamingCollection != nil)
             HStack {
-                Text("All collections").kitType(.meta).foregroundStyle(Ink.secondary)
+                Text("All piles").kitType(.meta).foregroundStyle(Ink.secondary)
                 Spacer()
                 Text("Drag to reorder or nest · pin up to \(Pins.limit)").kitType(.meta).foregroundStyle(Ink.secondary)
             }
             .padding(.horizontal, Space.xs)
             let rows = filtered
             if rows.isEmpty {
-                Text(model.collections.isEmpty ? "No collections yet. Make your first one below." : "No collection matches “\(search)”.")
+                Text(model.collections.isEmpty ? "No piles yet. Make your first one below." : "No pile matches “\(search)”.")
                     .kitType(.body).foregroundStyle(Ink.secondary)
                     .padding(.vertical, Space.md).padding(.horizontal, Space.xs)
             } else {
@@ -47,18 +47,11 @@ struct CollectionsPopover: View {
             }
             TagCloud()
                 .padding(.top, Space.xs)
-            HStack(spacing: Space.xs) {
-                Button("Archive  \(model.archiveCount)") { open(.archive) }
-                    .buttonStyle(KitChipStyle(isSelected: model.scope == .archive))
-                    .help("Blocks you archived (⌃⌘0)")
-                if model.expiredCount > 0 {
-                    Button("Expired  \(model.expiredCount)") { open(.expired) }
-                        .buttonStyle(KitChipStyle(isSelected: model.scope == .expired))
-                        .help("Blocks archived because their collection expires them")
-                }
-            }
+            Button("Archive  \(model.archiveCount)") { open(.archive) }
+                .buttonStyle(KitChipStyle(isSelected: model.scope == .archive))
+                .help("Blocks you archived (⌃⌘0)")
             HStack(spacing: Space.sm) {
-                TextField("New collection", text: $newName).kitField().onSubmit(create)
+                TextField("New pile", text: $newName).kitField().onSubmit(create)
                 Button("Add", action: create).buttonStyle(.kit()).disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
@@ -147,7 +140,7 @@ private struct CollectionRow: View {
                 .buttonStyle(.plain)
             }
             Button { model.togglePin(target) } label: {
-                KitIconView(icon: .pin, size: 12, filled: target.isPinned)
+                KitIconView(icon: .pin, size: Metric.iconSmall, filled: target.isPinned)
                     .foregroundStyle(target.isPinned ? Ink.accentText : Ink.tertiary)
                     .frame(width: Metric.control, height: Metric.control)
                     .contentShape(.rect)
@@ -248,17 +241,16 @@ struct CollectionMenu: View {
             .disabled(CollectionTree.step(target.uid, up: true, in: model.collections.map(\.node)) == nil)
         Button("Move Down") { model.step(target, up: false) }
             .disabled(CollectionTree.step(target.uid, up: false, in: model.collections.map(\.node)) == nil)
-        Menu("Expire Blocks After") {
-            Toggle("Never", isOn: Binding(get: { target.defaultExpiryDays == nil }, set: { if $0 { model.setExpiry(target, days: nil) } }))
-            Divider()
-            ForEach(Expiry.choices, id: \.self) { days in
-                Toggle("\(days) Days", isOn: Binding(get: { target.defaultExpiryDays == days }, set: { if $0 { model.setExpiry(target, days: days) } }))
-            }
-        }
         Divider()
         Button(target.isPinned ? "Unpin from Top Bar" : "Pin to Top Bar") { model.togglePin(target) }
+        if target.isPinned {
+            Button("Move Left in Top Bar") { model.stepPin(target, left: true) }
+                .disabled(!model.canStepPin(target, left: true))
+            Button("Move Right in Top Bar") { model.stepPin(target, left: false) }
+                .disabled(!model.canStepPin(target, left: false))
+        }
         Divider()
-        Button("Delete Collection…", role: .destructive) { model.collectionToDelete = target.uid }
+        Button("Delete Pile…", role: .destructive) { model.collectionToDelete = target.uid }
     }
 }
 

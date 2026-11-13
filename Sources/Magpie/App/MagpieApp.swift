@@ -34,7 +34,8 @@ struct MagpieApp: App {
             MagpieCommands(model: model, selection: menu.selection, appearance: model.appearance,
                            viewMode: model.viewMode, canSort: model.canSortNow, sortOrder: model.order(for: model.scope),
                            canRediscover: model.canRediscoverNow,
-                           pinned: model.pinnedCollections.map { PinnedItem(id: $0.uid, name: $0.name) }, dip: model.dipMenuState)
+                           pinned: model.pinnedCollections.map { PinnedItem(id: $0.uid, name: $0.name) }, dip: model.dipMenuState,
+                           quickSave: model.quickSaveShortcut)
         }
 
         Settings {
@@ -61,6 +62,8 @@ struct MagpieCommands: Commands {
     /// Pinned collections for ⌘3–⌘7, passed in so the menu follows pin changes.
     let pinned: [PinnedItem]
     let dip: DipMenuState
+    /// The Quick Save shortcut chosen in Settings, passed in so the menu shows it.
+    let quickSave: QuickSaveShortcut
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
@@ -87,7 +90,7 @@ struct MagpieCommands: Commands {
         CommandGroup(after: .newItem) {
             Divider()
             Button("Quick Save…") { model.quickSavePanel.open() }
-                .keyboardShortcut(.space, modifiers: [.control, .option])
+                .keyboardShortcut(quickSave.menuShortcut)
             Button("Save Screenshot…") { model.takeScreenshot() }
                 .keyboardShortcut("s", modifiers: [.control, .option])
             Button("Import Bookmarks…") { model.chooseBookmarksFile() }
@@ -145,58 +148,9 @@ struct MagpieCommands: Commands {
             }
             .disabled(selection == nil)
         }
-        CommandMenu("Inbox") {
-            Button("Sort Inbox") { front { model.startSorting() } }
-                .keyboardShortcut("3", modifiers: [.control, .command])
-            Divider()
-            // Plain keys, like the action bar. Off unless Sort Inbox is showing a block with no field
-            // or panel open, so typing elsewhere is never caught.
-            Button("Move to Suggested") { model.sortMove(to: model.sortingBlock.flatMap(model.suggestion(for:)), undo: NSApp.keyWindow?.undoManager) }
-                .keyboardShortcut("m", modifiers: [])
-                .disabled(!canSort)
-            Button("Rename") { model.isRenamingSortBlock = true }
-                .keyboardShortcut("r", modifiers: [])
-                .disabled(!canSort)
-            Button("Mark Done") { model.sortDone() }
-                .keyboardShortcut("d", modifiers: [])
-                .disabled(!canSort)
-            // One → for both Sort Inbox and Rediscover: two menu items can't share a key.
-            Button("Skip") { if viewMode == .rediscover { model.rediscoverSkip() } else { model.sortSkip() } }
-                .keyboardShortcut(.rightArrow, modifiers: [])
-                .disabled(!canSort && !canRediscover)
-            Button("Delete") { model.sortDelete(undo: NSApp.keyWindow?.undoManager) }
-                .keyboardShortcut(.delete, modifiers: [])
-                .disabled(!canSort)
-        }
-        CommandMenu("Rediscover") {
-            Button("Rediscover Old Saves") { front { model.show(.rediscover) } }
-            Divider()
-            Button("Keep") { model.rediscoverKeep() }
-                .keyboardShortcut("k", modifiers: [])
-                .disabled(!canRediscover)
-            Button("Archive") { model.rediscoverArchive() }
-                .keyboardShortcut("a", modifiers: [])
-                .disabled(!canRediscover)
-        }
-        CommandMenu("Lucky Dip") {
-            Button("Lucky Dip") { front { model.show(.luckyDip) } }
-                .keyboardShortcut("4", modifiers: [.control, .command])
-            Divider()
-            Button(dip.hasPick ? "Spin Again" : "Randomize") { model.spin(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) }
-                .keyboardShortcut("r", modifiers: [.command])
-                .disabled(!dip.canSpin)
-            Button(dip.inProgress ? "Mark as Finished" : "Start") {
-                if let started = model.inProgressBlock { model.finishPick(started) } else if let pick = model.dipPick { model.startPick(pick) }
-            }
-            .keyboardShortcut(.return, modifiers: [.command])
-            .disabled(!dip.hasPick && !dip.inProgress)
-            Button("Not Today") { if let pick = model.dipPick { model.notToday(pick) } }
-                .keyboardShortcut(.delete, modifiers: [.command, .option])
-                .disabled(!dip.hasPick || dip.inProgress)
-        }
-        CommandMenu("Collection") {
+        CommandMenu("Pile") {
             let open = model.openCollection
-            Button("Rename Collection…") {
+            Button("Rename Pile…") {
                 // The open collection always has a tab in the top bar: rename it there.
                 if let open { model.renamingCollection = open.uid }
             }
@@ -210,10 +164,63 @@ struct MagpieCommands: Commands {
                 .disabled(open == nil)
             Button("Move to Top Level") { if let open { model.place(open, .topLevel) } }
                 .disabled(open?.parent == nil)
+            // `pinned` is passed in, so these follow the top bar's order as it changes.
+            let place = pinned.firstIndex { $0.id == open?.uid }
+            Button("Move Left in Top Bar") { if let open { model.stepPin(open, left: true) } }
+                .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+                .disabled(place == nil || place == 0)
+            Button("Move Right in Top Bar") { if let open { model.stepPin(open, left: false) } }
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+                .disabled(place == nil || place == pinned.count - 1)
             Divider()
-            Button("Delete Collection…") { model.collectionToDelete = open?.uid }
+            Button("Delete Pile…") { model.collectionToDelete = open?.uid }
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
                 .disabled(open == nil)
+        }
+        // One menu for the three views you work through, so the menu bar stays short on a
+        // laptop. View switches to each of them; this holds what you do once you're there.
+        // Each group is off unless its view is showing a block with no field or panel open,
+        // so the plain keys (M, D, K, A, →, ⌫) are never caught while typing elsewhere.
+        CommandMenu("Go") {
+            Section("Sort Inbox") {
+                Button("Move to Suggested") { model.sortMove(to: model.sortingBlock.flatMap(model.suggestion(for:)), undo: NSApp.keyWindow?.undoManager) }
+                    .keyboardShortcut("m", modifiers: [])
+                    .disabled(!canSort)
+                Button("Rename") { model.isRenamingSortBlock = true }
+                    .keyboardShortcut("r", modifiers: [])
+                    .disabled(!canSort)
+                Button("Mark Done") { model.sortDone() }
+                    .keyboardShortcut("d", modifiers: [])
+                    .disabled(!canSort)
+                // One → for both Sort Inbox and Rediscover: two menu items can't share a key.
+                Button("Skip") { if viewMode == .rediscover { model.rediscoverSkip() } else { model.sortSkip() } }
+                    .keyboardShortcut(.rightArrow, modifiers: [])
+                    .disabled(!canSort && !canRediscover)
+                Button("Delete") { model.sortDelete(undo: NSApp.keyWindow?.undoManager) }
+                    .keyboardShortcut(.delete, modifiers: [])
+                    .disabled(!canSort)
+            }
+            Section("Rediscover") {
+                Button("Keep") { model.rediscoverKeep() }
+                    .keyboardShortcut("k", modifiers: [])
+                    .disabled(!canRediscover)
+                Button("Archive") { model.rediscoverArchive() }
+                    .keyboardShortcut("a", modifiers: [])
+                    .disabled(!canRediscover)
+            }
+            Section("Lucky Dip") {
+                Button(dip.hasPick ? "Spin Again" : "Randomize") { model.spin(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) }
+                    .keyboardShortcut("r", modifiers: [.command])
+                    .disabled(!dip.canSpin)
+                Button(dip.inProgress ? "Mark as Finished" : "Start") {
+                    if let started = model.inProgressBlock { model.finishPick(started) } else if let pick = model.dipPick { model.startPick(pick) }
+                }
+                .keyboardShortcut(.return, modifiers: [.command])
+                .disabled(!dip.hasPick && !dip.inProgress)
+                Button("Not Today") { if let pick = model.dipPick { model.notToday(pick) } }
+                    .keyboardShortcut(.delete, modifiers: [.command, .option])
+                    .disabled(!dip.hasPick || dip.inProgress)
+            }
         }
         // Split into small typed parts: as one expression, this group was too much for CI's
         // type checker ("unable to type-check this expression in reasonable time").
@@ -250,7 +257,7 @@ struct MagpieCommands: Commands {
         }
         Button("Archive") { go(to: .archive, gallery: true) }
             .keyboardShortcut("0", modifiers: [.control, .command])
-        Button("Collections…") { front { model.showsCollections = true } }
+        Button("Piles…") { front { model.showsCollections = true } }
             .keyboardShortcut("k")
     }
 
@@ -368,7 +375,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Self.trace("open isActive=\(NSApp.isActive) activeFor=\(activeSince.map { Date.now.timeIntervalSince($0) } ?? -1) stepBack=\(stepBack)")
         let saved = model.receive(urls, quietly: stepBack)
         guard stepBack, !saved.isEmpty else { return }
-        DropHUD.show(saved.count == 1 ? "Saved to Inbox" : "Saved \(saved.count) to Inbox")
+        DropHUD.show(model.receiveMessage)
         Self.stepBack()
     }
 
@@ -420,6 +427,18 @@ enum Store {
             return try ModelContainer(for: Block.self, BlockCollection.self, DayActivity.self, Tag.self, configurations: ModelConfiguration(url: url))
         } catch {
             fatalError("Could not open the database at \(url.path): \(error)")
+        }
+    }
+}
+
+extension QuickSaveShortcut {
+    /// The same keys for the File menu, or none when the shortcut is Off.
+    var menuShortcut: KeyboardShortcut? {
+        switch self {
+        case .controlOptionSpace: KeyboardShortcut(.space, modifiers: [.control, .option])
+        case .controlOptionM: KeyboardShortcut("m", modifiers: [.control, .option])
+        case .optionCommandSpace: KeyboardShortcut(.space, modifiers: [.option, .command])
+        case .off: nil
         }
     }
 }

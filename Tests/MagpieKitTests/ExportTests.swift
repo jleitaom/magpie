@@ -34,7 +34,7 @@ struct ExportTests {
         )
     }
 
-    @Test("The JSON keeps every field, collection and tag: reading it back gives the same library")
+    @Test("The JSON keeps every field, pile and tag: reading it back gives the same library")
     func roundTrip() throws {
         let library = Self.sample()
         let back = try LibraryExport.read(try library.json())

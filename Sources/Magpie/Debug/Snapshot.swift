@@ -8,6 +8,7 @@ import SwiftUI
 /// writes <page>-light.png and <page>-dark.png for every SnapshotPage, and
 /// settings-<tab>-light.png and settings-<tab>-dark.png for every Settings tab, then quits.
 /// APP_SNAPSHOT_PAGES=all,details limits the pages (SnapshotPage). Add "settings" to include Settings.
+/// APP_SNAPSHOT_SIZE=1500x885 sets the window's size in points.
 enum Snapshot {
     static func runIfRequested(model: AppModel, openSettings: OpenSettingsAction) {
         let env = ProcessInfo.processInfo.environment
@@ -28,6 +29,13 @@ enum Snapshot {
             IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
                                         IOPMAssertionLevel(kIOPMAssertionLevelOn), "Snapshots" as CFString, &awake)
             try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+            // APP_SNAPSHOT_SIZE=1500x885: the window's size in points, for pictures of a known
+            // size (the README's screenshots). Without it the window keeps the size it opened at.
+            let size = (env["APP_SNAPSHOT_SIZE"] ?? "").split(separator: "x").compactMap { Double($0) }
+            if size.count == 2, let window = NSApp.windows.first(where: { $0.isVisible && !($0 is NSPanel) }) {
+                window.setContentSize(NSSize(width: size[0], height: size[1]))
+                window.center()
+            }
             try? await Task.sleep(for: .seconds(1.5))
             for mode in ["light", "dark"] {
                 NSApp.appearance = NSAppearance(named: mode == "light" ? .aqua : .darkAqua)
@@ -77,7 +85,8 @@ enum Snapshot {
                     for tab in SettingsTab.allCases {
                         model.settingsTab = tab
                         try? await Task.sleep(for: .seconds(0.8))
-                        let settings = NSApp.windows.first { $0.isVisible && $0 !== main && !$0.isSheet }
+                        // Not a panel: the Dock drop message can still be up from its own page.
+                        let settings = NSApp.windows.first { $0.isVisible && $0 !== main && !$0.isSheet && !($0 is NSPanel) }
                         capture(to: "\(dir)/settings-\(tab.rawValue)-\(mode).png", window: settings)
                     }
                 }
@@ -133,8 +142,10 @@ enum Snapshot {
 enum SnapshotPage: String, CaseIterable {
     /// The block the luckyDipStarted page marked In progress, and its status before, to put back.
     @MainActor static var startedOriginal: (UUID, BlockStatus)?
+    /// Blocks the empty Archive page took out of the Archive, to put back for the next page.
+    @MainActor static var unarchived: [(UUID, BlockStatus)] = []
 
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet, dropHUD, sortRename, afterDelete, firstLaunch, emptyArchive, pictureChooser
+    case all, inbox, collection, details, detailsNote, detailsPlace, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet, dropHUD, sortRename, afterDelete, firstLaunch, emptyArchive, pictureChooser
 
     /// Pages that open a popover. Their snapshot is the popover alone.
     var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename || self == .sortMenu }
@@ -148,6 +159,9 @@ enum SnapshotPage: String, CaseIterable {
         model.todayIfAny?.spins = 0
         if let (uid, status) = Self.startedOriginal, let block = model.block(uid) { block.status = status }
         Self.startedOriginal = nil
+        // The empty Archive page puts archived blocks back for a moment; archive them again.
+        for (uid, status) in Self.unarchived { model.block(uid)?.status = status }
+        Self.unarchived = []
         model.selection = nil
         model.renamingCollection = nil
         model.showsCollections = false
@@ -157,6 +171,12 @@ enum SnapshotPage: String, CaseIterable {
         case .all: model.scope = .all
         case .inbox: model.scope = .inbox
         case .collection: model.scope = model.pinnedCollections.dropFirst().first.map { .collection($0.uid) } ?? .all
+        case .detailsNote, .detailsPlace:
+            // A block with no picture, and a place with its map: the close button's two other homes.
+            model.scope = .all
+            let kind: BlockKind = self == .detailsNote ? .note : .place
+            model.selection = (try? model.context.fetch(FetchDescriptor<Block>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])))?
+                .first { $0.kind == kind && $0.status != .archived }?.uid
         case .details:
             model.scope = .all
             let newest = (try? model.context.fetch(FetchDescriptor<Block>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])))?
@@ -187,9 +207,12 @@ enum SnapshotPage: String, CaseIterable {
         case .firstLaunch:
             model.scope = .all
         case .emptyArchive:
-            model.scope = .expired
-            // The sample library's expired talk, unarchived for this page, so Expired is empty.
-            for block in model.blocks(in: .expired, from: (try? model.context.fetch(FetchDescriptor<Block>())) ?? []) { block.expiredAt = nil }
+            model.scope = .archive
+            // The sample library's archived blocks, put back for this page, so the Archive is empty.
+            for block in model.blocks(in: .archive, from: (try? model.context.fetch(FetchDescriptor<Block>())) ?? []) {
+                Self.unarchived.append((block.uid, block.status))
+                block.status = .kept
+            }
         case .afterDelete:
             model.scope = .all
             let shown = model.ordered(model.blocks(in: .all, from: (try? model.context.fetch(FetchDescriptor<Block>())) ?? []), in: .all)

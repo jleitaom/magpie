@@ -6,6 +6,11 @@ struct LinksTests {
     @Test("Reads links from pasted text", arguments: [
         ("https://example.com/a", true), ("example.com/path?x=1", true), ("  https://youtu.be/abc \n", true),
         ("hello world", false), ("not a link", false), ("ftp://example.com", false), ("localhost", false), ("", false),
+        // One word with a dot is a link only when it looks like a site.
+        ("example.com", true), ("www.rtp.pt", true), ("magpie.app", true), ("example.museum/visit", true), ("example.museum?x=1", true),
+        ("john@example.com", false), ("1.2.1", false), ("notes.txt", false), ("readme.md", false), ("Dr.Smith", false), ("e.g.", false),
+        // With https:// in front, anything with a host is taken at its word.
+        ("https://example.museum", true), ("https://notes.txt", true), ("http://192.168.1.1", true),
     ])
     func parse(text: String, isLink: Bool) {
         #expect((Links.parse(text) != nil) == isLink)
@@ -20,6 +25,15 @@ struct LinksTests {
     ])
     func sameAfterNormalizing(a: String, b: String) {
         #expect(Links.normalize(URL(string: a)!) == Links.normalize(URL(string: b)!))
+    }
+
+    @Test("A route after # is another page; an anchor isn't")
+    func hashRoutes() {
+        func same(_ a: String, _ b: String) -> Bool { Links.normalize(URL(string: a)!) == Links.normalize(URL(string: b)!) }
+        #expect(!same("https://app.example.com/#/inbox", "https://app.example.com/#/archive"))
+        #expect(!same("https://example.com/#!/photo/3", "https://example.com/#!/photo/4"))
+        #expect(same("https://app.example.com/#/inbox", "http://www.app.example.com/#/inbox"))
+        #expect(same("https://example.com/post#comments", "https://example.com/post#top"))
     }
 
     @Test func differentPagesStayDifferent() {
@@ -74,6 +88,16 @@ struct MasonryTests {
     @Test func pinLimit() {
         #expect(Pins.canPin(currentlyPinned: 4))
         #expect(!Pins.canPin(currentlyPinned: 5))
+        let a = UUID(), b = UUID(), c = UUID(), d = UUID()
+        // Dropped on a tab, a pile takes its place: dragged right it lands after, dragged left before.
+        #expect(Pins.dropped(a, onto: c, in: [a, b, c, d]) == [b, c, a, d])
+        #expect(Pins.dropped(d, onto: b, in: [a, b, c, d]) == [a, d, b, c])
+        #expect(Pins.dropped(a, onto: a, in: [a, b, c]) == nil)
+        #expect(Pins.dropped(a, onto: UUID(), in: [a, b, c]) == nil)
+        #expect(Pins.stepped(b, left: true, in: [a, b, c]) == [b, a, c])
+        #expect(Pins.stepped(b, left: false, in: [a, b, c]) == [a, c, b])
+        #expect(Pins.stepped(a, left: true, in: [a, b, c]) == nil)
+        #expect(Pins.stepped(c, left: false, in: [a, b, c]) == nil)
     }
 
     @Test("Blocks only open web links and files")

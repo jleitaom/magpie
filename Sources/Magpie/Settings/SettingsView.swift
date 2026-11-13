@@ -29,7 +29,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .fitsContent(max: Metric.settingsMaxHeight)
-        .frame(width: 520)
+        .frame(width: Metric.settingsWidth)
     }
 }
 
@@ -67,14 +67,6 @@ struct GeneralSettings: View {
             }
             .pickerStyle(.segmented)
             Text("Magpie is designed dark. Switch any time with View → Appearance, or ⌃⌘T.")
-                .font(.caption).foregroundStyle(.secondary)
-        }
-        Section("New collections") {
-            Picker("Expire blocks after", selection: $model.defaultExpiryDays) {
-                Text("Never").tag(Int?.none)
-                ForEach(Expiry.choices, id: \.self) { Text("\($0) days").tag(Int?.some($0)) }
-            }
-            Text("Each collection can change this from its right-click menu. Expired blocks are archived, never deleted.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         Section("Rediscover") {
@@ -121,7 +113,7 @@ struct ShortcutSettings: View {
             }
             Toggle("⌃⌥S saves a screenshot to the Inbox", isOn: $model.screenshotShortcutOn)
             Text(model.quickSaveShortcutWorks
-                 ? "Quick Save saves Safari’s front tab, or the clipboard. Screenshots ask macOS for Screen Recording the first time."
+                 ? "Quick Save saves your browser’s front tab (Safari, Chrome, Arc, Brave, Edge…), or the clipboard. Screenshots ask macOS for Screen Recording the first time."
                  : "Another app is using the Quick Save shortcut. Pick a different one.")
                 .font(.caption).foregroundStyle(model.quickSaveShortcutWorks ? .secondary : Color.orange)
         }
@@ -130,7 +122,7 @@ struct ShortcutSettings: View {
             keys("Rediscover", "K keep · A archive · → skip · ↩ open")
             keys("Gallery, Journal", "arrows move · Space Quick Look · ↩ open · ⌫ delete · T tag")
             keys("Lucky Dip", "⌘R spin · ⌘↩ start or finish · ⌥⌘⌫ not today")
-            keys("Anywhere in the window", "⌘F search · ⌘1–⌘7 places · ⌘K collections · ⇧⌘V paste")
+            keys("Anywhere in the window", "⌘F search · ⌘1–⌘7 places · ⌘K piles · ⇧⌘V paste")
         }
     }
 

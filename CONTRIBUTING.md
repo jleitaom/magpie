@@ -23,28 +23,30 @@ Thanks for helping out!
   - `Journal/`: the Journal, a numbered list of the same blocks (`JournalView.swift`). Sort
     orders are in `MagpieKit/BlockOrder.swift`
   - `SortInbox/`: Sort Inbox, one Inbox block at a time (`SortInboxView.swift`). The queue and the
-    collection suggestion are in `MagpieKit/Sorting.swift`
-  - `LuckyDip/`: Lucky Dip, one random pick from a collection or everything (`LuckyDipView.swift`).
+    pile suggestion are in `MagpieKit/Sorting.swift`
+  - `LuckyDip/`: Lucky Dip, one random pick from a pile or everything (`LuckyDipView.swift`).
     The weighted pick, re-spins, start verbs and the dip streak are in `MagpieKit/LuckyDip.swift`
-  - `Rediscover/`: five old saves a day to keep or archive (`RediscoverView.swift`). The pick and
-    the expiry rules are in `MagpieKit/Rediscover.swift`
+  - `Rediscover/`: five old saves a day to keep or archive (`RediscoverView.swift`). The pick's rules
+    are in `MagpieKit/Rediscover.swift`
   - `QuickSave/`: the global shortcut (`HotKey.swift`, Carbon, no permission needed) and the floating
     panel that saves the front browser tab (Safari, or Chrome, Arc, Brave, Edge and other
     Chromium browsers) or the clipboard (`QuickSave.swift`)
   - `Import/`: the bookmarks import sheet (`ImportSheet.swift`); the file format is read by
     `MagpieKit/Bookmarks.swift`
-  - `Tags/`: the tag editor in the details panel, the tag list in the Collections panel, and the
+  - `Tags/`: the tag editor in the details panel, the tag list in the Piles panel, and the
     tag menu and prompts (`TagViews.swift`). Name rules are in `MagpieKit/Tags.swift`
   - `Details/`: the panel that slides in for a selected Block (`DetailsPanel.swift`), and the
     Choose Picture sheet (`PictureChooser.swift`; the page's pictures are found by `MagpieKit/PagePictures.swift`)
-  - `Collections/`: the "N more" panel to find, pin and create collections (`CollectionsPopover.swift`)
+  - `Collections/`: the "N more" panel to find, pin and create piles (`CollectionsPopover.swift`).
+    The app says **Pile**; the code says `BlockCollection` and `collection` (the stored model
+    and the export format keep their names, so no library needs a migration)
   - `Settings/`: the Settings window (⌘,), with General and Shortcuts tabs (`SettingsView.swift`)
   - `DesignKit/`: Magpie's own look. Tokens, type, icons, parts (buttons, cards, controls, the
     top bar) and the window chrome
   - `Debug/`: the self-test, snapshot mode and sample data
 - `Sources/MagpieKit/` holds the rules with no UI (link parsing and normalizing, masonry math,
-  color math, the collection tree, the Sort Inbox queue and suggestions, Lucky Dip,
-  sort orders, tags, search, Rediscover and expiry, the bookmarks file, the export format, and `PageReader`,
+  color math, the pile tree, the Sort Inbox queue and suggestions, Lucky Dip,
+  sort orders, tags, search, Rediscover, the bookmarks file, the export format, and `PageReader`,
   which reads video length, price, recipes and read time from a page's HTML), so they can be unit tested. Put new logic there, not in the views.
 - The app target builds in Swift 6 mode with the main actor as its default isolation. Mark slow
   work `nonisolated` and run it off the main thread, like the preview fetch in `Ingest.swift`.
@@ -52,8 +54,9 @@ Thanks for helping out!
   migration: every attribute optional or defaulted, every relationship optional with an
   inverse, no `@Attribute(.unique)` (duplicates are caught in code on `normalizedURL`), order
   in a `sortIndex: Double`, and images in `@Attribute(.externalStorage)`.
-- The app icon is `Icon/AppIcon.icon`, an Icon Composer file. `build.sh` compiles it with
-  `scripts/make-icon.sh` when it changes, and `scripts/icon-review.sh` renders it in every look.
+- The app icon is `Icon/AppIcon.icon`, an Icon Composer file, and `Icon/Assets.xcassets` holds the
+  app's accent color (the teal native controls take when the Mac's accent is Multicolor). `build.sh`
+  compiles both with `scripts/make-icon.sh` when they change, and `scripts/icon-review.sh` renders the icon in every look.
 
 ## Design rules
 
@@ -64,8 +67,12 @@ Every screen is built from the kit in `Sources/Magpie/DesignKit/`.
 - Type: `.kitType(.role)`, never `.font(.system…)`. Icons: `KitIconView(icon:)`, never
   `systemName:` outside `DesignKit/`.
 - Sizes: `Space.*` (a 4 pt grid) and `Metric.*`. A size off the grid becomes a named `Metric`.
+  `scripts/grid-lint.sh` fails on off-grid spacing and, outside `DesignKit/`, on a literal icon
+  size, shadow number or `CGFloat` constant.
 - Motion: `Motion.*`, and nothing animates when Reduce Motion is on.
-- Every action has a menu bar item and a keyboard shortcut.
+- Every action has a menu bar item and a keyboard shortcut. The menu bar stays short: File, Edit,
+  View, Block, Pile, Go, Window, Help. View opens each view; what you do inside Sort Inbox,
+  Rediscover and Lucky Dip goes in **Go**. Don't add a top-level menu for a new view.
 - Dark is the default. Check every change in light **and** dark.
 
 ## Checks
@@ -75,6 +82,7 @@ swift test                               # unit tests for MagpieKit
 scripts/selftest.sh                      # the app's real actions on a fresh store in /tmp
 APP_SELFTEST_NETWORK=1 scripts/selftest.sh   # also fetches real link previews
 scripts/snap.sh                          # every page in light and dark, in /tmp/Magpie-shots
+APP_SNAPSHOT_PAGES=details,settings scripts/snap.sh   # only the pages you changed
 scripts/grid-lint.sh                     # must print PASS
 ```
 
@@ -110,7 +118,7 @@ snapshots on every PR. Download the snapshots from the run's artifacts to review
 ## Pull requests
 
 - Keep changes focused: one feature or fix per PR.
-- Match the existing code style, and use the words the app uses (Block, Collection, Inbox,
-  Lucky Dip…).
+- Match the existing code style, and use the words the app uses (Block, Pile, Inbox,
+  Lucky Dip…) in everything people read.
 - Make sure `./build.sh` prints no warnings and every check above passes.
 - Add a line to `CHANGELOG.md` under **Unreleased**.

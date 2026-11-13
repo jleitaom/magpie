@@ -5,6 +5,39 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-13
+
+### Added
+
+- **Arrange your piles in the top bar.** Open a pinned pile and choose **Pile → Move Left in Top Bar** or **Move Right in Top Bar** (⌥⌘← and ⌥⌘→), or right-click its tab. All and Inbox stay where they are, and ⌘3–⌘7 follow the new order
+
+### Changed
+
+- **Collections are now called Piles.** Same thing, new name, everywhere: the top bar, the Piles panel (⌘K), the Pile menu, a Block's details, Quick Save and the messages. Your library and older exports open as before
+- **A shorter menu bar.** The Inbox, Rediscover and Lucky Dip menus are now one **Go** menu, with a group for each, so the bar fits a laptop screen: File, Edit, View, Block, Pile, Go, Window, Help. Every command and shortcut is still there. Open the views themselves from **View** (⌃⌘1 to ⌃⌘5)
+- **Close is in the corner of a Block's details.** The × sits at the top right of the panel, on the picture, instead of beside the title, and stays there as you scroll. The title gets the full width
+- **Menus look like menus.** Pile and Kind in a Block's details, and Save to in Quick Save, now show a small chevron, so they no longer look like plain buttons
+- **The top bar shows where you are working.** Sort Inbox highlights Inbox, and Lucky Dip highlights the pile it picks from, instead of All
+- **Search stays put.** The Search button no longer jumps when you switch to Sort Inbox or Lucky Dip. Sort now sits to its left
+- **The "Drop anything to make a block" hint steps aside.** It shows while your library is new (fewer than 5 Blocks) and then goes away, so it no longer covers the bottom row of cards. Empty screens, which already say it, don't repeat it
+- **Easier to see in dark.** Text fields in a Block's details and in Quick Save have a visible edge, and the Journal's color dots show even for very dark colors
+- **Settings uses Magpie's teal for its tabs** (when your Mac's accent color is Multicolor), and the Shortcuts tab says Quick Save reads your browser's front tab, not just Safari's
+
+### Removed
+
+- **Piles that expire their Blocks.** Expire Blocks After is gone from a pile's right-click menu and from Settings, and so are the "expires in 2 d" note on cards, Keep (Don't Expire), and the Expired place. Nothing is archived on its own any more. Blocks that had already expired stay in the Archive, where Unarchive puts them back
+
+### Fixed
+
+- **Saving a product again updates its price.** Magpie said it refreshed the price, but kept the one from the first save. A kind you chose by hand still keeps its price
+- **Undo after moving a Block puts it back exactly as it was.** A Block that was done or archived came back as if it were new
+- **File → Quick Save shows the shortcut you chose in Settings**, or none when it's Off. It always showed ⌃⌥Space
+- **A new day starts at midnight even with the window open.** The Lucky Dip streak, your re-spins and the Dock badge waited until you reopened the window
+- **An email address, a version number or a file name is no longer saved as a link.** Pasting `john@example.com`, `1.2.1` or `notes.txt` makes a note. A bare address like `example.com/page` is still a link; a site on an unusual ending needs `https://` in front
+- **Two pages of the same web app are no longer taken for one.** Links that differ only after `#/` or `#!` (like `app.example.com/#/inbox` and `…/#/archive`) are saved as separate Blocks. An ordinary anchor like `#comments` is still the same page
+- **Undo after a delete brings everything back.** A Block you deleted and brought back with Undo had lost its tags, the text read from its picture, its place in your own order and whether it was archived
+- **A link you already saved stays in its pile.** Saving it again with Quick Save, or dropping it on the Dock icon, moved it back to the Inbox. Now it moves to the top and stays where it is, and Magpie says where ("Already in Shopping"). Choosing a pile in Quick Save still moves it there
+
 ## [1.2.1] - 2026-11-12
 
 ### Fixed

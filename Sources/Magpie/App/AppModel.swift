@@ -11,8 +11,8 @@ enum Scope: Hashable {
     case collection(UUID)
     /// Every block with this tag (S-014).
     case tag(UUID)
-    /// Archived blocks (S-022), and the ones that expired (S-021).
-    case archive, expired
+    /// Archived blocks (S-022).
+    case archive
 }
 
 /// The view switcher's modes. Gallery and Sort Inbox exist so far (notes/PLAN.md).
@@ -178,16 +178,16 @@ final class AppModel {
     func start() {
         applyAppearance()
         refreshDipStats()
-        expireDue()
         refreshDockBadge()
         registerQuickSave()
         registerScreenshot()
+        watchDayChange()
         // Things dropped on the Dock icon before the library was ready.
         if !AppDelegate.pendingURLs.isEmpty {
             let saved = receive(AppDelegate.pendingURLs, quietly: true)
             AppDelegate.pendingURLs = []
             if !saved.isEmpty {
-                DropHUD.show(saved.count == 1 ? "Saved to Inbox" : "Saved \(saved.count) to Inbox")
+                DropHUD.show(receiveMessage)
                 AppDelegate.stepBack()
             }
         }
@@ -195,6 +195,27 @@ final class AppModel {
         let pending = EnrichState.pending.rawValue
         let stuck = (try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.enrichRaw == pending }))) ?? []
         for block in stuck { enrich(block) }
+    }
+
+    // MARK: A new day
+
+    /// Counts midnights passed while Magpie runs. Views that show today's numbers read it
+    /// (through `todayIfAny`), so they redraw when the day changes with the window open.
+    private(set) var dayTick = 0
+    @ObservationIgnored private var dayObserver: NSObjectProtocol?
+
+    private func watchDayChange() {
+        guard dayObserver == nil else { return }
+        dayObserver = NotificationCenter.default.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.dayChanged() }
+        }
+    }
+
+    /// Midnight passed: the Lucky Dip streak and week, today's spins and the Dock badge start over.
+    func dayChanged() {
+        dayTick += 1
+        refreshDipStats()
+        refreshDockBadge()
     }
 
     // MARK: Lookups
@@ -221,7 +242,6 @@ final class AppModel {
         case .collection(let uid): all.filter { $0.collection?.uid == uid && $0.status != .archived }
         case .tag(let uid): all.filter { block in block.status != .archived && (block.tags ?? []).contains { $0.uid == uid } }
         case .archive: all.filter { $0.status == .archived }
-        case .expired: all.filter { $0.status == .archived && $0.expiredAt != nil }
         }
     }
 
@@ -232,7 +252,6 @@ final class AppModel {
         if case .collection(let uid) = scope, let target = collection(uid) {
             block.collection = target
             block.status = .kept
-            block.expiresAt = Expiry.date(addedAt: .now, days: target.defaultExpiryDays)
         } else {
             block.status = .inbox
         }
@@ -241,11 +260,22 @@ final class AppModel {
         save()
     }
 
+    /// The block already holding this link, if it was saved before (compared after normalizing).
+    func savedBlock(for url: URL) -> Block? {
+        let normalized = Links.normalize(url)
+        return try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.normalizedURL == normalized })).first
+    }
+
+    /// Where a block is, for messages: "Shopping", "the Inbox", or "your library" (done, in progress).
+    func whereabouts(of block: Block) -> String {
+        block.collection?.name ?? (block.status == .inbox ? "the Inbox" : "your library")
+    }
+
     /// Saves a web link. A link that's already saved moves to the top instead of being saved twice.
     @discardableResult
     func save(url: URL) -> Block {
         let normalized = Links.normalize(url)
-        if let existing = try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.normalizedURL == normalized })).first {
+        if let existing = savedBlock(for: url) {
             existing.createdAt = .now
             if existing.status == .archived { existing.status = .inbox }
             save()
@@ -421,6 +451,9 @@ final class AppModel {
             block.kind = .product
             block.price = facts.price
             block.currency = facts.currency
+        case .product where block.kind == .product:
+            // Saved again: today's price replaces the old one (a page with no price leaves it).
+            if let price = facts.price { block.price = price; block.currency = facts.currency }
         case .recipe:
             block.isRecipe = true
         default:
@@ -531,19 +564,21 @@ final class AppModel {
     func move(_ block: Block, to target: BlockCollection?, undo: UndoManager?, announce: Bool = true) {
         let before = block.collection
         let beforeStatus = block.status
+        let beforeArchive = block.statusBeforeArchiveRaw
         block.collection = target
         block.status = target == nil ? .inbox : .kept
-        // Moving in starts the collection's expiry; moving out (or out of the archive) ends it.
-        block.expiresAt = Expiry.date(addedAt: .now, days: target?.defaultExpiryDays)
-        block.expiredAt = nil
         block.statusBeforeArchiveRaw = nil
         noteInboxZero()
         save()
         let uid = block.uid
         undo?.registerUndo(withTarget: self) { model in
             guard let block = model.block(uid) else { return }
+            // Back exactly as it was: done, in progress or archived, not just "kept".
             model.move(block, to: before, undo: undo)
             block.status = beforeStatus
+            block.statusBeforeArchiveRaw = beforeArchive
+            model.noteInboxZero()
+            model.save()
         }
         undo?.setActionName("Move")
         if announce { flash(target.map { "Moved to \($0.name)" } ?? "Moved to Inbox") }
@@ -562,7 +597,11 @@ final class AppModel {
     }
 
     private func restore(_ copies: [BlockCopy], undo: UndoManager?) {
-        for copy in copies { context.insert(copy.makeBlock(in: self)) }
+        for copy in copies {
+            let block = copy.makeBlock(in: self)
+            context.insert(block)
+            block.tags = copy.tags(in: self)
+        }
         save()
         undo?.registerUndo(withTarget: self) { model in model.delete(copies.map(\.uid), undo: undo) }
     }
@@ -570,13 +609,12 @@ final class AppModel {
     // MARK: Collections
 
     @discardableResult
-    func createCollection(named name: String, colorHex: Int? = nil, pin: Bool = true, useDefaults: Bool = true) -> BlockCollection? {
+    func createCollection(named name: String, colorHex: Int? = nil, pin: Bool = true) -> BlockCollection? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let existing = collections
         let color = colorHex ?? CollectionColors.all[existing.count % CollectionColors.all.count]
         let new = BlockCollection(name: trimmed, colorHex: color, sortIndex: (existing.last?.sortIndex ?? 0) + 1)
-        if useDefaults { new.defaultExpiryDays = defaultExpiryDays }
         let pinned = existing.filter(\.isPinned).count
         if pin, Pins.canPin(currentlyPinned: pinned) {
             new.isPinned = true
@@ -604,6 +642,32 @@ final class AppModel {
             target.pinIndex = (pinned.map(\.pinIndex).max() ?? -1) + 1
         }
         save()
+    }
+
+    /// Top bar order: `moving` takes the place of `target`. All and Inbox aren't piles, so they
+    /// never move. ⌘3–⌘7 follow the new order. Nothing in the window calls this yet: it's for
+    /// dragging tabs, which was tried and taken out in 1.3.0 (notes/STORIES.md, S-080).
+    @discardableResult
+    func movePin(_ moving: UUID, onto target: UUID) -> Bool {
+        applyPinOrder(Pins.dropped(moving, onto: target, in: pinnedCollections.map(\.uid)))
+    }
+
+    /// Move Left and Move Right in the top bar.
+    @discardableResult
+    func stepPin(_ target: BlockCollection, left: Bool) -> Bool {
+        applyPinOrder(Pins.stepped(target.uid, left: left, in: pinnedCollections.map(\.uid)))
+    }
+
+    func canStepPin(_ target: BlockCollection?, left: Bool) -> Bool {
+        guard let target else { return false }
+        return Pins.stepped(target.uid, left: left, in: pinnedCollections.map(\.uid)) != nil
+    }
+
+    private func applyPinOrder(_ order: [UUID]?) -> Bool {
+        guard let order else { return false }
+        for (index, uid) in order.enumerated() { collection(uid)?.pinIndex = index }
+        save()
+        return true
     }
 
     /// Deletes the collection only. Its blocks go back to the Inbox, and the collections
@@ -788,6 +852,7 @@ final class AppModel {
 
     /// Today's activity record if there is one, without making it (safe while a view draws).
     var todayIfAny: DayActivity? {
+        _ = dayTick
         let number = DayActivity.number(for: .now)
         return try? context.fetch(FetchDescriptor<DayActivity>(predicate: #Predicate { $0.day == number })).first
     }
@@ -1055,7 +1120,6 @@ final class AppModel {
         case .inbox: "inbox"
         case .tag(let uid): "tag-\(uid.uuidString)"
         case .archive: "archive"
-        case .expired: "expired"
         case .collection: nil
         }
     }
@@ -1115,14 +1179,13 @@ final class AppModel {
         switch scope {
         case .all: "Everything"
         case .inbox: "Inbox"
-        case .collection(let uid): collection(uid)?.name ?? "Collection"
+        case .collection(let uid): collection(uid)?.name ?? "Pile"
         case .tag(let uid): tag(uid).map { "#\($0.name)" } ?? "Tag"
         case .archive: "Archive"
-        case .expired: "Expired"
         }
     }
 
-    // MARK: Archive (S-022) and expiry (S-021)
+    // MARK: Archive (S-022)
 
     /// Hides a block from collections, All and tags. It stays in the Archive (and, later, search).
     func archive(_ block: Block, undo: UndoManager? = nil) {
@@ -1139,54 +1202,24 @@ final class AppModel {
         flash("Archived")
     }
 
-    /// Puts an archived (or expired) block back where it was.
+    /// Puts an archived block back where it was.
     func unarchive(_ block: Block) {
         guard block.status == .archived else { return }
         block.status = block.statusBeforeArchiveRaw.flatMap(BlockStatus.init) ?? (block.collection == nil ? .inbox : .kept)
         block.statusBeforeArchiveRaw = nil
-        block.expiredAt = nil
-        block.expiresAt = nil
         save()
         flash("Back in \(block.collection?.name ?? "the Inbox")")
     }
 
-    /// Keep: an expiring block stops expiring, and Rediscover won't show it again for a while.
+    /// Keep: Rediscover won't show it again for a while.
     func keep(_ block: Block) {
-        block.expiresAt = nil
         block.lastShownAt = .now
         save()
-    }
-
-    /// Blocks added to this collection from now on expire after `days`. Existing ones don't change.
-    func setExpiry(_ target: BlockCollection, days: Int?) {
-        target.defaultExpiryDays = days
-        save()
-        flash(days.map { "New blocks in \(target.name) expire after \($0) days" } ?? "Blocks in \(target.name) don't expire")
-    }
-
-    /// Archives every block whose expiry passed. Runs at launch and when the window changes place.
-    func expireDue(now: Date = .now) {
-        let archived = BlockStatus.archived.rawValue
-        let due = ((try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.expiresAt != nil && $0.statusRaw != archived }))) ?? [])
-            .filter { Expiry.isDue($0.expiresAt, now: now) }
-        guard !due.isEmpty else { return }
-        for block in due {
-            block.statusBeforeArchiveRaw = block.status.rawValue
-            block.status = .archived
-            block.expiredAt = now
-        }
-        save()
-        flash(due.count == 1 ? "1 block expired" : "\(due.count) blocks expired")
     }
 
     var archiveCount: Int {
         let archived = BlockStatus.archived.rawValue
         return (try? context.fetchCount(FetchDescriptor<Block>(predicate: #Predicate { $0.statusRaw == archived }))) ?? 0
-    }
-
-    var expiredCount: Int {
-        let archived = BlockStatus.archived.rawValue
-        return (try? context.fetchCount(FetchDescriptor<Block>(predicate: #Predicate { $0.statusRaw == archived && $0.expiredAt != nil }))) ?? 0
     }
 
     // MARK: Rediscover (S-020)
@@ -1205,7 +1238,6 @@ final class AppModel {
 
     /// Opens Rediscover, picking today's five the first time today.
     func startRediscover() {
-        expireDue()
         let record = today
         if record.rediscoverRaw == nil {
             let all = (try? context.fetch(FetchDescriptor<Block>())) ?? []
@@ -1339,11 +1371,14 @@ final class AppModel {
 
     /// Saves what Quick Save shows, with the title, collection, tags and note from the panel.
     /// It goes to the chosen collection (the Inbox by default), whatever the window shows.
+    /// A link that's already saved stays where it is, unless a collection was chosen for it.
     @discardableResult
     func quickSave(_ edited: QuickSavePanel.Edited) -> Block? {
         let block: Block?
+        var staysPut = false
         switch edited.draft.content {
         case .web(let url):
+            staysPut = !url.isFileURL && edited.collection == nil && savedBlock(for: url) != nil
             block = url.isFileURL ? saveFile(url) : save(url: url)
         case .text(let text):
             let note = Block(kind: .note, title: Titles.firstLine(text))
@@ -1360,10 +1395,10 @@ final class AppModel {
         let title = Titles.clean(edited.title)
         if !title.isEmpty { block.title = title }
         if !edited.note.isEmpty { block.note = edited.note }
-        move(block, to: collection(edited.collection), undo: nil)
+        if !staysPut { move(block, to: collection(edited.collection), undo: nil, announce: false) }
         if !edited.tags.isEmpty { addTags(edited.tags, to: block) }
         save()
-        flash("Saved to \(block.collection?.name ?? "the Inbox")")
+        flash(staysPut ? "Already in \(whereabouts(of: block))" : "Saved to \(block.collection?.name ?? "the Inbox")")
         return block
     }
 
@@ -1453,7 +1488,7 @@ final class AppModel {
             let parentID = parent?.uid
             let name = path.last!
             let existing = collections.first { $0.parent?.uid == parentID && Tags.key($0.name) == Tags.key(name) }
-            let made = existing ?? createCollection(named: name, pin: false, useDefaults: false)
+            let made = existing ?? createCollection(named: name, pin: false)
             if existing == nil, let made, let parent { place(made, .inside(parent.uid)) }
             folders[key] = made
             return made
@@ -1516,13 +1551,16 @@ final class AppModel {
     // MARK: Dock drop (S-041) and screenshots (S-075)
 
     /// Links, images and files dropped on the Dock icon (or opened with Magpie) go to the Inbox.
-    /// `quietly`: no message in the window (the Dock drop shows its own by the Dock).
+    /// A link that's already saved moves to the top and stays where it is.
+    /// `quietly`: no message in the window (the Dock drop shows `receiveMessage` by the Dock).
     @discardableResult
     func receive(_ urls: [URL], quietly: Bool = false) -> [Block] {
         var saved: [Block] = []
+        var known: Set<UUID> = []
         for url in urls {
             var block: Block?
             if url.isFileURL, ["webloc", "url"].contains(url.pathExtension.lowercased()), let link = Self.link(inShortcut: url) {
+                if let found = savedBlock(for: link) { known.insert(found.uid) }
                 block = save(url: link)
             } else if url.isFileURL {
                 if let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image), let data = try? Data(contentsOf: url) {
@@ -1531,16 +1569,28 @@ final class AppModel {
                     block = saveFile(url)
                 }
             } else if let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" {
+                if let found = savedBlock(for: url) { known.insert(found.uid) }
                 block = save(url: url)
             }
             if let block {
-                if block.collection != nil || block.status != .inbox { move(block, to: nil, undo: nil, announce: false) }
+                // New blocks go to the Inbox whatever the window shows; a known one stays put.
+                if !known.contains(block.uid), block.collection != nil || block.status != .inbox {
+                    move(block, to: nil, undo: nil, announce: false)
+                }
                 saved.append(block)
             }
         }
-        if !saved.isEmpty, !quietly { flash(saved.count == 1 ? "Saved to the Inbox" : "Saved \(saved.count) to the Inbox") }
+        if saved.count == 1, known.contains(saved[0].uid) {
+            receiveMessage = "Already in \(whereabouts(of: saved[0]))"
+        } else {
+            receiveMessage = saved.count == 1 ? "Saved to the Inbox" : "Saved \(saved.count) to the Inbox"
+        }
+        if !saved.isEmpty, !quietly { flash(receiveMessage) }
         return saved
     }
+
+    /// What the last `receive` did, in words, for the label by the Dock.
+    @ObservationIgnored private(set) var receiveMessage = ""
 
     /// The address in a .webloc (Safari) or .url (Windows) link file.
     static func link(inShortcut file: URL) -> URL? {
@@ -1633,11 +1683,6 @@ final class AppModel {
 
     // MARK: Settings (S-053)
 
-    /// New collections expire their blocks after this many days. Nil: never.
-    var defaultExpiryDays: Int? = (UserDefaults.standard.object(forKey: "defaultExpiryDays") as? Int) {
-        didSet { UserDefaults.standard.set(defaultExpiryDays, forKey: "defaultExpiryDays") }
-    }
-
     /// Rediscover's count for today on the Dock icon.
     var rediscoverDockBadge: Bool = UserDefaults.standard.bool(forKey: "rediscoverDockBadge") {
         didSet {
@@ -1694,6 +1739,9 @@ private struct BlockCopy {
     let note: String, bodyText: String, checklistData: Data?, thumbnail: Data?, thumbnailAspect: Double, pictureChosen: Bool
     let kindChosen: Bool, minutes: Int?, price: Double?, currency: String?
     let colorHex: Int?, statusRaw: String, enrichRaw: String, createdAt: Date, openedAt: Date?, collectionUID: UUID?
+    let tagUIDs: [UUID], ocrText: String?, sortIndex: Double, isRecipe: Bool, pileRaw: String?
+    let statusBeforeArchiveRaw: String?, expiresAt: Date?, expiredAt: Date?
+    let timesSkipped: Int, finishedAt: Date?, lastShownAt: Date?
 
     init(_ b: Block) {
         uid = b.uid; kindRaw = b.kindRaw; urlString = b.urlString; normalizedURL = b.normalizedURL; title = b.title
@@ -1701,6 +1749,9 @@ private struct BlockCopy {
         thumbnail = b.thumbnail; thumbnailAspect = b.thumbnailAspect; pictureChosen = b.pictureChosen; colorHex = b.colorHex; statusRaw = b.statusRaw
         kindChosen = b.kindChosen; minutes = b.minutes; price = b.price; currency = b.currency
         enrichRaw = b.enrichRaw; createdAt = b.createdAt; openedAt = b.openedAt; collectionUID = b.collection?.uid
+        tagUIDs = (b.tags ?? []).map(\.uid); ocrText = b.ocrText; sortIndex = b.sortIndex; isRecipe = b.isRecipe; pileRaw = b.pileRaw
+        statusBeforeArchiveRaw = b.statusBeforeArchiveRaw; expiresAt = b.expiresAt; expiredAt = b.expiredAt
+        timesSkipped = b.timesSkipped; finishedAt = b.finishedAt; lastShownAt = b.lastShownAt
     }
 
     func makeBlock(in model: AppModel) -> Block {
@@ -1711,7 +1762,15 @@ private struct BlockCopy {
         b.kindChosen = kindChosen; b.minutes = minutes; b.price = price; b.currency = currency
         b.colorHex = colorHex; b.statusRaw = statusRaw; b.enrichRaw = enrichRaw; b.createdAt = createdAt; b.openedAt = openedAt
         b.collection = model.collection(collectionUID)
+        b.ocrText = ocrText; b.sortIndex = sortIndex; b.isRecipe = isRecipe; b.pileRaw = pileRaw
+        b.statusBeforeArchiveRaw = statusBeforeArchiveRaw; b.expiresAt = expiresAt; b.expiredAt = expiredAt
+        b.timesSkipped = timesSkipped; b.finishedAt = finishedAt; b.lastShownAt = lastShownAt
         return b
+    }
+
+    /// The tags it had that still exist. Set once the block is in the library.
+    func tags(in model: AppModel) -> [Tag] {
+        tagUIDs.compactMap(model.tag)
     }
 }
 
