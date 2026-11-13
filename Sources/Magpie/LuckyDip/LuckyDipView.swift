@@ -252,7 +252,7 @@ private struct PickCard: View {
         .background(Ink.card(tint: block.tint))
         .clipShape(shape)
         .overlay(shape.strokeBorder(Ink.hairline))
-        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
         .contextMenu { BlockMenu(block: block) }
         .transition(.scale(scale: 0.96).combined(with: .opacity))
     }

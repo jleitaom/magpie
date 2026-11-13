@@ -11,7 +11,7 @@ struct KitPillBar<Content: View>: View {
             .padding(Metric.pillInset)
             .background(Capsule().fill(Ink.surface))
             .overlay(Capsule().strokeBorder(Ink.hairline))
-            .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+            .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
     }
 }
 
@@ -136,7 +136,7 @@ struct KitSearchField: View {
 
     var body: some View {
         HStack(spacing: Space.sm) {
-            KitIconView(icon: .search, size: 14).foregroundStyle(Ink.secondary)
+            KitIconView(icon: .search).foregroundStyle(Ink.secondary)
             TextField("Search titles, notes, links, tags and text in images", text: $text)
                 .textFieldStyle(.plain)
                 .kitType(.label)
@@ -146,7 +146,7 @@ struct KitSearchField: View {
             if !text.isEmpty {
                 Text(results == 1 ? "1 result" : "\(results) results").kitType(.meta).foregroundStyle(Ink.secondary).fixedSize()
             }
-            Button(action: onClose) { KitIconView(icon: .close, size: 10) }
+            Button(action: onClose) { KitIconView(icon: .close, size: Metric.chevron) }
                 .buttonStyle(.kit(.ghost))
                 .help("Close search (Esc)")
                 .accessibilityLabel("Close search")
@@ -156,7 +156,7 @@ struct KitSearchField: View {
         .frame(width: Metric.searchWidth, height: Metric.control + Metric.pillInset * 2)
         .background(Capsule().fill(Ink.surface))
         .overlay(Capsule().strokeBorder(focused ? Ink.accentText : Ink.hairline, lineWidth: focused ? 1.5 : 1))
-        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+        .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
         .onAppear { focused = true }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Search")

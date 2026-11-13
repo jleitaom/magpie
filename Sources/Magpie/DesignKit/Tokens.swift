@@ -140,6 +140,26 @@ enum Metric {
     static let buttonPadding: CGFloat = 14
     static let focusRing: CGFloat = 2
     static let barShadowRadius: CGFloat = 15
+    static let barShadowY: CGFloat = 6        // how far a floating bar's shadow drops
+    /// Icon sizes. `KitIconView` draws at `icon` unless told otherwise.
+    static let icon: CGFloat = 14
+    static let iconLarge: CGFloat = 16        // the mark in a source tile
+    static let iconSmall: CGFloat = 12        // beside a label: Sort, pin, check
+    static let iconCompact: CGFloat = 11      // the details panel's close
+    static let iconMicro: CGFloat = 9         // remove a checklist item
+    /// Top bar: the width kept free on each side, so the pill stays centered.
+    static let barSideWidth: CGFloat = 360
+    /// Gallery: the narrowest a column gets before one is dropped.
+    static let galleryColumnMin: CGFloat = 220
+    /// Details panel: its picture is at most this tall and never treated as narrower than this aspect; the map's height.
+    static let detailsPictureMax: CGFloat = 260
+    static let detailsPictureMinAspect: CGFloat = 0.6
+    static let detailsMapHeight: CGFloat = 160
+    static let settingsWidth: CGFloat = 520
+    /// The Dock drop message's size before its text is measured.
+    static let hudFallback = CGSize(width: 220, height: 44)
+    /// The dashes of the "Drop to save" outline.
+    static let dropDash: [CGFloat] = [8, 6]
     static let pressScale: CGFloat = 0.97
     static let windowDefault = CGSize(width: 1200, height: 800)
     static let windowMinimum = CGSize(width: 1040, height: 560)

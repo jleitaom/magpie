@@ -157,7 +157,7 @@ struct KitSourceTileStyle: ButtonStyle {
                 Group {
                     switch mark {
                     case .icon(let icon):
-                        KitIconView(icon: icon, size: 16).foregroundStyle(on ? Ink.accentText : Ink.secondary)
+                        KitIconView(icon: icon, size: Metric.iconLarge).foregroundStyle(on ? Ink.accentText : Ink.secondary)
                     case .color(let hex):
                         RoundedRectangle(cornerRadius: Metric.swatchRadius).fill(Ink.swatch(hex)).frame(width: Metric.swatch, height: Metric.swatch)
                     }
@@ -169,7 +169,7 @@ struct KitSourceTileStyle: ButtonStyle {
                     Text(detail).kitType(.meta).foregroundStyle(Ink.secondary)
                 }
                 Spacer(minLength: 0)
-                KitIconView(icon: .chevronDown, size: 12).foregroundStyle(Ink.secondary)
+                KitIconView(icon: .chevronDown, size: Metric.iconSmall).foregroundStyle(Ink.secondary)
             }
             .padding(Space.md)
             .background(shape.fill(on ? Ink.suggest : state.isActive ? Ink.control : Ink.surface))
@@ -331,7 +331,7 @@ struct KitOptionRowStyle: ButtonStyle {
                     Text(hint).kitType(.meta).foregroundStyle(Ink.secondary)
                 }
                 Spacer(minLength: Space.sm)
-                if isSelected { KitIconView(icon: .check, size: 12).foregroundStyle(Ink.accentText) }
+                if isSelected { KitIconView(icon: .check, size: Metric.iconSmall).foregroundStyle(Ink.accentText) }
             }
             .padding(.horizontal, Metric.rowInset)
             .padding(.vertical, Space.xs + 2)
@@ -377,7 +377,7 @@ struct KitMenuRowStyle: ButtonStyle {
                 configuration.label.kitType(.label).foregroundStyle(Ink.text).lineLimit(1)
                 Spacer(minLength: Space.sm)
                 if state == .selected {
-                    KitIconView(icon: .check, size: 12).foregroundStyle(Ink.accentText)
+                    KitIconView(icon: .check, size: Metric.iconSmall).foregroundStyle(Ink.accentText)
                 } else if let shortcut {
                     Text(shortcut).kitType(.mono).foregroundStyle(Ink.secondary)
                 }

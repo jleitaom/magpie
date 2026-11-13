@@ -75,7 +75,7 @@ struct MainView: View {
         .overlay {
             if model.isDropTargeted {
                 RoundedRectangle(cornerRadius: Metric.radiusPanel, style: .continuous)
-                    .strokeBorder(Ink.accentText, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                    .strokeBorder(Ink.accentText, style: StrokeStyle(lineWidth: Metric.dropLine, dash: Metric.dropDash))
                     .padding(Space.sm)
                     .overlay { Text("Drop to save").kitType(.heading).foregroundStyle(Ink.accentText) }
                     .allowsHitTesting(false)
@@ -118,7 +118,7 @@ struct TopBar: View {
     var allBlocks: [Block] = []
     @Environment(AppModel.self) private var model
     /// The right-hand controls' width, mirrored on the left so the pill stays centered.
-    private let sideWidth: CGFloat = 360
+    private let sideWidth = Metric.barSideWidth
 
     var body: some View {
         @Bindable var model = model
@@ -232,7 +232,7 @@ private struct RightControls: View {
                 let order = model.order(for: model.scope)
                 Button { model.showsSortMenu.toggle() } label: {
                     HStack(spacing: Metric.inlineGap) {
-                        KitIconView(icon: .sort, size: 12)
+                        KitIconView(icon: .sort, size: Metric.iconSmall)
                         Text(order.label)
                     }
                 }
@@ -244,7 +244,7 @@ private struct RightControls: View {
                 }
             }
             if !model.isSearching {
-                Button { model.startSearch() } label: { KitIconView(icon: .search, size: 14) }
+                Button { model.startSearch() } label: { KitIconView(icon: .search) }
                     .buttonStyle(.kit(.secondary))
                     .help("Search everything (⌘F)")
                     .accessibilityLabel("Search")
@@ -351,7 +351,7 @@ private struct BottomHint: View {
                 .frame(height: Metric.control + Space.sm)
                 .background(Capsule().fill(Ink.surface))
                 .overlay(Capsule().strokeBorder(Ink.hairline))
-                .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: 6)
+                .shadow(color: Ink.shadow, radius: Metric.barShadowRadius, y: Metric.barShadowY)
             }
         }
         .padding(.bottom, Space.lg + Space.xs)

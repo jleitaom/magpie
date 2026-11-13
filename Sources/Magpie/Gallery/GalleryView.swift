@@ -25,8 +25,8 @@ struct GalleryView: View {
         var heights: [Double] = []
     }
 
-    static let minColumn: CGFloat = 220
-    static let margin: CGFloat = 24
+    static let minColumn = Metric.galleryColumnMin
+    static let margin = Space.xxl
 
     var body: some View {
         GeometryReader { geo in

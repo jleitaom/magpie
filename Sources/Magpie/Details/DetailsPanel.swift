@@ -18,10 +18,10 @@ struct DetailsPanel: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if let data = block.thumbnail, let image = ThumbnailCache.image(for: block.uid, data: data) {
                         ThumbView(thumb: .image(image))
-                            .frame(height: min(Metric.panelWidth / max(block.thumbnailAspect, 0.6), 260))
+                            .frame(height: min(Metric.panelWidth / max(block.thumbnailAspect, Metric.detailsPictureMinAspect), Metric.detailsPictureMax))
                             .clipped()
                     } else if block.kind == .place {
-                        MapThumb().frame(height: 160)
+                        MapThumb().frame(height: Metric.detailsMapHeight)
                     }
                     VStack(alignment: .leading, spacing: Space.lg) {
                         header
@@ -59,7 +59,7 @@ struct DetailsPanel: View {
                     .lineLimit(1...4)
             }
             Spacer(minLength: 0)
-            Button { model.selection = nil } label: { KitIconView(icon: .close, size: 11) }
+            Button { model.selection = nil } label: { KitIconView(icon: .close, size: Metric.iconCompact) }
                 .buttonStyle(.kit(.secondary))
                 .help("Close (Esc)")
                 .accessibilityLabel("Close details")
@@ -220,7 +220,7 @@ private struct ChecklistEditor: View {
                         .foregroundStyle(item.done ? Ink.secondary : Ink.text)
                         .focused($focused, equals: item.id)
                         .onSubmit { addItem() }
-                    Button { remove(item.id) } label: { KitIconView(icon: .close, size: 9) }
+                    Button { remove(item.id) } label: { KitIconView(icon: .close, size: Metric.iconMicro) }
                         .buttonStyle(.kit(.ghost))
                         .accessibilityLabel("Remove item")
                 }

@@ -72,7 +72,7 @@ enum KitIcon: String, CaseIterable {
 
 struct KitIconView: View {
     let icon: KitIcon
-    var size: CGFloat = 14
+    var size: CGFloat = Metric.icon
     var filled = false
 
     var body: some View {

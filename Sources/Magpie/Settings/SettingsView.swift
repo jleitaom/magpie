@@ -29,7 +29,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .fitsContent(max: Metric.settingsMaxHeight)
-        .frame(width: 520)
+        .frame(width: Metric.settingsWidth)
     }
 }
 

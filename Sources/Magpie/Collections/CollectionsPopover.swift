@@ -140,7 +140,7 @@ private struct CollectionRow: View {
                 .buttonStyle(.plain)
             }
             Button { model.togglePin(target) } label: {
-                KitIconView(icon: .pin, size: 12, filled: target.isPinned)
+                KitIconView(icon: .pin, size: Metric.iconSmall, filled: target.isPinned)
                     .foregroundStyle(target.isPinned ? Ink.accentText : Ink.tertiary)
                     .frame(width: Metric.control, height: Metric.control)
                     .contentShape(.rect)
