@@ -27,17 +27,18 @@ fi
 
 flags=(-c $config)
 [[ -n ${VERSION:-} ]] && flags+=(--arch arm64 --arch x86_64)
-swift build $flags 2>&1 | grep -E "error|warning|Build complete" | grep -v "^\[" || true
-binDir="$(swift build $flags --show-bin-path)"
-bin="$binDir/$name"
-[[ -x $bin ]] || { echo "build failed"; exit 1; }
-# swift build can report success while an edited file failed to compile. Catch that.
-stale=$(find Sources -name '*.swift' -newer "$bin" | head -1)
-if [[ -n $stale ]]; then
-  echo "build failed: binary is older than $stale"
-  swift build $flags 2>&1 | grep -E "error" | head -20
+# The build's own result decides: its exit status, or an "error:" line in its output.
+# (Comparing file times failed after a pull that changed only timestamps: swift build
+# compares content, so it rightly left the binary alone.)
+log=$(swift build $flags 2>&1) && built=0 || built=$?
+print -r -- "$log" | grep -E "error|warning|Build complete" | grep -v "^\[" || true
+if (( built != 0 )) || print -r -- "$log" | grep -qE "(^|[ :])error:"; then
+  echo "build failed"
   exit 1
 fi
+binDir="$(swift build $flags --show-bin-path)"
+bin="$binDir/$name"
+[[ -x $bin ]] || { echo "build failed: no binary at $bin"; exit 1; }
 
 app=build/$name.app
 rm -rf $app
