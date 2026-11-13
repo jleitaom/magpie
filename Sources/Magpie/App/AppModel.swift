@@ -573,7 +573,11 @@ final class AppModel {
     }
 
     private func restore(_ copies: [BlockCopy], undo: UndoManager?) {
-        for copy in copies { context.insert(copy.makeBlock(in: self)) }
+        for copy in copies {
+            let block = copy.makeBlock(in: self)
+            context.insert(block)
+            block.tags = copy.tags(in: self)
+        }
         save()
         undo?.registerUndo(withTarget: self) { model in model.delete(copies.map(\.uid), undo: undo) }
     }
@@ -1723,6 +1727,9 @@ private struct BlockCopy {
     let note: String, bodyText: String, checklistData: Data?, thumbnail: Data?, thumbnailAspect: Double, pictureChosen: Bool
     let kindChosen: Bool, minutes: Int?, price: Double?, currency: String?
     let colorHex: Int?, statusRaw: String, enrichRaw: String, createdAt: Date, openedAt: Date?, collectionUID: UUID?
+    let tagUIDs: [UUID], ocrText: String?, sortIndex: Double, isRecipe: Bool, pileRaw: String?
+    let statusBeforeArchiveRaw: String?, expiresAt: Date?, expiredAt: Date?
+    let timesSkipped: Int, finishedAt: Date?, lastShownAt: Date?
 
     init(_ b: Block) {
         uid = b.uid; kindRaw = b.kindRaw; urlString = b.urlString; normalizedURL = b.normalizedURL; title = b.title
@@ -1730,6 +1737,9 @@ private struct BlockCopy {
         thumbnail = b.thumbnail; thumbnailAspect = b.thumbnailAspect; pictureChosen = b.pictureChosen; colorHex = b.colorHex; statusRaw = b.statusRaw
         kindChosen = b.kindChosen; minutes = b.minutes; price = b.price; currency = b.currency
         enrichRaw = b.enrichRaw; createdAt = b.createdAt; openedAt = b.openedAt; collectionUID = b.collection?.uid
+        tagUIDs = (b.tags ?? []).map(\.uid); ocrText = b.ocrText; sortIndex = b.sortIndex; isRecipe = b.isRecipe; pileRaw = b.pileRaw
+        statusBeforeArchiveRaw = b.statusBeforeArchiveRaw; expiresAt = b.expiresAt; expiredAt = b.expiredAt
+        timesSkipped = b.timesSkipped; finishedAt = b.finishedAt; lastShownAt = b.lastShownAt
     }
 
     func makeBlock(in model: AppModel) -> Block {
@@ -1740,7 +1750,15 @@ private struct BlockCopy {
         b.kindChosen = kindChosen; b.minutes = minutes; b.price = price; b.currency = currency
         b.colorHex = colorHex; b.statusRaw = statusRaw; b.enrichRaw = enrichRaw; b.createdAt = createdAt; b.openedAt = openedAt
         b.collection = model.collection(collectionUID)
+        b.ocrText = ocrText; b.sortIndex = sortIndex; b.isRecipe = isRecipe; b.pileRaw = pileRaw
+        b.statusBeforeArchiveRaw = statusBeforeArchiveRaw; b.expiresAt = expiresAt; b.expiredAt = expiredAt
+        b.timesSkipped = timesSkipped; b.finishedAt = finishedAt; b.lastShownAt = lastShownAt
         return b
+    }
+
+    /// The tags it had that still exist. Set once the block is in the library.
+    func tags(in model: AppModel) -> [Tag] {
+        tagUIDs.compactMap(model.tag)
     }
 }
 

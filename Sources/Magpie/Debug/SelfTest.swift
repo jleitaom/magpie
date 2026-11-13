@@ -61,6 +61,26 @@ enum SelfTest {
             check("delete removes the block", blocks().count == total - 1 && model.block(saved.uid) == nil)
             undo.undo()
             check("undo brings it back with the same id", model.block(saved.uid) != nil && blocks().count == total)
+            // Everything comes back with it: tags, image text, your order, expiry, archive state, history.
+            let full = model.save(url: URL(string: "https://example.com/undo-everything")!)
+            model.addTags("undo-a, undo-b", to: full)
+            let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+            full.ocrText = "text in the picture"; full.sortIndex = 42.5; full.isRecipe = true
+            full.timesSkipped = 2; full.finishedAt = stamp; full.lastShownAt = stamp
+            full.expiresAt = stamp; full.expiredAt = stamp
+            model.archive(full)
+            let fullID = full.uid
+            model.delete([fullID], undo: undo)
+            undo.undo()
+            let back = model.block(fullID)
+            check("undoing a delete brings back tags, image text, order, expiry, archive state and history",
+                  back != nil && Set((back?.tags ?? []).map(\.name)) == ["undo-a", "undo-b"] && back?.ocrText == "text in the picture"
+                  && back?.sortIndex == 42.5 && back?.isRecipe == true && back?.timesSkipped == 2 && back?.finishedAt == stamp
+                  && back?.lastShownAt == stamp && back?.expiresAt == stamp && back?.expiredAt == stamp
+                  && back?.status == .archived && back?.statusBeforeArchiveRaw == BlockStatus.inbox.rawValue,
+                  "tags \((back?.tags ?? []).map(\.name)), status \(back?.statusRaw ?? "-")")
+            model.delete([fullID], undo: nil)
+            model.tags.filter { ["undo-a", "undo-b"].contains($0.name) }.forEach(model.deleteTag)
 
             // Collections, pins and moving.
             for name in ["One", "Two", "Three", "Four", "Five", "Six"] { model.createCollection(named: name) }
