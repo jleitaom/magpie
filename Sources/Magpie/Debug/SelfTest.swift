@@ -360,7 +360,7 @@ enum SelfTest {
                 model.unarchive(old)
                 check("Unarchive restores the previous status", old.status == .kept && old.collection?.uid == second.uid)
 
-                // Expiry was removed in 1.2.2: a date left over from it never archives anything.
+                // Expiry was removed in 1.3.0: a date left over from it never archives anything.
                 let leftover = model.save(url: URL(string: "https://example.com/old-expiry-date")!)
                 model.move(leftover, to: second, undo: nil)
                 leftover.expiresAt = Date.now.addingTimeInterval(-60)

@@ -85,7 +85,7 @@ final class Block {
     var finishedAt: Date?
     /// Archive (S-022): the status before archiving, so Unarchive puts it back.
     var statusBeforeArchiveRaw: String?
-    /// No longer used: collections could expire their blocks until 1.2.2. Kept so existing libraries
+    /// No longer used: collections could expire their blocks until 1.3.0. Kept so existing libraries
     /// and exports still open, and so the model stays CloudKit-safe. Nothing reads them.
     var expiresAt: Date?
     var expiredAt: Date?
@@ -147,7 +147,7 @@ final class Block {
     }
 }
 
-/// A named place for blocks (Watch later, Shopping…). The app calls it a **Pile** (since 1.2.2;
+/// A named place for blocks (Watch later, Shopping…). The app calls it a **Pile** (since 1.3.0;
 /// "Collection" before). The code keeps `BlockCollection` and `collection`: renaming the stored
 /// model would need a migration, and exports keep their `collections` key.
 @Model
@@ -166,7 +166,7 @@ final class BlockCollection {
     var sortOrderRaw: String?
     var viewModeRaw: String?
     var shuffleSeed: Int = 0
-    /// No longer used (expiry, removed in 1.2.2). Kept like `Block.expiresAt`.
+    /// No longer used (expiry, removed in 1.3.0). Kept like `Block.expiresAt`.
     var defaultExpiryDays: Int?
     @Relationship(deleteRule: .nullify, inverse: \BlockCollection.parent) var children: [BlockCollection]? = []
 
