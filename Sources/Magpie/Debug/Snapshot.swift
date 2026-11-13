@@ -137,7 +137,7 @@ enum SnapshotPage: String, CaseIterable {
     /// Blocks the empty Archive page took out of the Archive, to put back for the next page.
     @MainActor static var unarchived: [(UUID, BlockStatus)] = []
 
-    case all, inbox, collection, details, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet, dropHUD, sortRename, afterDelete, firstLaunch, emptyArchive, pictureChooser
+    case all, inbox, collection, details, detailsNote, detailsPlace, empty, collections, newBlock, rename, renameTab, sortInbox, inboxZero, luckyDip, luckyDipPick, luckyDipStarted, tag, journal, sortMenu, rediscover, archive, search, shopping, quickSave, importSheet, dropHUD, sortRename, afterDelete, firstLaunch, emptyArchive, pictureChooser
 
     /// Pages that open a popover. Their snapshot is the popover alone.
     var hasPopover: Bool { self == .collections || self == .newBlock || self == .rename || self == .sortMenu }
@@ -163,6 +163,12 @@ enum SnapshotPage: String, CaseIterable {
         case .all: model.scope = .all
         case .inbox: model.scope = .inbox
         case .collection: model.scope = model.pinnedCollections.dropFirst().first.map { .collection($0.uid) } ?? .all
+        case .detailsNote, .detailsPlace:
+            // A block with no picture, and a place with its map: the close button's two other homes.
+            model.scope = .all
+            let kind: BlockKind = self == .detailsNote ? .note : .place
+            model.selection = (try? model.context.fetch(FetchDescriptor<Block>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])))?
+                .first { $0.kind == kind && $0.status != .archived }?.uid
         case .details:
             model.scope = .all
             let newest = (try? model.context.fetch(FetchDescriptor<Block>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])))?

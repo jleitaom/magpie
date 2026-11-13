@@ -73,6 +73,7 @@ enum Metric {
     static let control: CGFloat = 32
     static let controlLarge: CGFloat = 44
     static let roundButton: CGFloat = 36
+    static let closeButton: CGFloat = 28      // the round close button on the details panel
     static let segmentWidth: CGFloat = 34
     static let segmentHeight: CGFloat = 30
     static let radiusField: CGFloat = 10

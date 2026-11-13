@@ -40,6 +40,15 @@ struct DetailsPanel: View {
             }
             .scrollIndicators(.never)
             .safeAreaInset(edge: .bottom) { actions }
+            // Close sits in the panel's top corner, over the picture or map when there is one,
+            // and stays there while the details scroll.
+            .overlay(alignment: .topTrailing) {
+                Button { model.selection = nil } label: { KitIconView(icon: .close, size: Metric.iconCompact) }
+                    .buttonStyle(KitRoundButtonStyle(kind: .surface))
+                    .help("Close (Esc)")
+                    .accessibilityLabel("Close details")
+                    .padding(Space.md)
+            }
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .onChange(of: block.title) { model.save() }
@@ -47,23 +56,22 @@ struct DetailsPanel: View {
         .onChange(of: block.bodyText) { model.save() }
     }
 
+    /// A picture or a map fills the top of the panel; the close button then sits on it.
+    private var hasTopPicture: Bool { block.thumbnail != nil || block.kind == .place }
+
     private var header: some View {
-        HStack(alignment: .top, spacing: Space.sm) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text(block.kind.label.uppercased()).kitType(.kind)
-                    .foregroundStyle(block.kind == .note ? Ink.noteLabel : Ink.secondary)
-                TextField("Title", text: $block.title, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .kitType(.heading)
-                    .foregroundStyle(Ink.text)
-                    .lineLimit(1...4)
-            }
-            Spacer(minLength: 0)
-            Button { model.selection = nil } label: { KitIconView(icon: .close, size: Metric.iconCompact) }
-                .buttonStyle(.kit(.secondary))
-                .help("Close (Esc)")
-                .accessibilityLabel("Close details")
+        VStack(alignment: .leading, spacing: Space.xs) {
+            Text(block.kind.label.uppercased()).kitType(.kind)
+                .foregroundStyle(block.kind == .note ? Ink.noteLabel : Ink.secondary)
+            TextField("Title", text: $block.title, axis: .vertical)
+                .textFieldStyle(.plain)
+                .kitType(.heading)
+                .foregroundStyle(Ink.text)
+                .lineLimit(1...4)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // With no picture the close button is beside the title: keep the text clear of it.
+        .padding(.trailing, hasTopPicture ? 0 : Metric.closeButton)
     }
 
     @ViewBuilder

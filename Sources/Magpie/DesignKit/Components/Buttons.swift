@@ -185,15 +185,21 @@ struct KitSourceTileStyle: ButtonStyle {
     }
 }
 
-// MARK: - Round button (the + button)
+// MARK: - Round button (the + button, and the details panel's close)
 
 struct KitRoundButtonStyle: ButtonStyle {
+    /// accent: the + button. surface: a quiet button that sits on a picture (the panel's
+    /// close), on Ink.surface with an edge, so it shows on a white picture and a black one.
+    enum Kind { case accent, surface }
+    var kind: Kind = .accent
+
     func makeBody(configuration: Configuration) -> some View {
-        Part(configuration: configuration)
+        Part(configuration: configuration, kind: kind)
     }
 
     private struct Part: View {
         let configuration: Configuration
+        let kind: Kind
         @Environment(\.forcedPartState) private var forced
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
@@ -202,10 +208,14 @@ struct KitRoundButtonStyle: ButtonStyle {
         var body: some View {
             let state = PartState.resolve(forced: forced, enabled: isEnabled, pressed: configuration.isPressed,
                                           hovering: hovering, focused: isFocused)
+            let side = kind == .accent ? Metric.roundButton : Metric.closeButton
             configuration.label
-                .foregroundStyle(Ink.onAccent)
-                .frame(width: Metric.roundButton, height: Metric.roundButton)
-                .background(Circle().fill(Ink.accent.opacity(state == .pressed ? 0.8 : state == .hover ? 0.9 : 1)))
+                .foregroundStyle(kind == .accent ? Ink.onAccent : Ink.text)
+                .frame(width: side, height: side)
+                .background(Circle().fill(kind == .accent
+                                          ? Ink.accent.opacity(state == .pressed ? 0.8 : state == .hover ? 0.9 : 1) : Ink.surface))
+                .overlay(Circle().fill(kind == .surface && state.isActive ? Ink.hover : .clear))
+                .overlay(Circle().strokeBorder(kind == .surface ? Ink.edge : .clear))
                 .kitFocusRing(Circle(), state: state)
                 .opacity(state == .disabled ? 0.4 : 1)
                 .contentShape(Circle())
