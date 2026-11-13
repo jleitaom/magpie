@@ -368,7 +368,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Self.trace("open isActive=\(NSApp.isActive) activeFor=\(activeSince.map { Date.now.timeIntervalSince($0) } ?? -1) stepBack=\(stepBack)")
         let saved = model.receive(urls, quietly: stepBack)
         guard stepBack, !saved.isEmpty else { return }
-        DropHUD.show(saved.count == 1 ? "Saved to Inbox" : "Saved \(saved.count) to Inbox")
+        DropHUD.show(model.receiveMessage)
         Self.stepBack()
     }
 

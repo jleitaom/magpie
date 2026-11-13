@@ -442,6 +442,15 @@ enum SelfTest {
                 let text = model.quickSave(QuickSavePanel.Edited(draft: QuickSaveDraft(content: .text("Buy film for the trip"), title: "Buy film", source: ""),
                                                                  title: "Buy film", collection: nil, tags: "", note: ""))
                 check("text from the clipboard becomes a note in the Inbox", text?.kind == .note && text?.status == .inbox)
+                // A link that's already saved stays where it is, unless a collection is chosen for it.
+                let again = model.quickSave(QuickSavePanel.Edited(draft: draft, title: "Quick one", collection: nil, tags: "", note: ""))
+                check("Quick Save of a link already in a collection leaves it there",
+                      again?.uid == quick?.uid && again?.collection?.uid == second.uid && again?.status == .kept
+                      && model.toast == "Already in \(second.name)", "in \(again?.collection?.name ?? "the Inbox"), message: \(model.toast ?? "")")
+                let first = model.collections.first { $0.uid != second.uid }
+                let chosen = model.quickSave(QuickSavePanel.Edited(draft: draft, title: "Quick one", collection: first?.uid, tags: "", note: ""))
+                check("…and moves it when you choose a collection", first != nil && chosen?.collection?.uid == first?.uid
+                      && blocks().filter { $0.urlString == "https://example.com/quick-save" }.count == 1)
                 [quick, text].compactMap { $0 }.forEach { model.delete([$0.uid], undo: nil) }
                 model.tags.filter { ["fast", "later"].contains($0.name) }.forEach(model.deleteTag)
             }
@@ -537,6 +546,13 @@ enum SelfTest {
             check("a quick Dock drop saves without a message in the window", quiet.count == 1 && model.toast == nil, "message: \(model.toast ?? "")")
             DropHUD.show("Saved to Inbox")
             check("…and shows “Saved to Inbox” by the Dock instead", DropHUD.isVisible)
+            if let five = model.collections.first(where: { $0.name == "Five" }) {
+                model.move(quiet[0], to: five, undo: nil, announce: false)
+                let again = model.receive([URL(string: "https://example.com/quiet-drop?utm_source=x")!], quietly: true)
+                check("a link already in a collection, dropped on the Dock again, stays there",
+                      again.count == 1 && again[0].uid == quiet[0].uid && again[0].collection?.uid == five.uid && again[0].status == .kept
+                      && model.receiveMessage == "Already in Five", "message: \(model.receiveMessage)")
+            }
             quiet.forEach { model.delete([$0.uid], undo: nil) }
             // A link file can hold any kind of address; only web links become links, and a block
             // with another kind (from an edited export, say) is never opened.

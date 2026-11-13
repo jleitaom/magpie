@@ -187,7 +187,7 @@ final class AppModel {
             let saved = receive(AppDelegate.pendingURLs, quietly: true)
             AppDelegate.pendingURLs = []
             if !saved.isEmpty {
-                DropHUD.show(saved.count == 1 ? "Saved to Inbox" : "Saved \(saved.count) to Inbox")
+                DropHUD.show(receiveMessage)
                 AppDelegate.stepBack()
             }
         }
@@ -241,11 +241,22 @@ final class AppModel {
         save()
     }
 
+    /// The block already holding this link, if it was saved before (compared after normalizing).
+    func savedBlock(for url: URL) -> Block? {
+        let normalized = Links.normalize(url)
+        return try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.normalizedURL == normalized })).first
+    }
+
+    /// Where a block is, for messages: "Shopping", "the Inbox", or "your library" (done, in progress).
+    func whereabouts(of block: Block) -> String {
+        block.collection?.name ?? (block.status == .inbox ? "the Inbox" : "your library")
+    }
+
     /// Saves a web link. A link that's already saved moves to the top instead of being saved twice.
     @discardableResult
     func save(url: URL) -> Block {
         let normalized = Links.normalize(url)
-        if let existing = try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.normalizedURL == normalized })).first {
+        if let existing = savedBlock(for: url) {
             existing.createdAt = .now
             if existing.status == .archived { existing.status = .inbox }
             save()
@@ -1339,11 +1350,14 @@ final class AppModel {
 
     /// Saves what Quick Save shows, with the title, collection, tags and note from the panel.
     /// It goes to the chosen collection (the Inbox by default), whatever the window shows.
+    /// A link that's already saved stays where it is, unless a collection was chosen for it.
     @discardableResult
     func quickSave(_ edited: QuickSavePanel.Edited) -> Block? {
         let block: Block?
+        var staysPut = false
         switch edited.draft.content {
         case .web(let url):
+            staysPut = !url.isFileURL && edited.collection == nil && savedBlock(for: url) != nil
             block = url.isFileURL ? saveFile(url) : save(url: url)
         case .text(let text):
             let note = Block(kind: .note, title: Titles.firstLine(text))
@@ -1360,10 +1374,10 @@ final class AppModel {
         let title = Titles.clean(edited.title)
         if !title.isEmpty { block.title = title }
         if !edited.note.isEmpty { block.note = edited.note }
-        move(block, to: collection(edited.collection), undo: nil)
+        if !staysPut { move(block, to: collection(edited.collection), undo: nil, announce: false) }
         if !edited.tags.isEmpty { addTags(edited.tags, to: block) }
         save()
-        flash("Saved to \(block.collection?.name ?? "the Inbox")")
+        flash(staysPut ? "Already in \(whereabouts(of: block))" : "Saved to \(block.collection?.name ?? "the Inbox")")
         return block
     }
 
@@ -1516,13 +1530,16 @@ final class AppModel {
     // MARK: Dock drop (S-041) and screenshots (S-075)
 
     /// Links, images and files dropped on the Dock icon (or opened with Magpie) go to the Inbox.
-    /// `quietly`: no message in the window (the Dock drop shows its own by the Dock).
+    /// A link that's already saved moves to the top and stays where it is.
+    /// `quietly`: no message in the window (the Dock drop shows `receiveMessage` by the Dock).
     @discardableResult
     func receive(_ urls: [URL], quietly: Bool = false) -> [Block] {
         var saved: [Block] = []
+        var known: Set<UUID> = []
         for url in urls {
             var block: Block?
             if url.isFileURL, ["webloc", "url"].contains(url.pathExtension.lowercased()), let link = Self.link(inShortcut: url) {
+                if let found = savedBlock(for: link) { known.insert(found.uid) }
                 block = save(url: link)
             } else if url.isFileURL {
                 if let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image), let data = try? Data(contentsOf: url) {
@@ -1531,16 +1548,28 @@ final class AppModel {
                     block = saveFile(url)
                 }
             } else if let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" {
+                if let found = savedBlock(for: url) { known.insert(found.uid) }
                 block = save(url: url)
             }
             if let block {
-                if block.collection != nil || block.status != .inbox { move(block, to: nil, undo: nil, announce: false) }
+                // New blocks go to the Inbox whatever the window shows; a known one stays put.
+                if !known.contains(block.uid), block.collection != nil || block.status != .inbox {
+                    move(block, to: nil, undo: nil, announce: false)
+                }
                 saved.append(block)
             }
         }
-        if !saved.isEmpty, !quietly { flash(saved.count == 1 ? "Saved to the Inbox" : "Saved \(saved.count) to the Inbox") }
+        if saved.count == 1, known.contains(saved[0].uid) {
+            receiveMessage = "Already in \(whereabouts(of: saved[0]))"
+        } else {
+            receiveMessage = saved.count == 1 ? "Saved to the Inbox" : "Saved \(saved.count) to the Inbox"
+        }
+        if !saved.isEmpty, !quietly { flash(receiveMessage) }
         return saved
     }
+
+    /// What the last `receive` did, in words, for the label by the Dock.
+    @ObservationIgnored private(set) var receiveMessage = ""
 
     /// The address in a .webloc (Safari) or .url (Windows) link file.
     static func link(inShortcut file: URL) -> URL? {

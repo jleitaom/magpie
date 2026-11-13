@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Fixed
+
+- **A link you already saved stays in its collection.** Saving it again with Quick Save, or dropping it on the Dock icon, moved it back to the Inbox. Now it moves to the top and stays where it is, and Magpie says where ("Already in Shopping"). Choosing a collection in Quick Save still moves it there
+
 ## [1.2.1] - 2026-11-12
 
 ### Fixed
