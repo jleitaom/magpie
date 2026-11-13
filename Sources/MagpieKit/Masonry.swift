@@ -40,6 +40,8 @@ public enum Pins {
 
     /// The top bar's order after `moving` is dropped on `target`: it takes that place and the
     /// ones between shift over. Nil when nothing would change, or either isn't pinned.
+    /// Ready for dragging tabs in the top bar, which isn't built yet (S-080); Move Left and
+    /// Move Right use `stepped`.
     public static func dropped(_ moving: UUID, onto target: UUID, in order: [UUID]) -> [UUID]? {
         guard moving != target, let from = order.firstIndex(of: moving), let to = order.firstIndex(of: target) else { return nil }
         var new = order

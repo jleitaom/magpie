@@ -9,6 +9,7 @@ See the [changelog](CHANGELOG.md) for the details.
 
 ## v1.1: iPhone and the Share menu
 
+- Drag pinned piles into order in the top bar, the way browser tabs move (for now: Pile → Move Left / Right in Top Bar)
 - An iPhone app with a share sheet
 - Save from the Share menu on the Mac (a Share extension)
 - iCloud sync between the Mac and the iPhone. The data model already follows CloudKit's

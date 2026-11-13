@@ -19,7 +19,7 @@ Thanks for helping out!
   - `MainWindow/`: the window, its top bar, the drop target and the bottom hint (`MainView.swift`),
     and the "Saved to Inbox" message shown after a drop on the Dock icon (`DropHUD.swift`)
   - `Gallery/`: the masonry of cards and the right-click menu every Block shares (`GalleryView.swift`),
-    and dragging cards into your own order, and pinned piles along the top bar (`Reorder.swift`)
+    and dragging cards into your own order (`Reorder.swift`)
   - `Journal/`: the Journal, a numbered list of the same blocks (`JournalView.swift`). Sort
     orders are in `MagpieKit/BlockOrder.swift`
   - `SortInbox/`: Sort Inbox, one Inbox block at a time (`SortInboxView.swift`). The queue and the

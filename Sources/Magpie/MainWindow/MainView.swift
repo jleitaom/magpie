@@ -117,9 +117,6 @@ struct TopBar: View {
     let inboxCount: Int
     var allBlocks: [Block] = []
     @Environment(AppModel.self) private var model
-    /// The pinned pile being dragged along the bar, and the tab it's over.
-    @State private var draggingPin: UUID?
-    @State private var pinTarget: UUID?
     /// The right-hand controls' width, mirrored on the left so the pill stays centered.
     private let sideWidth = Metric.barSideWidth
 
@@ -196,37 +193,10 @@ struct TopBar: View {
             KitTabField(initial: target.name,
                         onCommit: { model.rename(target, to: $0) },
                         onCancel: { model.renamingCollection = nil })
-        } else if target.isPinned {
-            // Pinned piles can be dragged left and right. All, Inbox and the passing tabs can't.
-            let uid = target.uid
-            tab(target.name, scope: .collection(uid))
-                .contextMenu { CollectionMenu(target: target) }
-                .overlay(alignment: landsAfter(uid) ? .trailing : .leading) {
-                    if pinTarget == uid, draggingPin != nil, draggingPin != uid {
-                        Capsule().fill(Ink.accentText).frame(width: Metric.dropLine, height: Metric.dividerHeight)
-                    }
-                }
-                .onDrag {
-                    draggingPin = uid
-                    let provider = NSItemProvider()
-                    provider.registerDataRepresentation(forTypeIdentifier: UTType.magpiePile.identifier, visibility: .ownProcess) { done in
-                        done(Data(uid.uuidString.utf8), nil)
-                        return nil
-                    }
-                    return provider
-                }
-                .onDrop(of: [.magpiePile], delegate: PinDrop(target: uid, model: model, dragging: $draggingPin, hovered: $pinTarget))
         } else {
             tab(target.name, scope: .collection(target.uid))
                 .contextMenu { CollectionMenu(target: target) }
         }
-    }
-
-    /// True when the dragged tab comes from the left of `target`, so it will land after it.
-    private func landsAfter(_ target: UUID) -> Bool {
-        let order = model.pinnedCollections.map(\.uid)
-        guard let dragging = draggingPin, let from = order.firstIndex(of: dragging), let to = order.firstIndex(of: target) else { return false }
-        return from < to
     }
 
     private func tab(_ title: String, scope: Scope, count: Int? = nil) -> some View {

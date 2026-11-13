@@ -7,37 +7,6 @@ extension UTType {
     static let magpieBlock = UTType(exportedAs: "com.jleitaom.magpie.block")
 }
 
-extension UTType {
-    /// A pinned pile's tab dragged along the top bar (declared in Info.plist). Its own type, so
-    /// a tab dropped on the window is never saved as a note.
-    static let magpiePile = UTType(exportedAs: "com.jleitaom.magpie.pile")
-}
-
-/// Moves the dragged pile's tab into the place of the tab under the pointer.
-struct PinDrop: DropDelegate {
-    let target: UUID
-    let model: AppModel
-    @Binding var dragging: UUID?
-    @Binding var hovered: UUID?
-
-    func validateDrop(info: DropInfo) -> Bool { dragging != nil && dragging != target }
-
-    func dropEntered(info: DropInfo) { hovered = target }
-
-    func dropExited(info: DropInfo) { if hovered == target { hovered = nil } }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
-
-    func performDrop(info: DropInfo) -> Bool {
-        defer {
-            dragging = nil
-            hovered = nil
-        }
-        guard let moving = dragging else { return false }
-        return model.movePin(moving, onto: target)
-    }
-}
-
 extension View {
     /// Drag this block onto another to put it in that place (S-066). Used by Gallery cards and Journal rows.
     func reorderable(_ block: Block, shown: [Block], model: AppModel, dragging: Binding<UUID?>, target: Binding<UUID?>) -> some View {

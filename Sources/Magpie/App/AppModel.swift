@@ -644,8 +644,9 @@ final class AppModel {
         save()
     }
 
-    /// Top bar order: `moving` dropped on the tab of `target` takes its place. All and Inbox
-    /// aren't piles, so they never move. ⌘3–⌘7 follow the new order.
+    /// Top bar order: `moving` takes the place of `target`. All and Inbox aren't piles, so they
+    /// never move. ⌘3–⌘7 follow the new order. Nothing in the window calls this yet: it's for
+    /// dragging tabs, which was tried and taken out in 1.2.2 (notes/STORIES.md, S-080).
     @discardableResult
     func movePin(_ moving: UUID, onto target: UUID) -> Bool {
         applyPinOrder(Pins.dropped(moving, onto: target, in: pinnedCollections.map(\.uid)))

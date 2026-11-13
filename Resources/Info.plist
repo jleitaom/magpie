@@ -84,16 +84,6 @@
 			<key>UTTypeIdentifier</key>
 			<string>com.jleitaom.magpie.block</string>
 		</dict>
-		<dict>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-			</array>
-			<key>UTTypeDescription</key>
-			<string>Magpie pile</string>
-			<key>UTTypeIdentifier</key>
-			<string>com.jleitaom.magpie.pile</string>
-		</dict>
 	</array>
 </dict>
 </plist>

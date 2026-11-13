@@ -7,7 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
-- **Arrange your piles in the top bar.** Drag a pinned pile's tab left or right and drop it on another to take its place, or use **Pile → Move Left in Top Bar** and **Move Right in Top Bar** (⌥⌘← and ⌥⌘→). All and Inbox stay where they are, and ⌘3–⌘7 follow the new order
+- **Arrange your piles in the top bar.** Open a pinned pile and choose **Pile → Move Left in Top Bar** or **Move Right in Top Bar** (⌥⌘← and ⌥⌘→), or right-click its tab. All and Inbox stay where they are, and ⌘3–⌘7 follow the new order
 
 ### Changed
 
