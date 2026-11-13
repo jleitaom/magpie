@@ -38,6 +38,8 @@ enum Ink {
     static let secondary = Color(light: Palette.ink600, dark: Palette.fog400)
     static let tertiary = Color(light: Palette.ink400, dark: Palette.fog600)
     static let hairline = Color(lightAlpha: (0x000000, 0.08), darkAlpha: (0xFFFFFF, 0.08))
+    /// A border that must show on its own: a text field on a panel, a dark swatch on a dark window.
+    static let edge = Color(lightAlpha: (0x000000, 0.10), darkAlpha: (0xFFFFFF, 0.16))
     static let hover = Color(lightAlpha: (0x000000, 0.05), darkAlpha: (0xFFFFFF, 0.06))
     static let accent = Color(hex: Palette.teal600)
     static let accentText = Color(light: Palette.teal700, dark: Palette.teal300)

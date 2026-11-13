@@ -56,3 +56,10 @@ struct DockDropTests {
         #expect(DockDrop.shouldStepBack(activeSince: now, wasRunning: false, now: now))
     }
 }
+
+struct DropHintTests {
+    @Test("The drop hint shows only while the library is new", arguments: [(0, false), (1, true), (4, true), (5, false), (500, false)])
+    func shows(count: Int, expected: Bool) {
+        #expect(DropHint.shows(blockCount: count) == expected)
+    }
+}

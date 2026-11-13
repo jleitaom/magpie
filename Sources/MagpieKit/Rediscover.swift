@@ -69,3 +69,13 @@ public enum DockDrop {
         return now.timeIntervalSince(activeSince) < quickDropWindow
     }
 }
+
+/// The "Drop anything to make a block" hint at the bottom of the Gallery: for a new library only.
+public enum DropHint {
+    /// Once the library holds this many blocks, you know how to save.
+    public static let untilBlocks = 5
+
+    public static func shows(blockCount: Int) -> Bool {
+        blockCount > 0 && blockCount < untilBlocks
+    }
+}

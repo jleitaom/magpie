@@ -19,9 +19,9 @@ name=Magpie
 config=release
 [[ " $* " == *" --debug "* ]] && config=debug
 
-# The icon: Icon/AppIcon.icon -> Resources/Assets.car + AppIcon.icns, rebuilt when it changed.
+# The icon and accent color: Icon/ -> Resources/Assets.car + AppIcon.icns, rebuilt when they changed.
 car=Resources/Assets.car
-if [[ ! -f $car || -n "$(find Icon/AppIcon.icon -newer $car | head -1)" ]]; then
+if [[ ! -f $car || -n "$(find Icon/AppIcon.icon Icon/Assets.xcassets -newer $car | head -1)" ]]; then
   scripts/make-icon.sh
 fi
 

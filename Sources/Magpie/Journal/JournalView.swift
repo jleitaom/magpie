@@ -146,6 +146,7 @@ private struct JournalRow: View {
         JournalColumns(widths: JournalColumns.widths, gap: Space.lg) {
             Text(String(format: "%02d", number)).kitType(.mono).foregroundStyle(quiet)
             Circle().fill(block.tint.map(Ink.swatch) ?? Ink.tertiary).frame(width: Metric.tagDot, height: Metric.tagDot)
+                .overlay(Circle().strokeBorder(Ink.edge))   // a dark color still shows on the dark window
             Text(Highlight.text(block.title.isEmpty ? "Untitled" : block.title, terms: model.searchTerms))
                 .kitType(.label).foregroundStyle(ink).lineLimit(1)
             Text(block.badge?.uppercased() ?? "—").kitType(.mono).foregroundStyle(quiet).lineLimit(1)

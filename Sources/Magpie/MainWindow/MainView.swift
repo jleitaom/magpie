@@ -65,7 +65,12 @@ struct MainView: View {
             .animation(reduceMotion ? nil : Motion.panel, value: model.selection == nil)
         }
         .overlay(alignment: .bottom) {
-            if model.viewMode == .gallery { BottomHint(showsHint: selected == nil) }
+            // The hint is for a new library: gone once a few blocks are in, and on empty screens,
+            // whose headline already says it. Messages still show here.
+            if model.viewMode == .gallery {
+                BottomHint(showsHint: selected == nil && !shown.isEmpty && !model.snapshotEmptyLibrary
+                           && DropHint.shows(blockCount: blocks.count))
+            }
         }
         .overlay {
             if model.isDropTargeted {

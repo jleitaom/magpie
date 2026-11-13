@@ -113,7 +113,7 @@ struct ShortcutSettings: View {
             }
             Toggle("⌃⌥S saves a screenshot to the Inbox", isOn: $model.screenshotShortcutOn)
             Text(model.quickSaveShortcutWorks
-                 ? "Quick Save saves Safari’s front tab, or the clipboard. Screenshots ask macOS for Screen Recording the first time."
+                 ? "Quick Save saves your browser’s front tab (Safari, Chrome, Arc, Brave, Edge…), or the clipboard. Screenshots ask macOS for Screen Recording the first time."
                  : "Another app is using the Quick Save shortcut. Pick a different one.")
                 .font(.caption).foregroundStyle(model.quickSaveShortcutWorks ? .secondary : Color.orange)
         }

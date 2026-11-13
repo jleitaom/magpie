@@ -10,6 +10,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - **Menus look like menus.** Collection and Kind in a Block's details, and Save to in Quick Save, now show a small chevron, so they no longer look like plain buttons
 - **The top bar shows where you are working.** Sort Inbox highlights Inbox, and Lucky Dip highlights the collection it picks from, instead of All
 - **Search stays put.** The Search button no longer jumps when you switch to Sort Inbox or Lucky Dip. Sort now sits to its left
+- **The "Drop anything to make a block" hint steps aside.** It shows while your library is new (fewer than 5 Blocks) and then goes away, so it no longer covers the bottom row of cards. Empty screens, which already say it, don't repeat it
+- **Easier to see in dark.** Text fields in a Block's details and in Quick Save have a visible edge, and the Journal's color dots show even for very dark colors
+- **Settings uses Magpie's teal for its tabs** (when your Mac's accent color is Multicolor), and the Shortcuts tab says Quick Save reads your browser's front tab, not just Safari's
 
 ### Removed
 
