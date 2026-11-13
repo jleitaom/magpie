@@ -11,6 +11,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
+- **An email address, a version number or a file name is no longer saved as a link.** Pasting `john@example.com`, `1.2.1` or `notes.txt` makes a note. A bare address like `example.com/page` is still a link; a site on an unusual ending needs `https://` in front
+- **Two pages of the same web app are no longer taken for one.** Links that differ only after `#/` or `#!` (like `app.example.com/#/inbox` and `…/#/archive`) are saved as separate Blocks. An ordinary anchor like `#comments` is still the same page
 - **Undo after a delete brings everything back.** A Block you deleted and brought back with Undo had lost its tags, the text read from its picture, its place in your own order, its expiry and whether it was archived
 - **A link you already saved stays in its collection.** Saving it again with Quick Save, or dropping it on the Dock icon, moved it back to the Inbox. Now it moves to the top and stays where it is, and Magpie says where ("Already in Shopping"). Choosing a collection in Quick Save still moves it there
 

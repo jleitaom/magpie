@@ -12,17 +12,33 @@ public enum Links {
                                              "igshid", "igsh", "si", "ref_src", "ref_url", "_hsenc", "_hsmi"]
 
     /// A web link from pasted or dropped text, or nil when the text isn't one.
-    /// Accepts "https://…", "http://…", and bare "example.com/path".
+    /// Accepts "https://…", "http://…", and bare "example.com/path". A bare word is a link only
+    /// when it looks like a site: no "@" (an email address), and a web ending (`webEndings`) or
+    /// something after the host. So "notes.txt", "1.2.1" and "john@example.com" stay text.
     public static func parse(_ text: String) -> URL? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !trimmed.contains(" "), !trimmed.contains("\n") else { return nil }
-        let candidate = trimmed.contains("://") ? trimmed : "https://" + trimmed
+        let isBare = !trimmed.contains("://")
+        let candidate = isBare ? "https://" + trimmed : trimmed
         guard let url = URL(string: candidate),
               let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https",
               let host = url.host(), host.contains("."), !host.hasPrefix("."), !host.hasSuffix(".")
         else { return nil }
-        return url
+        guard isBare else { return url }
+        let ending = host.split(separator: ".").last.map { $0.lowercased() } ?? ""
+        guard url.user() == nil, ending.count >= 2, ending.allSatisfy(\.isLetter) else { return nil }
+        let hasMore = url.path.count > 1 || url.query() != nil || url.port != nil
+        return webEndings.contains(ending) || (ending.count == 2 && !fileEndings.contains(ending)) || hasMore ? url : nil
     }
+
+    /// Common endings of site names. Any two-letter ending (a country's) counts too, except
+    /// the ones in `fileEndings`.
+    static let webEndings: Set<String> = ["com", "org", "net", "edu", "gov", "int", "info", "biz", "app", "dev", "xyz", "blog", "shop",
+                                          "store", "site", "online", "tech", "design", "page", "wiki", "news", "art", "cloud", "studio",
+                                          "club", "world", "live", "life", "today", "space", "media", "agency", "email", "link", "name", "pro"]
+
+    /// Two-letter endings that are far more often a file's than a country's: "notes.md", "run.sh".
+    static let fileEndings: Set<String> = ["md", "py", "sh", "rs", "pl", "cc", "ts", "ps", "so", "pm", "cs", "kt", "hs", "rb", "js", "go"]
 
     /// Web links and files, the only addresses a block opens.
     public static func isOpenable(_ url: URL) -> Bool {
@@ -31,14 +47,15 @@ public enum Links {
     }
 
     /// The same string for links that point to the same page: lowercased host without "www.",
-    /// no tracking parameters, no fragment, no trailing slash, and http treated as https.
+    /// no tracking parameters, no anchor, no trailing slash, and http treated as https.
     public static func normalize(_ url: URL) -> String {
         guard var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url.absoluteString }
         parts.scheme = "https"
         if let host = parts.host?.lowercased() {
             parts.host = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
         }
-        parts.fragment = nil
+        // An anchor (#comments) is the same page; a route (#/inbox, #!/photo/3) is another one.
+        if let fragment = parts.fragment, !(fragment.hasPrefix("/") || fragment.hasPrefix("!")) { parts.fragment = nil }
         if let items = parts.queryItems {
             let kept = items.filter { item in
                 let name = item.name.lowercased()
