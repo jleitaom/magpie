@@ -152,7 +152,8 @@ struct TopBar: View {
         let pinned = Array(collections.filter(\.isPinned).sorted { $0.pinIndex < $1.pinIndex }.prefix(maxPins))
         var shownIDs = Set(pinned.map(\.uid))
         var extra: BlockCollection?
-        if case .collection(let uid) = model.scope, !shownIDs.contains(uid) {
+        let shown = shownScope
+        if case .collection(let uid) = shown, !shownIDs.contains(uid) {
             extra = collections.first { $0.uid == uid }
             if let extra { shownIDs.insert(extra.uid) }
         }
@@ -162,10 +163,10 @@ struct TopBar: View {
             tab("Inbox", scope: .inbox, count: inboxCount)
             ForEach(pinned) { collectionTab($0) }
             if let extra { collectionTab(extra) }
-            if model.scope == .archive {
-                tab(model.placeName(model.scope), scope: model.scope)
+            if shown == .archive {
+                tab(model.placeName(shown), scope: shown)
             }
-            if let tag = model.openTag {
+            if case .tag(let uid) = shown, let tag = model.tag(uid) {
                 tab("# \(tag.name)", scope: .tag(tag.uid))
                     .contextMenu { TagMenu(tag: tag) }
             }
@@ -173,7 +174,7 @@ struct TopBar: View {
             Button { model.showsCollections.toggle() } label: {
                 HStack(spacing: Metric.inlineGap) {
                     Text(hidden > 0 ? "\(hidden) more" : "Collections")
-                    KitIconView(icon: .chevronDown, size: 10)
+                    KitIconView(icon: .chevronDown, size: Metric.chevron)
                 }
             }
             .buttonStyle(KitTabStyle(isSelected: false))
@@ -200,7 +201,18 @@ struct TopBar: View {
             if model.viewMode != .gallery && model.viewMode != .journal { model.show(.gallery) }
             model.selection = nil
         }
-        .buttonStyle(KitTabStyle(isSelected: model.scope == scope, count: count))
+        .buttonStyle(KitTabStyle(isSelected: shownScope == scope, count: count))
+    }
+
+    /// The place the window is working on, which is the tab to highlight: the Inbox while
+    /// sorting it, Lucky Dip's source (All for Everything), All in Rediscover, else the open place.
+    private var shownScope: Scope {
+        switch model.viewMode {
+        case .sortInbox: .inbox
+        case .luckyDip: model.dipCollection.map { .collection($0) } ?? .all
+        case .rediscover: .all
+        case .gallery, .journal: model.scope
+        }
     }
 }
 
@@ -210,12 +222,7 @@ private struct RightControls: View {
     var body: some View {
         @Bindable var model = model
         HStack(spacing: Space.sm) {
-            if !model.isSearching {
-                Button { model.startSearch() } label: { KitIconView(icon: .search, size: 14) }
-                    .buttonStyle(.kit(.secondary))
-                    .help("Search everything (⌘F)")
-                    .accessibilityLabel("Search")
-            }
+            // Sort comes first, so Search stays where it is in the views that have no Sort.
             if (model.viewMode == .gallery || model.viewMode == .journal) && !model.isSearching {
                 let order = model.order(for: model.scope)
                 Button { model.showsSortMenu.toggle() } label: {
@@ -230,6 +237,12 @@ private struct RightControls: View {
                 .popover(isPresented: $model.showsSortMenu, arrowEdge: .bottom) {
                     SortMenu().environment(model).kitPopover()
                 }
+            }
+            if !model.isSearching {
+                Button { model.startSearch() } label: { KitIconView(icon: .search, size: 14) }
+                    .buttonStyle(.kit(.secondary))
+                    .help("Search everything (⌘F)")
+                    .accessibilityLabel("Search")
             }
             KitSegmentTrack {
                 ForEach(ViewMode.switcher) { mode in

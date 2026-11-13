@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- **Menus look like menus.** Collection and Kind in a Block's details, and Save to in Quick Save, now show a small chevron, so they no longer look like plain buttons
+- **The top bar shows where you are working.** Sort Inbox highlights Inbox, and Lucky Dip highlights the collection it picks from, instead of All
+- **Search stays put.** The Search button no longer jumps when you switch to Sort Inbox or Lucky Dip. Sort now sits to its left
+
 ### Removed
 
 - **Collections that expire their Blocks.** Expire Blocks After is gone from a collection's right-click menu and from Settings, and so are the "expires in 2 d" note on cards, Keep (Don't Expire), and the Expired place. Nothing is archived on its own any more. Blocks that had already expired stay in the Archive, where Unarchive puts them back

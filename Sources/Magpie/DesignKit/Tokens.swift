@@ -91,6 +91,7 @@ enum Metric {
     static let pillInset: CGFloat = 4
     /// Small values measured from the mockup; named so views never hard-code them.
     static let inlineGap: CGFloat = 6        // icon + label, kind label to title
+    static let chevron: CGFloat = 10         // the chevron on a menu button and on "N more"
     static let trackInset: CGFloat = 3       // segment track padding
     static let rowInset: CGFloat = 10        // menu rows, fields, chip-like capsules
     static let fieldVertical: CGFloat = 7

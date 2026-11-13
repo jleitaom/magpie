@@ -118,7 +118,8 @@ struct DetailsPanel: View {
                     Button("Manage Collections…") { model.showsCollections = true }
                 }
                 .menuStyle(.button)
-                .buttonStyle(.kit(.secondary))
+                .menuIndicator(.hidden)
+                .buttonStyle(.kit(.secondary, menu: true))
                 .fixedSize()
             }
             if model.canChangeKind(block) {
@@ -131,7 +132,8 @@ struct DetailsPanel: View {
                         }
                     }
                     .menuStyle(.button)
-                    .buttonStyle(.kit(.secondary))
+                    .menuIndicator(.hidden)
+                    .buttonStyle(.kit(.secondary, menu: true))
                     .fixedSize()
                     .help("Magpie guessed wrong? Choose what this is (⌃⌥⌘1 Link, ⌃⌥⌘2 Video, ⌃⌥⌘3 Product)")
                 }

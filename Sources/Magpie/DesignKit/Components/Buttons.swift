@@ -10,9 +10,12 @@ struct KitButtonStyle: ButtonStyle {
     /// False inside a view that holds keyboard focus for its whole area (the Gallery):
     /// SwiftUI reports every button in it as focused, which would draw a ring on each.
     var showsFocus = true
+    /// True for a button that opens a menu: a chevron follows the label, so it reads as a
+    /// menu and not as a plain button.
+    var isMenu = false
 
     func makeBody(configuration: Configuration) -> some View {
-        Part(configuration: configuration, kind: kind, large: large, showsFocus: showsFocus)
+        Part(configuration: configuration, kind: kind, large: large, showsFocus: showsFocus, isMenu: isMenu)
     }
 
     private struct Part: View {
@@ -20,6 +23,7 @@ struct KitButtonStyle: ButtonStyle {
         let kind: Kind
         let large: Bool
         let showsFocus: Bool
+        let isMenu: Bool
         @Environment(\.forcedPartState) private var forced
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
@@ -29,7 +33,10 @@ struct KitButtonStyle: ButtonStyle {
             let state = PartState.resolve(forced: forced, enabled: isEnabled, pressed: configuration.isPressed,
                                           hovering: hovering, focused: isFocused && showsFocus)
             let shape = RoundedRectangle(cornerRadius: Metric.radius, style: .continuous)
-            configuration.label
+            HStack(spacing: Metric.inlineGap) {
+                configuration.label
+                if isMenu { KitIconView(icon: .chevronDown, size: Metric.chevron).foregroundStyle(Ink.secondary) }
+            }
                 .lineLimit(1)
                 .fixedSize()
                 .kitType(large ? .labelStrong : .label)
@@ -58,8 +65,9 @@ struct KitButtonStyle: ButtonStyle {
 }
 
 extension ButtonStyle where Self == KitButtonStyle {
-    static func kit(_ kind: KitButtonStyle.Kind = .primary, large: Bool = false, showsFocus: Bool = true) -> KitButtonStyle {
-        KitButtonStyle(kind: kind, large: large, showsFocus: showsFocus)
+    static func kit(_ kind: KitButtonStyle.Kind = .primary, large: Bool = false, showsFocus: Bool = true,
+                    menu: Bool = false) -> KitButtonStyle {
+        KitButtonStyle(kind: kind, large: large, showsFocus: showsFocus, isMenu: menu)
     }
 }
 
