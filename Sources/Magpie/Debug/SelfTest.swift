@@ -82,6 +82,27 @@ enum SelfTest {
             model.delete([fullID], undo: nil)
             model.tags.filter { ["undo-a", "undo-b"].contains($0.name) }.forEach(model.deleteTag)
 
+            // Undo of a Move puts a block back exactly as it was.
+            if let roamer = model.block(saved.uid) {
+                let wasStatus = roamer.status
+                roamer.status = .done
+                model.createCollection(named: "Undo move test", pin: false)
+                if let there = model.collections.first(where: { $0.name == "Undo move test" }) {
+                    model.move(roamer, to: there, undo: undo)
+                    undo.undo()
+                    check("undoing a move keeps a done block done", roamer.status == .done && roamer.collection == nil && !roamer.hasChanges)
+                    undo.redo()
+                    check("…and redo moves it again", roamer.collection?.uid == there.uid && roamer.status == .kept)
+                    undo.undo()
+                    model.deleteCollection(there)
+                }
+                roamer.status = wasStatus
+                model.save()
+            }
+            let tick = model.dayTick
+            model.dayChanged()
+            check("a new day refreshes today's numbers", model.dayTick == tick + 1)
+
             // Collections, pins and moving.
             for name in ["One", "Two", "Three", "Four", "Five", "Six"] { model.createCollection(named: name) }
             check("the first five collections are pinned", model.pinnedCollections.count == 5)
@@ -631,6 +652,10 @@ enum SelfTest {
             let shop = model.save(url: URL(string: "https://shop.example.com/lamp")!)
             model.apply(PageFacts(kind: .product, price: 189, currency: "EUR"), to: shop)
             check("a shop page with a price becomes a product with a badge", shop.kind == .product && shop.price == 189 && shop.badge?.contains("189") == true)
+            model.apply(PageFacts(kind: .product, price: 149, currency: "EUR"), to: shop)
+            check("saving a product again takes today's price", shop.price == 149)
+            model.apply(PageFacts(kind: .product), to: shop)
+            check("…and a page that shows no price leaves the old one", shop.price == 149)
             let clip = model.save(url: URL(string: "https://example.com/talk")!)
             model.apply(PageFacts(kind: .video, durationSeconds: 782), to: clip)
             check("a page with a video length becomes a video with “13 min”", clip.kind == .video && clip.minutes == 13 && clip.badge == "13 min")

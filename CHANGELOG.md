@@ -11,6 +11,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
+- **Saving a product again updates its price.** Magpie said it refreshed the price, but kept the one from the first save. A kind you chose by hand still keeps its price
+- **Undo after moving a Block puts it back exactly as it was.** A Block that was done or archived came back as if it were new
+- **File → Quick Save shows the shortcut you chose in Settings**, or none when it's Off. It always showed ⌃⌥Space
+- **A new day starts at midnight even with the window open.** The Lucky Dip streak, your re-spins and the Dock badge waited until you reopened the window
 - **An email address, a version number or a file name is no longer saved as a link.** Pasting `john@example.com`, `1.2.1` or `notes.txt` makes a note. A bare address like `example.com/page` is still a link; a site on an unusual ending needs `https://` in front
 - **Two pages of the same web app are no longer taken for one.** Links that differ only after `#/` or `#!` (like `app.example.com/#/inbox` and `…/#/archive`) are saved as separate Blocks. An ordinary anchor like `#comments` is still the same page
 - **Undo after a delete brings everything back.** A Block you deleted and brought back with Undo had lost its tags, the text read from its picture, its place in your own order, its expiry and whether it was archived

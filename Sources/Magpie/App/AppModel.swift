@@ -181,6 +181,7 @@ final class AppModel {
         refreshDockBadge()
         registerQuickSave()
         registerScreenshot()
+        watchDayChange()
         // Things dropped on the Dock icon before the library was ready.
         if !AppDelegate.pendingURLs.isEmpty {
             let saved = receive(AppDelegate.pendingURLs, quietly: true)
@@ -194,6 +195,27 @@ final class AppModel {
         let pending = EnrichState.pending.rawValue
         let stuck = (try? context.fetch(FetchDescriptor<Block>(predicate: #Predicate { $0.enrichRaw == pending }))) ?? []
         for block in stuck { enrich(block) }
+    }
+
+    // MARK: A new day
+
+    /// Counts midnights passed while Magpie runs. Views that show today's numbers read it
+    /// (through `todayIfAny`), so they redraw when the day changes with the window open.
+    private(set) var dayTick = 0
+    @ObservationIgnored private var dayObserver: NSObjectProtocol?
+
+    private func watchDayChange() {
+        guard dayObserver == nil else { return }
+        dayObserver = NotificationCenter.default.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.dayChanged() }
+        }
+    }
+
+    /// Midnight passed: the Lucky Dip streak and week, today's spins and the Dock badge start over.
+    func dayChanged() {
+        dayTick += 1
+        refreshDipStats()
+        refreshDockBadge()
     }
 
     // MARK: Lookups
@@ -429,6 +451,9 @@ final class AppModel {
             block.kind = .product
             block.price = facts.price
             block.currency = facts.currency
+        case .product where block.kind == .product:
+            // Saved again: today's price replaces the old one (a page with no price leaves it).
+            if let price = facts.price { block.price = price; block.currency = facts.currency }
         case .recipe:
             block.isRecipe = true
         default:
@@ -539,6 +564,7 @@ final class AppModel {
     func move(_ block: Block, to target: BlockCollection?, undo: UndoManager?, announce: Bool = true) {
         let before = block.collection
         let beforeStatus = block.status
+        let beforeArchive = block.statusBeforeArchiveRaw
         block.collection = target
         block.status = target == nil ? .inbox : .kept
         block.statusBeforeArchiveRaw = nil
@@ -547,8 +573,12 @@ final class AppModel {
         let uid = block.uid
         undo?.registerUndo(withTarget: self) { model in
             guard let block = model.block(uid) else { return }
+            // Back exactly as it was: done, in progress or archived, not just "kept".
             model.move(block, to: before, undo: undo)
             block.status = beforeStatus
+            block.statusBeforeArchiveRaw = beforeArchive
+            model.noteInboxZero()
+            model.save()
         }
         undo?.setActionName("Move")
         if announce { flash(target.map { "Moved to \($0.name)" } ?? "Moved to Inbox") }
@@ -796,6 +826,7 @@ final class AppModel {
 
     /// Today's activity record if there is one, without making it (safe while a view draws).
     var todayIfAny: DayActivity? {
+        _ = dayTick
         let number = DayActivity.number(for: .now)
         return try? context.fetch(FetchDescriptor<DayActivity>(predicate: #Predicate { $0.day == number })).first
     }

@@ -34,7 +34,8 @@ struct MagpieApp: App {
             MagpieCommands(model: model, selection: menu.selection, appearance: model.appearance,
                            viewMode: model.viewMode, canSort: model.canSortNow, sortOrder: model.order(for: model.scope),
                            canRediscover: model.canRediscoverNow,
-                           pinned: model.pinnedCollections.map { PinnedItem(id: $0.uid, name: $0.name) }, dip: model.dipMenuState)
+                           pinned: model.pinnedCollections.map { PinnedItem(id: $0.uid, name: $0.name) }, dip: model.dipMenuState,
+                           quickSave: model.quickSaveShortcut)
         }
 
         Settings {
@@ -61,6 +62,8 @@ struct MagpieCommands: Commands {
     /// Pinned collections for ⌘3–⌘7, passed in so the menu follows pin changes.
     let pinned: [PinnedItem]
     let dip: DipMenuState
+    /// The Quick Save shortcut chosen in Settings, passed in so the menu shows it.
+    let quickSave: QuickSaveShortcut
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
@@ -87,7 +90,7 @@ struct MagpieCommands: Commands {
         CommandGroup(after: .newItem) {
             Divider()
             Button("Quick Save…") { model.quickSavePanel.open() }
-                .keyboardShortcut(.space, modifiers: [.control, .option])
+                .keyboardShortcut(quickSave.menuShortcut)
             Button("Save Screenshot…") { model.takeScreenshot() }
                 .keyboardShortcut("s", modifiers: [.control, .option])
             Button("Import Bookmarks…") { model.chooseBookmarksFile() }
@@ -420,6 +423,18 @@ enum Store {
             return try ModelContainer(for: Block.self, BlockCollection.self, DayActivity.self, Tag.self, configurations: ModelConfiguration(url: url))
         } catch {
             fatalError("Could not open the database at \(url.path): \(error)")
+        }
+    }
+}
+
+extension QuickSaveShortcut {
+    /// The same keys for the File menu, or none when the shortcut is Off.
+    var menuShortcut: KeyboardShortcut? {
+        switch self {
+        case .controlOptionSpace: KeyboardShortcut(.space, modifiers: [.control, .option])
+        case .controlOptionM: KeyboardShortcut("m", modifiers: [.control, .option])
+        case .optionCommandSpace: KeyboardShortcut(.space, modifiers: [.option, .command])
+        case .off: nil
         }
     }
 }
