@@ -644,6 +644,31 @@ final class AppModel {
         save()
     }
 
+    /// Top bar order: `moving` dropped on the tab of `target` takes its place. All and Inbox
+    /// aren't piles, so they never move. ⌘3–⌘7 follow the new order.
+    @discardableResult
+    func movePin(_ moving: UUID, onto target: UUID) -> Bool {
+        applyPinOrder(Pins.dropped(moving, onto: target, in: pinnedCollections.map(\.uid)))
+    }
+
+    /// Move Left and Move Right in the top bar.
+    @discardableResult
+    func stepPin(_ target: BlockCollection, left: Bool) -> Bool {
+        applyPinOrder(Pins.stepped(target.uid, left: left, in: pinnedCollections.map(\.uid)))
+    }
+
+    func canStepPin(_ target: BlockCollection?, left: Bool) -> Bool {
+        guard let target else { return false }
+        return Pins.stepped(target.uid, left: left, in: pinnedCollections.map(\.uid)) != nil
+    }
+
+    private func applyPinOrder(_ order: [UUID]?) -> Bool {
+        guard let order else { return false }
+        for (index, uid) in order.enumerated() { collection(uid)?.pinIndex = index }
+        save()
+        return true
+    }
+
     /// Deletes the collection only. Its blocks go back to the Inbox, and the collections
     /// inside it move up to its parent. Ask first with `collectionToDelete`.
     func deleteCollection(_ target: BlockCollection) {

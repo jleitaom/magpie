@@ -88,6 +88,16 @@ struct MasonryTests {
     @Test func pinLimit() {
         #expect(Pins.canPin(currentlyPinned: 4))
         #expect(!Pins.canPin(currentlyPinned: 5))
+        let a = UUID(), b = UUID(), c = UUID(), d = UUID()
+        // Dropped on a tab, a pile takes its place: dragged right it lands after, dragged left before.
+        #expect(Pins.dropped(a, onto: c, in: [a, b, c, d]) == [b, c, a, d])
+        #expect(Pins.dropped(d, onto: b, in: [a, b, c, d]) == [a, d, b, c])
+        #expect(Pins.dropped(a, onto: a, in: [a, b, c]) == nil)
+        #expect(Pins.dropped(a, onto: UUID(), in: [a, b, c]) == nil)
+        #expect(Pins.stepped(b, left: true, in: [a, b, c]) == [b, a, c])
+        #expect(Pins.stepped(b, left: false, in: [a, b, c]) == [a, c, b])
+        #expect(Pins.stepped(a, left: true, in: [a, b, c]) == nil)
+        #expect(Pins.stepped(c, left: false, in: [a, b, c]) == nil)
     }
 
     @Test("Blocks only open web links and files")

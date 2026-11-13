@@ -243,6 +243,12 @@ struct CollectionMenu: View {
             .disabled(CollectionTree.step(target.uid, up: false, in: model.collections.map(\.node)) == nil)
         Divider()
         Button(target.isPinned ? "Unpin from Top Bar" : "Pin to Top Bar") { model.togglePin(target) }
+        if target.isPinned {
+            Button("Move Left in Top Bar") { model.stepPin(target, left: true) }
+                .disabled(!model.canStepPin(target, left: true))
+            Button("Move Right in Top Bar") { model.stepPin(target, left: false) }
+                .disabled(!model.canStepPin(target, left: false))
+        }
         Divider()
         Button("Delete Pile…", role: .destructive) { model.collectionToDelete = target.uid }
     }

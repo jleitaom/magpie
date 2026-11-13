@@ -213,6 +213,14 @@ struct MagpieCommands: Commands {
                 .disabled(open == nil)
             Button("Move to Top Level") { if let open { model.place(open, .topLevel) } }
                 .disabled(open?.parent == nil)
+            // `pinned` is passed in, so these follow the top bar's order as it changes.
+            let place = pinned.firstIndex { $0.id == open?.uid }
+            Button("Move Left in Top Bar") { if let open { model.stepPin(open, left: true) } }
+                .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+                .disabled(place == nil || place == 0)
+            Button("Move Right in Top Bar") { if let open { model.stepPin(open, left: false) } }
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+                .disabled(place == nil || place == pinned.count - 1)
             Divider()
             Button("Delete Pile…") { model.collectionToDelete = open?.uid }
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])

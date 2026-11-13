@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- **Arrange your piles in the top bar.** Drag a pinned pile's tab left or right and drop it on another to take its place, or use **Pile → Move Left in Top Bar** and **Move Right in Top Bar** (⌥⌘← and ⌥⌘→). All and Inbox stay where they are, and ⌘3–⌘7 follow the new order
+
 ### Changed
 
 - **Collections are now called Piles.** Same thing, new name, everywhere: the top bar, the Piles panel (⌘K), the Pile menu, a Block's details, Quick Save and the messages. Your library and older exports open as before

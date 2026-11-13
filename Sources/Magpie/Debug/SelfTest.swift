@@ -110,6 +110,23 @@ enum SelfTest {
             check("the sixth isn't pinned (the limit is 5)", six?.isPinned == false)
             if let six { model.togglePin(six) }
             check("pinning a sixth is refused", model.pinnedCollections.count == 5)
+            // The top bar's order: drag a tab onto another, or Move Left and Move Right.
+            let bar = model.pinnedCollections
+            if bar.count == 5 {
+                let names = { model.pinnedCollections.map(\.name) }
+                model.movePin(bar[0].uid, onto: bar[2].uid)
+                check("a pile dragged right in the top bar lands after the tab it's dropped on", names() == ["Two", "Three", "One", "Four", "Five"], names().joined(separator: " "))
+                model.movePin(bar[4].uid, onto: bar[1].uid)
+                check("…and dragged left, before it", names() == ["Five", "Two", "Three", "One", "Four"], names().joined(separator: " "))
+                check("the leftmost pile can't move left, nor the rightmost right",
+                      !model.stepPin(bar[4], left: true) && !model.stepPin(bar[3], left: false))
+                if let six { check("a pile that isn't pinned doesn't move", !model.movePin(six.uid, onto: bar[0].uid) && !model.canStepPin(six, left: true)) }
+                model.stepPin(bar[4], left: false)
+                check("Move Right in Top Bar swaps it with its neighbour", names() == ["Two", "Five", "Three", "One", "Four"], names().joined(separator: " "))
+                // Back to the order the later checks expect.
+                for (index, item) in bar.enumerated() { item.pinIndex = index }
+                model.save()
+            }
             if let one = model.collections.first(where: { $0.name == "One" }), let block = model.block(saved.uid) {
                 model.move(block, to: one, undo: undo)
                 check("moving into a pile keeps it out of the Inbox", block.status == .kept && block.collection?.uid == one.uid)
