@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Changed
 
 - **Collections are now called Piles.** Same thing, new name, everywhere: the top bar, the Piles panel (⌘K), the Pile menu, a Block's details, Quick Save and the messages. Your library and older exports open as before
+- **A shorter menu bar.** The Inbox, Rediscover and Lucky Dip menus are now one **Go** menu, with a group for each, so the bar fits a laptop screen: File, Edit, View, Block, Pile, Go, Window, Help. Every command and shortcut is still there. Open the views themselves from **View** (⌃⌘1 to ⌃⌘5)
 - **Close is in the corner of a Block's details.** The × sits at the top right of the panel, on the picture, instead of beside the title, and stays there as you scroll. The title gets the full width
 - **Menus look like menus.** Pile and Kind in a Block's details, and Save to in Quick Save, now show a small chevron, so they no longer look like plain buttons
 - **The top bar shows where you are working.** Sort Inbox highlights Inbox, and Lucky Dip highlights the pile it picks from, instead of All

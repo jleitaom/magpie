@@ -148,55 +148,6 @@ struct MagpieCommands: Commands {
             }
             .disabled(selection == nil)
         }
-        CommandMenu("Inbox") {
-            Button("Sort Inbox") { front { model.startSorting() } }
-                .keyboardShortcut("3", modifiers: [.control, .command])
-            Divider()
-            // Plain keys, like the action bar. Off unless Sort Inbox is showing a block with no field
-            // or panel open, so typing elsewhere is never caught.
-            Button("Move to Suggested") { model.sortMove(to: model.sortingBlock.flatMap(model.suggestion(for:)), undo: NSApp.keyWindow?.undoManager) }
-                .keyboardShortcut("m", modifiers: [])
-                .disabled(!canSort)
-            Button("Rename") { model.isRenamingSortBlock = true }
-                .keyboardShortcut("r", modifiers: [])
-                .disabled(!canSort)
-            Button("Mark Done") { model.sortDone() }
-                .keyboardShortcut("d", modifiers: [])
-                .disabled(!canSort)
-            // One → for both Sort Inbox and Rediscover: two menu items can't share a key.
-            Button("Skip") { if viewMode == .rediscover { model.rediscoverSkip() } else { model.sortSkip() } }
-                .keyboardShortcut(.rightArrow, modifiers: [])
-                .disabled(!canSort && !canRediscover)
-            Button("Delete") { model.sortDelete(undo: NSApp.keyWindow?.undoManager) }
-                .keyboardShortcut(.delete, modifiers: [])
-                .disabled(!canSort)
-        }
-        CommandMenu("Rediscover") {
-            Button("Rediscover Old Saves") { front { model.show(.rediscover) } }
-            Divider()
-            Button("Keep") { model.rediscoverKeep() }
-                .keyboardShortcut("k", modifiers: [])
-                .disabled(!canRediscover)
-            Button("Archive") { model.rediscoverArchive() }
-                .keyboardShortcut("a", modifiers: [])
-                .disabled(!canRediscover)
-        }
-        CommandMenu("Lucky Dip") {
-            Button("Lucky Dip") { front { model.show(.luckyDip) } }
-                .keyboardShortcut("4", modifiers: [.control, .command])
-            Divider()
-            Button(dip.hasPick ? "Spin Again" : "Randomize") { model.spin(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) }
-                .keyboardShortcut("r", modifiers: [.command])
-                .disabled(!dip.canSpin)
-            Button(dip.inProgress ? "Mark as Finished" : "Start") {
-                if let started = model.inProgressBlock { model.finishPick(started) } else if let pick = model.dipPick { model.startPick(pick) }
-            }
-            .keyboardShortcut(.return, modifiers: [.command])
-            .disabled(!dip.hasPick && !dip.inProgress)
-            Button("Not Today") { if let pick = model.dipPick { model.notToday(pick) } }
-                .keyboardShortcut(.delete, modifiers: [.command, .option])
-                .disabled(!dip.hasPick || dip.inProgress)
-        }
         CommandMenu("Pile") {
             let open = model.openCollection
             Button("Rename Pile…") {
@@ -225,6 +176,51 @@ struct MagpieCommands: Commands {
             Button("Delete Pile…") { model.collectionToDelete = open?.uid }
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
                 .disabled(open == nil)
+        }
+        // One menu for the three views you work through, so the menu bar stays short on a
+        // laptop. View switches to each of them; this holds what you do once you're there.
+        // Each group is off unless its view is showing a block with no field or panel open,
+        // so the plain keys (M, D, K, A, →, ⌫) are never caught while typing elsewhere.
+        CommandMenu("Go") {
+            Section("Sort Inbox") {
+                Button("Move to Suggested") { model.sortMove(to: model.sortingBlock.flatMap(model.suggestion(for:)), undo: NSApp.keyWindow?.undoManager) }
+                    .keyboardShortcut("m", modifiers: [])
+                    .disabled(!canSort)
+                Button("Rename") { model.isRenamingSortBlock = true }
+                    .keyboardShortcut("r", modifiers: [])
+                    .disabled(!canSort)
+                Button("Mark Done") { model.sortDone() }
+                    .keyboardShortcut("d", modifiers: [])
+                    .disabled(!canSort)
+                // One → for both Sort Inbox and Rediscover: two menu items can't share a key.
+                Button("Skip") { if viewMode == .rediscover { model.rediscoverSkip() } else { model.sortSkip() } }
+                    .keyboardShortcut(.rightArrow, modifiers: [])
+                    .disabled(!canSort && !canRediscover)
+                Button("Delete") { model.sortDelete(undo: NSApp.keyWindow?.undoManager) }
+                    .keyboardShortcut(.delete, modifiers: [])
+                    .disabled(!canSort)
+            }
+            Section("Rediscover") {
+                Button("Keep") { model.rediscoverKeep() }
+                    .keyboardShortcut("k", modifiers: [])
+                    .disabled(!canRediscover)
+                Button("Archive") { model.rediscoverArchive() }
+                    .keyboardShortcut("a", modifiers: [])
+                    .disabled(!canRediscover)
+            }
+            Section("Lucky Dip") {
+                Button(dip.hasPick ? "Spin Again" : "Randomize") { model.spin(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) }
+                    .keyboardShortcut("r", modifiers: [.command])
+                    .disabled(!dip.canSpin)
+                Button(dip.inProgress ? "Mark as Finished" : "Start") {
+                    if let started = model.inProgressBlock { model.finishPick(started) } else if let pick = model.dipPick { model.startPick(pick) }
+                }
+                .keyboardShortcut(.return, modifiers: [.command])
+                .disabled(!dip.hasPick && !dip.inProgress)
+                Button("Not Today") { if let pick = model.dipPick { model.notToday(pick) } }
+                    .keyboardShortcut(.delete, modifiers: [.command, .option])
+                    .disabled(!dip.hasPick || dip.inProgress)
+            }
         }
         // Split into small typed parts: as one expression, this group was too much for CI's
         // type checker ("unable to type-check this expression in reasonable time").

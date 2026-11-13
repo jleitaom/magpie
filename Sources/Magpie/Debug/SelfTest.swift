@@ -822,8 +822,13 @@ enum SelfTest {
 
             // The menu bar keeps Magpie's own menus, and Window lists Magpie once, on ⌘0.
             let menus = NSApp.mainMenu?.items.map(\.title) ?? []
-            check("the menu bar has the Block, Inbox, Pile and Lucky Dip menus",
-                  ["Block", "Inbox", "Pile", "Lucky Dip"].allSatisfy(menus.contains), menus.joined(separator: ", "))
+            check("the menu bar is short: Block, Pile and Go, then Window and Help",
+                  menus.suffix(8) == ["File", "Edit", "View", "Block", "Pile", "Go", "Window", "Help"] && menus.count == 9, menus.joined(separator: ", "))
+            let go = NSApp.mainMenu?.items.first { $0.title == "Go" }?.submenu?.items.map(\.title) ?? []
+            check("Go holds what Sort Inbox, Rediscover and Lucky Dip do",
+                  ["Move to Suggested", "Mark Done", "Skip", "Keep", "Archive", "Not Today"].allSatisfy(go.contains), go.joined(separator: ", "))
+            let viewItems = NSApp.mainMenu?.items.first { $0.title == "View" }?.submenu?.items.map(\.title) ?? []
+            check("View opens every view", ["Gallery", "Journal", "Sort Inbox", "Lucky Dip", "Rediscover"].allSatisfy(viewItems.contains), viewItems.joined(separator: ", "))
             let appMenu = NSApp.mainMenu?.items.first?.submenu?.items.map(\.title) ?? []
             check("the Magpie menu has Check for Updates…", appMenu.contains("Check for Updates…"), appMenu.joined(separator: ", "))
             let windowItems = NSApp.mainMenu?.items.first { $0.title == "Window" }?.submenu?.items.filter { $0.title == "Magpie" } ?? []
